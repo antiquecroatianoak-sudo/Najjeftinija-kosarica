@@ -8,7 +8,8 @@ Skripta:
   1. preuzme najnoviju arhivu,
   2. za svaki proizvod nađe najnižu cijenu u svakom lancu,
   3. spoji iste proizvode iz različitih lanaca (po barkodu) - bez duplikata,
-  4. zapiše mali JSON koji koristi web aplikacija.
+  4. prepozna količinu (g, kg, ml, l, kom) da se može računati cijena po kg/l,
+  5. zapiše mali JSON koji koristi web aplikacija.
 
 Pokretanje:  python scripts/azuriraj_cijene.py [put/do/arhive.zip]
 """
@@ -16,14 +17,18 @@ Pokretanje:  python scripts/azuriraj_cijene.py [put/do/arhive.zip]
 import csv
 import io
 import json
+import re
 import sys
 import tempfile
+import unicodedata
 import urllib.request
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 LIST_URL = "https://api.cijene.dev/v0/list"
+# Ručno provjerene količine proizvoda (po barkodu) iz projekta cijene.dev.
+DOPUNA_URL = "https://raw.githubusercontent.com/senko/cijene-api/main/enrichment/products.csv"
 OUTPUT = Path(__file__).resolve().parent.parent / "site" / "data" / "proizvodi.json"
 
 # Metro je veleprodaja (treba poslovna kartica), pa ga preskačemo.
@@ -41,6 +46,25 @@ LIJEPA_IMENA = {
     "trgovina-krk": "Trgovina Krk", "vrutak": "Vrutak", "zabac": "Žabac",
 }
 
+# Jedinica -> (osnovna jedinica, faktor). Sve se svodi na kg, l ili kom.
+JEDINICE = {
+    "mg": ("kg", 0.000001), "g": ("kg", 0.001), "gr": ("kg", 0.001), "dag": ("kg", 0.01),
+    "kg": ("kg", 1),
+    "ml": ("l", 0.001), "cl": ("l", 0.01), "dl": ("l", 0.1),
+    "l": ("l", 1), "lit": ("l", 1), "litra": ("l", 1), "ltr": ("l", 1),
+    "kom": ("kom", 1), "komad": ("kom", 1), "kos": ("kom", 1), "par": ("kom", 1),
+    "pak": ("kom", 1), "kut": ("kom", 1),
+}
+# Razumne granice da pogrešno upisana količina ne pokvari cijenu po kg/l.
+NAJVISE = {"kg": 50, "l": 50, "kom": 500}
+
+BROJ = r"(\d+(?:[.,]\d+)?)"
+JED = r"(mg|g|gr|dag|kg|ml|cl|dl|l|lit|litra|ltr|kom|komad|kos|par|pak|kut)\b\.?"
+# "6x0,5 l", "4 x 125 g"
+RE_VISE = re.compile(rf"(\d+)\s*[x×*]\s*{BROJ}\s*{JED}", re.I)
+# "500 g", "1,5L"
+RE_JEDNO = re.compile(rf"{BROJ}\s*{JED}", re.I)
+
 
 def preuzmi_najnoviju_arhivu(odrediste: Path) -> str:
     with urllib.request.urlopen(LIST_URL, timeout=60) as r:
@@ -49,6 +73,23 @@ def preuzmi_najnoviju_arhivu(odrediste: Path) -> str:
     print(f"Preuzimam arhivu za {najnovija['date']} ({najnovija['size'] // 1_000_000} MB)")
     urllib.request.urlretrieve(najnovija["url"], odrediste)
     return najnovija["date"]
+
+
+def preuzmi_dopunu() -> dict[str, tuple[float, str]]:
+    """Barkod -> (količina, jedinica). Ako ne uspije, radimo i bez toga."""
+    try:
+        with urllib.request.urlopen(DOPUNA_URL, timeout=60) as r:
+            redovi = csv.DictReader(io.TextIOWrapper(r, encoding="utf-8"))
+            dopuna = {}
+            for red in redovi:
+                m = mjera(red.get("quantity", ""), red.get("unit", ""))
+                if m:
+                    dopuna[red["barcode"].strip()] = m
+    except Exception as e:  # noqa: BLE001 - dopuna nije obavezna
+        print(f"Dopuna količina nije dostupna ({e}), nastavljam bez nje.")
+        return {}
+    print(f"Dopuna količina: {len(dopuna)} proizvoda")
+    return dopuna
 
 
 def u_broj(vrijednost: str) -> float | None:
@@ -64,23 +105,91 @@ def citaj_csv(zf: zipfile.ZipFile, ime: str):
         yield from csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"))
 
 
-def kolicina(proizvod: dict) -> str:
-    q = (proizvod.get("quantity") or "").strip()
-    u = (proizvod.get("unit") or "").strip().lower()
-    if not q:
-        return u
-    try:
-        q = f"{float(q.replace(',', '.')):g}".replace(".", ",")
-    except ValueError:
-        pass
-    return f"{q} {u}".strip()
+def normaliziraj(tekst: str) -> str:
+    """Isto kao u aplikaciji: "Šećer Kristal" -> "secer kristal"."""
+    tekst = tekst.lower().replace("đ", "d")
+    tekst = "".join(z for z in unicodedata.normalize("NFD", tekst) if not unicodedata.combining(z))
+    return re.sub(r"[^a-z0-9]+", " ", tekst).strip()
 
 
-def obradi(arhiva: Path) -> tuple[list, list]:
-    """Vraća (lanci, proizvodi). Proizvod = [naziv, količina, indeks_lanca, cijena]."""
+def _u_osnovnu(iznos: float, jedinica: str) -> tuple[float, str] | None:
+    osnovna = JEDINICE.get(jedinica.lower().rstrip("."))
+    if not osnovna or iznos <= 0:
+        return None
+    vrijednost = iznos * osnovna[1]
+    if vrijednost > NAJVISE[osnovna[0]]:
+        return None
+    return round(vrijednost, 6), osnovna[0]
+
+
+def iz_teksta(tekst: str) -> tuple[float, str] | None:
+    """Traži količinu zapisanu u tekstu, npr. "Mlijeko 2,8% 1 l" ili "6x0,5 l"."""
+    m = RE_VISE.search(tekst)
+    if m:
+        komada = int(m.group(1))
+        jedno = _u_osnovnu(float(m.group(2).replace(",", ".")), m.group(3))
+        if jedno and komada > 0:
+            return _u_osnovnu(komada * jedno[0], jedno[1])
+    for m in RE_JEDNO.finditer(tekst):
+        rezultat = _u_osnovnu(float(m.group(1).replace(",", ".")), m.group(2))
+        if rezultat:
+            return rezultat
+    return None
+
+
+def mjera(kolicina: str, jedinica: str, naziv: str = "") -> tuple[float, str] | None:
+    """
+    Vraća (iznos, osnovna jedinica), npr. (0.5, "kg"), ili None ako se ne zna.
+    Lanci upisuju količinu svakako ("500g", "0,5", "1 KOM"), pa probamo redom.
+    """
+    kolicina = (kolicina or "").strip()
+    jedinica = (jedinica or "").strip().lower()
+
+    rezultat = iz_teksta(kolicina)
+    if not rezultat:
+        broj = re.match(BROJ, kolicina)
+        if broj and jedinica:
+            rezultat = _u_osnovnu(float(broj.group(1).replace(",", ".")), jedinica)
+        elif not kolicina and jedinica in ("kg", "l"):
+            rezultat = (1.0, JEDINICE[jedinica][0])  # vaga se, cijena je po kg/l
+
+    # "kom" često znači samo "jedno pakiranje" - u nazivu piše prava količina.
+    if naziv and (not rezultat or rezultat[1] == "kom"):
+        iz_naziva = iz_teksta(naziv)
+        if iz_naziva and (not rezultat or rezultat[0] == 1):
+            rezultat = iz_naziva
+    return rezultat
+
+
+def opis_mjere(iznos: float, jedinica: str) -> str:
+    if jedinica == "kg" and iznos < 1:
+        tekst, jedinica = f"{iznos * 1000:g}", "g"
+    elif jedinica == "l" and iznos < 1:
+        tekst, jedinica = f"{iznos * 1000:g}", "ml"
+    else:
+        tekst = f"{iznos:g}"
+    return f"{tekst.replace('.', ',')} {jedinica}"
+
+
+def broj_rijeci_marke(naziv: str, marka: str) -> int:
+    """Koliko riječi na početku naziva je zapravo marka ("Dukat Mlijeko" -> 1)."""
+    n, m = normaliziraj(naziv).split(), normaliziraj(marka or "").split()
+    if m and len(n) > len(m) and n[: len(m)] == m:
+        return len(m)
+    return 0
+
+
+def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
+    """
+    Vraća (lanci, proizvodi).
+    Proizvod = [naziv, količina (tekst), iznos, jedinica, riječi marke, [lanac, cijena, lanac, cijena, ...]]
+    gdje su iznos i jedinica količina svedena na kg/l/kom (0 i "" ako se ne zna),
+    a cijene po lancima idu od najjeftinije.
+    """
+    dopuna = dopuna or {}
     lanci: list[str] = []
-    # barkod -> {"naziv", "kolicina", "cijena", "lanac"}
-    najbolji: dict[str, dict] = {}
+    # barkod -> {"naziv", "marka", "kolicina", "jedinica", "mjera", "cijene": {lanac: cijena}}
+    svi: dict[str, dict] = {}
 
     with zipfile.ZipFile(arhiva) as zf:
         mape = sorted({n.split("/")[0] for n in zf.namelist() if n.endswith("/prices.csv")})
@@ -109,44 +218,67 @@ def obradi(arhiva: Path) -> tuple[list, list]:
                 if not p or not (p.get("name") or "").strip():
                     continue
                 # Isti barkod = isti proizvod, bez obzira na lanac.
-                kljuc = (p.get("barcode") or "").strip() or f"{lanac}:{pid}"
-                postojeci = najbolji.get(kljuc)
-                if postojeci is None or cijena < postojeci["cijena"]:
-                    najbolji[kljuc] = {
-                        "naziv": p["name"].strip(),
-                        "kolicina": kolicina(p),
-                        "cijena": cijena,
-                        "lanac": lanac_idx,
-                    }
+                barkod = (p.get("barcode") or "").strip()
+                kljuc = barkod or f"{lanac}:{pid}"
+                zapis = svi.get(kljuc)
+                if zapis is None:
+                    zapis = svi[kljuc] = {"cijene": {}, "mjera": None, "najniza": None}
+                stara = zapis["cijene"].get(lanac_idx)
+                if stara is None or cijena < stara:
+                    zapis["cijene"][lanac_idx] = cijena
+                # Naziv uzimamo iz lanca s najnižom cijenom.
+                if zapis["najniza"] is None or cijena < zapis["najniza"]:
+                    zapis["najniza"] = cijena
+                    zapis["naziv"] = p["name"].strip()
+                    zapis["marka"] = (p.get("brand") or "").strip()
+                if zapis["mjera"] is None:
+                    zapis["mjera"] = dopuna.get(barkod) or mjera(
+                        p.get("quantity", ""), p.get("unit", ""), p["name"]
+                    )
             print(f"  {lanci[-1]}: {len(min_cijena)} proizvoda")
 
-    proizvodi = sorted(
-        ([v["naziv"], v["kolicina"], v["lanac"], round(v["cijena"], 2)] for v in najbolji.values()),
-        key=lambda x: x[3],
-    )
+    proizvodi = []
+    for z in svi.values():
+        cijene = sorted(z["cijene"].items(), key=lambda lc: lc[1])
+        iznos, jedinica = z["mjera"] or (0, "")
+        proizvodi.append([
+            z["naziv"],
+            opis_mjere(iznos, jedinica) if jedinica else "",
+            iznos,
+            jedinica,
+            broj_rijeci_marke(z["naziv"], z["marka"]),
+            [x for lanac, c in cijene for x in (lanac, round(c, 2))],
+        ])
+    proizvodi.sort(key=lambda p: p[5][1])
     return lanci, proizvodi
 
 
 def main():
+    dopuna = preuzmi_dopunu()
     if len(sys.argv) > 1:
         arhiva = Path(sys.argv[1])
         datum = arhiva.stem
-        lanci, proizvodi = obradi(arhiva)
+        lanci, proizvodi = obradi(arhiva, dopuna)
     else:
         with tempfile.TemporaryDirectory() as tmp:
             arhiva = Path(tmp) / "cijene.zip"
             datum = preuzmi_najnoviju_arhivu(arhiva)
-            lanci, proizvodi = obradi(arhiva)
+            lanci, proizvodi = obradi(arhiva, dopuna)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     podaci = {
+        "verzija": 2,
         "datum": datum,
         "azurirano": datetime.now(timezone.utc).isoformat(timespec="minutes"),
         "lanci": lanci,
         "proizvodi": proizvodi,
     }
     OUTPUT.write_text(json.dumps(podaci, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    print(f"Gotovo: {len(proizvodi)} jedinstvenih proizvoda iz {len(lanci)} lanaca -> {OUTPUT}")
+    s_mjerom = sum(1 for p in proizvodi if p[3])
+    print(
+        f"Gotovo: {len(proizvodi)} jedinstvenih proizvoda iz {len(lanci)} lanaca "
+        f"({s_mjerom} s poznatom količinom) -> {OUTPUT}"
+    )
 
 
 if __name__ == "__main__":

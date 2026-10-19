@@ -71,10 +71,16 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
   background: var(--kartica); border: 1px solid var(--rub); border-radius: 10px;
   padding: 10px 6px 10px 14px; margin-bottom: 8px;
 }
+.popis .naziv-stavke { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.popis .kontrole { display: flex; align-items: center; flex-shrink: 0; }
+.popis .broj { min-width: 34px; text-align: center; font-weight: 600; }
 .popis li button {
-  border: 0; background: none; color: var(--crvena); font-size: 22px;
+  border: 0; background: none; font-size: 22px;
   width: 44px; height: 44px; cursor: pointer;
 }
+.popis .ukloni { color: var(--crvena); }
+.popis .kolicina-gumb { color: var(--zelena); font-size: 26px; font-weight: 600; }
+.popis .kolicina-gumb:disabled { opacity: .3; cursor: default; }
 .prazno { color: var(--siva); text-align: center; }
 
 .kartice { list-style: none; padding: 0; margin: 0; }
@@ -83,7 +89,17 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
   padding: 14px; margin-bottom: 12px; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+.kartica { display: flex; gap: 12px; align-items: flex-start; }
+.kartica .sadrzaj { flex: 1; min-width: 0; }
 .kartica:active { background: var(--zelena-svijetla); }
+.kartica .kvacica {
+  flex-shrink: 0; width: 36px; height: 36px; margin-top: 2px;
+  border: 2px solid var(--zelena); border-radius: 50%;
+  background: none; color: #fff; font-size: 20px; font-weight: 700; cursor: pointer;
+}
+.kartica.kupljeno { opacity: .55; }
+.kartica.kupljeno .kvacica { background: var(--zelena); }
+.kartica.kupljeno .naziv { text-decoration: line-through; }
 .kartica .grupa { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--siva); }
 .kartica .naziv { font-weight: 600; margin: 2px 0 8px; }
 .kartica .redak { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
@@ -92,9 +108,48 @@ main { padding: 16px; max-width: 640px; margin: 0 auto; }
   padding: 2px 10px; border-radius: 99px; font-weight: 600; font-size: 16px;
 }
 .kartica .cijena { font-size: 24px; font-weight: 700; }
-.kartica .detalji { display: flex; justify-content: space-between; color: var(--siva); font-size: 14px; margin-top: 6px; }
+.kartica .detalji { display: flex; justify-content: space-between; gap: 8px; color: var(--siva); font-size: 14px; margin-top: 6px; }
+.kartica .mjesto { flex-shrink: 0; text-align: right; }
 .kartica .natrag { border: 0; background: none; color: var(--zelena); font-size: 14px; padding: 0; cursor: pointer; }
 .kartica.nema { cursor: default; color: var(--siva); }
 
 .ukupno { font-size: 20px; text-align: right; margin: 8px 4px 4px; }
 .po-trgovinama { color: var(--siva); font-size: 15px; text-align: right; margin: 0 4px 20px; }
+.preostalo { font-size: 17px; text-align: right; margin: 0 4px 4px; }
+.napredak { font-weight: 600; margin: 0 0 10px; }
+.napredak:empty { display: none; }
+
+.postavke {
+  background: var(--kartica); border: 1px solid var(--rub); border-radius: 12px;
+  padding: 0 14px; margin-bottom: 16px;
+}
+.postavke summary { padding: 12px 0; cursor: pointer; font-weight: 600; }
+.postavke fieldset { border: 0; padding: 0; margin: 0 0 14px; }
+.postavke legend { font-weight: 600; margin-bottom: 6px; }
+.postavke label { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 16px; }
+.postavke input { width: 20px; height: 20px; accent-color: var(--zelena); flex-shrink: 0; }
+.lanci { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; }
+.lanci-gumbi { display: flex; gap: 8px; margin-bottom: 6px; }
+.lanci-gumbi button, .samo-trgovina button {
+  font-size: 15px; padding: 6px 12px; border-radius: 8px;
+  border: 1px solid var(--zelena); background: none; color: var(--zelena); cursor: pointer;
+}
+
+.samo-trgovina {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--zelena-svijetla); border-radius: 12px; padding: 10px 14px; margin-bottom: 12px;
+}
+.samo-trgovina[hidden] { display: none; }
+
+.jedna-trgovina h2 { font-size: 20px; margin: 8px 0 0; }
+.trgovine-usporedba { list-style: none; padding: 0; margin: 0 0 20px; }
+.trgovina-red {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  width: 100%; text-align: left; font: inherit; color: var(--tekst);
+  background: var(--kartica); border: 1px solid var(--rub); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 8px; cursor: pointer;
+}
+.trgovina-red.odabrana { border: 2px solid var(--zelena); }
+.trgovina-red .lijevo { display: flex; flex-direction: column; min-width: 0; }
+.trgovina-red small { color: var(--siva); font-size: 14px; }
+.trgovina-red .iznos { font-weight: 700; flex-shrink: 0; }

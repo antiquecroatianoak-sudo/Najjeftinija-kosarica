@@ -17,12 +17,29 @@
   </header>
 
   <main>
+    <details id="postavke" class="postavke">
+      <summary>⚙️ Postavke</summary>
+      <fieldset>
+        <legend>Uspoređuj po</legend>
+        <label><input type="radio" name="nacin" value="jedinica"> cijeni po kg / l (što je isplativije)</label>
+        <label><input type="radio" name="nacin" value="pakiranje"> cijeni pakiranja (što je jeftinije na blagajni)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Trgovine u koje ideš</legend>
+        <div class="lanci-gumbi">
+          <button id="lanci-sve" type="button">Sve</button>
+          <button id="lanci-nista" type="button">Nijedna</button>
+        </div>
+        <div id="lanci" class="lanci"></div>
+      </fieldset>
+    </details>
+
     <!-- 1. korak: slaganje popisa -->
     <section id="uredivanje">
       <button id="mikrofon" class="veliki-gumb" type="button">
         <span class="ikona">🎤</span> <span id="mikrofon-tekst">Reci što trebaš kupiti</span>
       </button>
-      <p class="savjet">Npr. „kruh, mlijeko i jaja”. Možeš reći više stvari odjednom.</p>
+      <p class="savjet">Npr. „kruh, 2 mlijeka i jaja”. Možeš reći više stvari odjednom.</p>
 
       <form id="rucni-unos" class="rucni-unos">
         <input id="unos" type="text" placeholder="…ili upiši ovdje" autocomplete="off" enterkeyhint="done">
@@ -37,10 +54,23 @@
 
     <!-- 2. korak: rezultati -->
     <section id="rezultati" hidden>
-      <p class="savjet">Dodirni proizvod da vidiš sljedeći najjeftiniji iz iste grupe.</p>
+      <p class="savjet">Dodirni proizvod da vidiš sljedeći iz iste grupe. Kružićem ga označi kad ga staviš u košaricu.</p>
+      <div id="samo-trgovina" class="samo-trgovina" hidden>
+        Sve iz trgovine <strong id="samo-trgovina-naziv"></strong>
+        <button id="samo-trgovina-makni" type="button">Prikaži sve trgovine</button>
+      </div>
+      <p id="napredak" class="napredak"></p>
       <ul id="kartice" class="kartice"></ul>
       <div class="ukupno">Ukupno: <strong id="ukupno">0,00 €</strong></div>
+      <div id="preostalo" class="preostalo" hidden>Još za kupiti: <strong id="preostalo-iznos"></strong></div>
       <div id="po-trgovinama" class="po-trgovinama"></div>
+
+      <section id="jedna-trgovina" class="jedna-trgovina" hidden>
+        <h2>Sve u jednoj trgovini</h2>
+        <p class="savjet">Ne da ti se ići u više trgovina? Ovoliko bi platio u jednoj. Dodirni trgovinu za njezine proizvode.</p>
+        <ul id="trgovine-usporedba" class="trgovine-usporedba"></ul>
+      </section>
+
       <button id="otkljucaj" class="veliki-gumb" type="button">🔓 Otključaj i uredi popis</button>
     </section>
   </main>

@@ -48,12 +48,21 @@ Kad prvi put dodirneš 🎤, Chrome će pitati smiješ li koristiti mikrofon –
 ## Svakodnevno korištenje
 
 - Dodirni **🎤 Reci što trebaš kupiti** i izgovori stvari. Može više odjednom:
-  „kruh, mlijeko, jaja i banane”.
-- Pogrešnu stavku makni crvenim **✕**.
-- Dodirni **🔒 Zaključaj popis** – vidiš najjeftinije proizvode i ukupnu cijenu.
-- Ne sviđa ti se proizvod? **Dodirni ga** za sljedeći najjeftiniji.
+  „kruh, 2 mlijeka, deset jaja i banane”.
+- Količinu mijenjaš gumbima **−** i **+**, a pogrešnu stavku makneš crvenim **✕**.
+- Dodirni **🔒 Zaključaj popis** – vidiš najisplativije proizvode i ukupnu cijenu.
+- Ne sviđa ti se proizvod? **Dodirni ga** za sljedeći iz iste grupe.
+- U trgovini **kružićem** označi što si već stavio u košaricu.
+- Pod **Sve u jednoj trgovini** vidiš koliko bi platio da sve kupiš na jednom mjestu.
+  Dodirni trgovinu da vidiš samo njezine proizvode.
 - **🔓 Otključaj** ako želiš dodati ili maknuti stavke.
 - Popis ostaje spremljen u mobitelu i kad zatvoriš aplikaciju.
+
+### ⚙️ Postavke
+- **Uspoređuj po cijeni po kg / l** (zadano): bira ono što je stvarno najisplativije,
+  pa ti za „mlijeko” neće ponuditi malo pakiranje od 0,2 l samo zato što je jeftino.
+  Ako ti je važnija što niža cijena na blagajni, odaberi **cijeni pakiranja**.
+- **Trgovine u koje ideš**: makni kvačicu s lanaca koji ti nisu blizu.
 
 Savjet: koristi jednostavne nazive kakvi pišu na proizvodima (npr. „mlijeko”,
 „toaletni papir”, „maslinovo ulje”). Ako nešto ne nađe, probaj drugu riječ.
@@ -71,4 +80,6 @@ Savjet: koristi jednostavne nazive kakvi pišu na proizvodima (npr. „mlijeko�
 Napomene:
 - Prikazuje se najniža cijena proizvoda u bilo kojoj poslovnici tog lanca
   (uključujući akcijske cijene). U tvojoj poslovnici cijena može biti malo drukčija.
+- Cijena po kg/l računa se iz količine koju objavljuju trgovine. Kad je ona
+  pogrešno upisana, takav proizvod se slaže iza onih s poznatom količinom.
 - Metro je izostavljen jer je veleprodaja (treba poslovna kartica).
