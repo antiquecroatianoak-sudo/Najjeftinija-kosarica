@@ -72,6 +72,18 @@ async function ucitajPodatke() {
       // Stari oblik: [naziv, količina, lanac, cijena]
       podaci.proizvodi = podaci.proizvodi.map(([n, k, l, c]) => [n, k, 0, "", 0, [l, c]]);
     }
+    // Zaštita i za stare/offline cjenike: ne prikazuj ponude od jednog centa.
+    podaci.proizvodi = podaci.proizvodi.map((p) => {
+      const cijene = [];
+      for (let k = 0; k < p[5].length; k += 2) {
+        const c = p[5][k + 1];
+        if (typeof c === "number" && Number.isFinite(c) && Math.round(c * 100) > 1) {
+          cijene.push(p[5][k], c);
+        }
+      }
+      return [...p.slice(0, 5), cijene];
+    }).filter((p) => p[5].length);
+    if (!podaci.proizvodi.length) throw new Error("Nema valjanih cijena");
     rijeci = podaci.proizvodi.map((p) => normaliziraj(p[0]).split(" "));
     const [g, m, d] = podaci.datum.split("-");
     $("status").textContent =

@@ -17,6 +17,7 @@ Pokretanje:  python scripts/azuriraj_cijene.py [put/do/arhive.zip]
 import csv
 import io
 import json
+import math
 import re
 import sys
 import tempfile
@@ -97,7 +98,16 @@ def u_broj(vrijednost: str) -> float | None:
         broj = float(vrijednost.replace(",", "."))
     except (AttributeError, ValueError):
         return None
-    return broj if broj > 0 else None
+    return broj if math.isfinite(broj) and broj > 0 else None
+
+
+def cijena_za_uvoz(vrijednost: str) -> float | None:
+    """Odbaci ponude koje bi se prikazale kao 0,00 ili 0,01 EUR."""
+    broj = u_broj(vrijednost)
+    if broj is None:
+        return None
+    cijena = round(broj, 2)
+    return cijena if cijena > 0.01 else None
 
 
 def citaj_csv(zf: zipfile.ZipFile, ime: str):
@@ -205,7 +215,7 @@ def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
             # (uzimamo i akcijsku cijenu ako postoji).
             min_cijena: dict[str, float] = {}
             for red in citaj_csv(zf, f"{lanac}/prices.csv"):
-                cijene = [c for c in (u_broj(red["price"]), u_broj(red.get("special_price", ""))) if c]
+                cijene = [c for c in (cijena_za_uvoz(red["price"]), cijena_za_uvoz(red.get("special_price", ""))) if c]
                 if not cijene:
                     continue
                 c = min(cijene)
