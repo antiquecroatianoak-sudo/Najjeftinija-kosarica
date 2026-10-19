@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1b7f4b">
+  <title>Najjeftinija košarica</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="ikona.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="ikona-192.png">
+  <link rel="stylesheet" href="stil.css">
+</head>
+<body>
+  <header>
+    <h1>🛒 Najjeftinija košarica</h1>
+    <p id="status" class="status">Učitavam cijene…</p>
+  </header>
+
+  <main>
+    <!-- 1. korak: slaganje popisa -->
+    <section id="uredivanje">
+      <button id="mikrofon" class="veliki-gumb" type="button">
+        <span class="ikona">🎤</span> <span id="mikrofon-tekst">Reci što trebaš kupiti</span>
+      </button>
+      <p class="savjet">Npr. „kruh, mlijeko i jaja”. Možeš reći više stvari odjednom.</p>
+
+      <form id="rucni-unos" class="rucni-unos">
+        <input id="unos" type="text" placeholder="…ili upiši ovdje" autocomplete="off" enterkeyhint="done">
+        <button type="submit">Dodaj</button>
+      </form>
+
+      <ul id="popis" class="popis"></ul>
+      <p id="prazno" class="prazno">Popis je prazan.</p>
+
+      <button id="zakljucaj" class="veliki-gumb glavni" type="button" disabled>🔒 Zaključaj popis i nađi najjeftinije</button>
+    </section>
+
+    <!-- 2. korak: rezultati -->
+    <section id="rezultati" hidden>
+      <p class="savjet">Dodirni proizvod da vidiš sljedeći najjeftiniji iz iste grupe.</p>
+      <ul id="kartice" class="kartice"></ul>
+      <div class="ukupno">Ukupno: <strong id="ukupno">0,00 €</strong></div>
+      <div id="po-trgovinama" class="po-trgovinama"></div>
+      <button id="otkljucaj" class="veliki-gumb" type="button">🔓 Otključaj i uredi popis</button>
+    </section>
+  </main>
+
+  <script src="aplikacija.js"></script>
+</body>
+</html>

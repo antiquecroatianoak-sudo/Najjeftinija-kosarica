@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1b7f4b"/>
+  <g fill="none" stroke="#fff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M96 128h52l40 200h192l36-144H170"/>
+  </g>
+  <circle cx="212" cy="384" r="26" fill="#fff"/>
+  <circle cx="352" cy="384" r="26" fill="#fff"/>
+  <text x="300" y="268" font-family="Arial, sans-serif" font-size="110" font-weight="700" fill="#fff" text-anchor="middle">€</text>
+</svg>
