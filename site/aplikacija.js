@@ -19,6 +19,10 @@ stanje.popis = (Array.isArray(stanje.popis) ? stanje.popis : [])
 stanje.iskljuceni = Array.isArray(stanje.iskljuceni) ? stanje.iskljuceni : [];
 stanje.odabir = stanje.odabir && typeof stanje.odabir === "object" ? stanje.odabir : {};
 stanje.nacin = stanje.nacin === "pakiranje" ? "pakiranje" : "jedinica";
+// Svako otvaranje započinje usporedbom svih lanaca.
+stanje.iskljuceni = [];
+stanje.jedna = null;
+stanje.odabir = {};
 function spremi() {
   try { localStorage.setItem(SPREMISTE, JSON.stringify(stanje)); } catch (e) {}
 }
