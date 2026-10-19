@@ -326,48 +326,15 @@ function gumb(tekst, klasa, naKlik, oznaka) {
 }
 
 function prikazi() {
-  $("uredivanje").hidden = stanje.zakljucano;
-  $("rezultati").hidden = !stanje.zakljucano;
-  $("korak-popis").classList.toggle("aktivan", !stanje.zakljucano);
-  $("korak-cijene").classList.toggle("aktivan", !!stanje.zakljucano);
-  $("korak-popis").toggleAttribute("aria-current", !stanje.zakljucano);
-  $("korak-cijene").toggleAttribute("aria-current", !!stanje.zakljucano);
-  (stanje.zakljucano ? $("korak-cijene") : $("korak-popis")).setAttribute("aria-current", "step");
   $("lanci-info").textContent = podaci ? `${sviLanci().size} od ${podaci.lanci.length} trgovina odabrano` : "Trgovine će se prikazati nakon učitavanja cijena.";
-  stanje.zakljucano ? prikaziRezultate() : prikaziPopis();
+  prikaziPopis();
 }
 
 function prikaziPopis() {
-  const ul = $("popis");
-  ul.innerHTML = "";
-  stanje.popis.forEach((stavka, i) => {
-    const li = document.createElement("li");
-    const naziv = document.createElement("span");
-    naziv.className = "naziv-stavke";
-    naziv.textContent = stavka.naziv;
-    const kontrole = document.createElement("span");
-    kontrole.className = "kontrole";
-    const manje = gumb("−", "kolicina-gumb", () => promijeniKolicinu(i, -1), `Manje ${stavka.naziv}`);
-    manje.disabled = stavka.kom <= 1;
-    const broj = document.createElement("span");
-    broj.className = "broj";
-    broj.textContent = `${stavka.kom}×`;
-    kontrole.append(
-      manje, broj,
-      gumb("+", "kolicina-gumb", () => promijeniKolicinu(i, +1), `Više ${stavka.naziv}`),
-      gumb("✕", "ukloni", () => ukloni(i), `Ukloni ${stavka.naziv}`),
-    );
-    li.append(naziv, kontrole);
-    ul.appendChild(li);
-  });
   $("prazno").hidden = stanje.popis.length > 0;
   const n = stanje.popis.length;
   $("broj-stavki").textContent = `${n} ${n % 10 === 1 && n % 100 !== 11 ? "stavka" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "stavke" : "stavki"}`;
-  $("zakljucaj").disabled = !n || !podaci || !sviLanci().size;
-  $("pomoc-usporedbe").textContent = !n ? "Dodaj barem jedan proizvod za usporedbu."
-    : !podaci ? "Usporedba će biti dostupna nakon učitavanja cijena."
-    : !sviLanci().size ? "Odaberi barem jednu trgovinu u postavkama."
-    : "Usporedi ponude iz odabranih trgovina.";
+  prikaziRezultate();
 }
 
 // "10 jaja" znači 10 komada, a ne 10 pakiranja po 10 jaja. Kad netko traži
@@ -397,7 +364,7 @@ function prikaziRezultate() {
   $("samo-trgovina").hidden = !(podaci && dozvoljeniLanci().size === 1 && stanje.jedna);
   $("samo-trgovina-naziv").textContent = stanje.jedna || "";
 
-  for (const stavka of stanje.popis) {
+  for (const [stavkaIndex, stavka] of stanje.popis.entries()) {
     const grupa = stavka.naziv;
     const li = document.createElement("li");
     li.className = "kartica";
@@ -418,6 +385,17 @@ function prikaziRezultate() {
     naslov.className = "grupa";
     naslov.textContent = stavka.kom > 1 ? `${grupa} · ${stavka.kom} kom` : grupa;
     sadrzaj.appendChild(naslov);
+    const kontrole = document.createElement("div");
+    kontrole.className = "kontrole";
+    const manje = gumb("−", "kolicina-gumb", () => promijeniKolicinu(stavkaIndex, -1), `Manje ${grupa}`);
+    manje.disabled = stavka.kom <= 1;
+    const broj = document.createElement("span");
+    broj.className = "broj";
+    broj.textContent = `${stavka.kom}×`;
+    kontrole.append(manje, broj,
+      gumb("+", "kolicina-gumb", () => promijeniKolicinu(stavkaIndex, 1), `Više ${grupa}`),
+      gumb("Ukloni", "ukloni", () => ukloni(stavkaIndex), `Ukloni ${grupa}`));
+    sadrzaj.appendChild(kontrole);
 
     if (!ponude.length) {
       nedostaje++;
@@ -425,7 +403,7 @@ function prikaziRezultate() {
       const poruka = document.createElement("div");
       poruka.className = "naziv";
       poruka.textContent = !podaci ? "Cijene još nisu učitane."
-        : !lanciOk ? "Nijedna trgovina nije odabrana (vidi Postavke)."
+        : !lanciOk ? "Odaberi barem jednu trgovinu iznad popisa."
         : stanje.jedna ? `Nema u trgovini ${stanje.jedna}.`
         : "Nema pronađenih ponuda u odabranim trgovinama.";
       sadrzaj.appendChild(poruka);
@@ -481,7 +459,6 @@ function prikaziRezultate() {
       }, `Sljedeći proizvod za ${grupa}`));
     }
     kvacica.setAttribute("aria-pressed", String(!!stavka.kupljeno));
-    li.onclick = () => promijeni(grupa, +1);
     ul.appendChild(li);
   }
 
@@ -603,20 +580,6 @@ $("rucni-unos").onsubmit = (e) => {
   const tekst = $("unos").value.trim();
   if (tekst) dodajIzTeksta(tekst);
   $("unos").value = "";
-};
-$("zakljucaj").onclick = () => {
-  if (!podaci || !stanje.popis.length || !sviLanci().size) return;
-  stanje.zakljucano = true;
-  stanje.odabir = {};
-  stanje.popis.forEach((s) => { s.kupljeno = false; });
-  spremi();
-  prikazi();
-  window.scrollTo(0, 0);
-};
-$("otkljucaj").onclick = () => {
-  stanje.zakljucano = false;
-  spremi();
-  prikazi();
 };
 $("samo-trgovina-makni").onclick = () => {
   stanje.jedna = null;
