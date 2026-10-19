@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#5cb8ee">
+  <meta name="theme-color" content="#edf5fc">
+  <meta name="description" content="Složi popis za kupnju i usporedi cijene proizvoda u hrvatskim trgovinama.">
   <title>Najjeftinija košarica</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="ikona.svg" type="image/svg+xml">
@@ -11,70 +12,55 @@
   <link rel="stylesheet" href="stil.css">
 </head>
 <body>
-  <header>
-    <h1>🛒 Najjeftinija košarica</h1>
-    <p id="status" class="status">Učitavam cijene…</p>
+  <a class="preskoci" href="#glavni-sadrzaj">Preskoči na sadržaj</a>
+  <header class="zaglavlje">
+    <div class="brend"><span class="brend-ikona" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 9 4-6 4 6M3 9h18l-2 11H5L3 9Z" stroke-linejoin="round"/><path d="M9 12v5m6-5v5" stroke-linecap="round"/></svg></span><div>Najjeftinija košarica<span class="brend-opis">Tvoj popis. Pametnija kupnja.</span></div></div>
+    <span class="oznaka-zaglavlja">Usporedba cijena u Hrvatskoj</span>
   </header>
-
-  <main>
-    <details id="postavke" class="postavke">
-      <summary>⚙️ Postavke</summary>
-      <fieldset>
-        <legend>Uspoređuj po</legend>
-        <label><input type="radio" name="nacin" value="jedinica"> cijeni po kg / l (što je isplativije)</label>
-        <label><input type="radio" name="nacin" value="pakiranje"> cijeni pakiranja (što je jeftinije na blagajni)</label>
-      </fieldset>
-      <fieldset>
-        <legend>Trgovine u koje ideš</legend>
-        <div class="lanci-gumbi">
-          <button id="lanci-sve" type="button">Sve</button>
-          <button id="lanci-nista" type="button">Nijedna</button>
-        </div>
-        <div id="lanci" class="lanci"></div>
-      </fieldset>
-    </details>
-
-    <!-- 1. korak: slaganje popisa -->
-    <section id="uredivanje">
-      <button id="mikrofon" class="veliki-gumb" type="button">
-        <span class="ikona">🎤</span> <span id="mikrofon-tekst">Reci što trebaš kupiti</span>
-      </button>
-      <p class="savjet">Npr. „kruh, 2 mlijeka i jaja”. Možeš reći više stvari odjednom.</p>
-
-      <form id="rucni-unos" class="rucni-unos">
-        <input id="unos" type="text" placeholder="…ili upiši ovdje" autocomplete="off" enterkeyhint="done">
-        <button type="submit">Dodaj</button>
-      </form>
-
-      <ul id="popis" class="popis"></ul>
-      <p id="prazno" class="prazno">Popis je prazan.</p>
-
-      <button id="zakljucaj" class="veliki-gumb glavni" type="button" disabled>🔒 Zaključaj popis i nađi najjeftinije</button>
-    </section>
-
-    <!-- 2. korak: rezultati -->
-    <section id="rezultati" hidden>
-      <p class="savjet">Dodirni proizvod da vidiš sljedeći iz iste grupe. Kružićem ga označi kad ga staviš u košaricu.</p>
-      <div id="samo-trgovina" class="samo-trgovina" hidden>
-        Sve iz trgovine <strong id="samo-trgovina-naziv"></strong>
-        <button id="samo-trgovina-makni" type="button">Prikaži sve trgovine</button>
+  <main id="glavni-sadrzaj">
+    <div class="uvod">
+      <p class="nadnaslov">MANJE TRAŽENJA, VIŠE UŠTEDE</p>
+      <h1>U kupnju s <span>dobrim planom.</span></h1>
+      <p class="uvod-opis">Dodaj što trebaš. Usporedi cijene. Odaberi gdje kupuješ.</p>
+      <div class="stanje-podataka"><span class="status-tocka" aria-hidden="true"></span><p id="status" class="status" role="status">Učitavam cijene…</p><button id="ponovi" type="button" hidden>Pokušaj ponovno</button></div>
+    </div>
+    <ol class="koraci" aria-label="Koraci kupnje">
+      <li id="korak-popis" class="aktivan" aria-current="step"><span>1</span> Složi popis</li>
+      <li id="korak-cijene"><span>2</span> Usporedi i kupuj</li>
+    </ol>
+    <div class="raspored">
+      <div class="radni-prostor">
+        <section id="uredivanje" class="panel" aria-labelledby="naslov-popisa">
+          <div class="naslov-sekcije"><div><p class="nadnaslov">KRENI OD SVOG POPISA</p><h2 id="naslov-popisa">Što danas kupuješ?</h2></div><span id="broj-stavki" class="oznaka">0 stavki</span></div>
+          <form id="rucni-unos" class="rucni-unos">
+            <label for="unos">Proizvodi za kupnju</label>
+            <div class="unos-red"><input id="unos" type="text" placeholder="Npr. kruh, 2 mlijeka i jaja" autocomplete="off" enterkeyhint="done" maxlength="500"><button type="submit">+ Dodaj</button></div>
+          </form>
+          <div class="glasovni-unos"><button id="mikrofon" type="button"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2m-7 9v3m-4 0h8" stroke-linecap="round"/></svg><span id="mikrofon-tekst">Reci što trebaš kupiti</span></button><span>ili dodaj glasom</span></div>
+          <ul id="popis" class="popis" aria-label="Popis za kupnju"></ul>
+          <div id="prazno" class="prazno"><span class="prazno-ikona" aria-hidden="true">＋</span><h3>Ovdje počinje tvoja kupnja</h3><p>Upiši proizvode ili ih izgovori.<br>Možeš dodati više stvari odjednom.</p></div>
+          <div class="akcija"><button id="zakljucaj" class="veliki-gumb glavni" type="button" disabled>Pronađi najbolje cijene <span aria-hidden="true">→</span></button><p id="pomoc-usporedbe" class="sitno">Dodaj barem jedan proizvod za usporedbu.</p></div>
+        </section>
+        <section id="rezultati" class="panel" aria-labelledby="naslov-rezultata" hidden>
+          <div class="naslov-sekcije"><div><p class="nadnaslov">TVOJA KUPNJA NA JEDNOM MJESTU</p><h2 id="naslov-rezultata">Tvoja košarica</h2></div><button id="otkljucaj" class="sekundarni" type="button">Uredi popis</button></div>
+          <p class="savjet">Usporedi proizvode strelicama. Kvačicom označi ono što si stavio u košaricu.</p>
+          <div id="samo-trgovina" class="samo-trgovina" hidden><span>Sve iz trgovine <strong id="samo-trgovina-naziv"></strong></span><button id="samo-trgovina-makni" type="button">Sve trgovine</button></div>
+          <p id="napredak" class="napredak" role="status"></p>
+          <ul id="kartice" class="kartice" aria-label="Pronađene ponude"></ul>
+          <div class="sazetak"><div class="ukupno"><span id="ukupno-oznaka">Ukupno za popis</span><strong id="ukupno">0,00 €</strong></div><p id="nedostaje" class="upozorenje" role="status" hidden></p><div id="preostalo" class="preostalo" hidden>Još za kupiti: <strong id="preostalo-iznos"></strong></div><div id="po-trgovinama" class="po-trgovinama"></div></div>
+          <section id="jedna-trgovina" class="jedna-trgovina" hidden><h3>Sve u jednoj trgovini</h3><p class="savjet">Usporedi iznose i odaberi trgovinu. Ako proizvod nedostaje, prikazan je samo djelomičan iznos.</p><ul id="trgovine-usporedba" class="trgovine-usporedba"></ul></section>
+        </section>
       </div>
-      <p id="napredak" class="napredak"></p>
-      <ul id="kartice" class="kartice"></ul>
-      <div class="ukupno">Ukupno: <strong id="ukupno">0,00 €</strong></div>
-      <div id="preostalo" class="preostalo" hidden>Još za kupiti: <strong id="preostalo-iznos"></strong></div>
-      <div id="po-trgovinama" class="po-trgovinama"></div>
-
-      <section id="jedna-trgovina" class="jedna-trgovina" hidden>
-        <h2>Sve u jednoj trgovini</h2>
-        <p class="savjet">Ne da ti se ići u više trgovina? Ovoliko bi platio u jednoj. Dodirni trgovinu za njezine proizvode.</p>
-        <ul id="trgovine-usporedba" class="trgovine-usporedba"></ul>
-      </section>
-
-      <button id="otkljucaj" class="veliki-gumb" type="button">🔓 Otključaj i uredi popis</button>
-    </section>
+      <aside class="bocno" aria-label="Postavke i pomoć">
+        <details id="postavke" class="postavke" open>
+          <summary><span>Prilagodi usporedbu</span><span class="plus" aria-hidden="true">⌄</span></summary>
+          <div class="postavke-sadrzaj"><fieldset><legend>Što ti je važnije?</legend><label class="opcija"><input type="radio" name="nacin" value="jedinica"><span>Isplativije po kg / l<small>Usporedi vrijednost za istu količinu.</small></span></label><label class="opcija"><input type="radio" name="nacin" value="pakiranje"><span>Jeftinije pakiranje<small>Usporedi cijenu na blagajni.</small></span></label></fieldset><fieldset><legend>Trgovine u koje ideš</legend><div class="lanci-gumbi"><button id="lanci-sve" type="button">Odaberi sve</button><button id="lanci-nista" type="button">Poništi odabir</button></div><div id="lanci" class="lanci"></div><p id="lanci-info" class="sitno"></p></fieldset></div>
+        </details>
+        <div class="info-kartica"><span class="info-oznaka">DOBRO JE ZNATI</span><h3>Mali plan, lakša kupnja.</h3><p>Popis se sprema na ovom uređaju pa te čeka i kad zatvoriš aplikaciju.</p><p class="napomena">Prikazujemo najnižu cijenu unutar lanca. Cijena u tvojoj poslovnici može se razlikovati.</p></div>
+      </aside>
+    </div>
+    <footer>Najjeftinija košarica <span>Jednostavnije do pametnije kupnje.</span></footer>
   </main>
-
   <script src="aplikacija.js"></script>
 </body>
 </html>

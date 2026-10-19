@@ -12,7 +12,13 @@ let stanje = {
 };
 try { Object.assign(stanje, JSON.parse(localStorage.getItem(SPREMISTE)) || {}); } catch (e) {}
 // Starija verzija je spremala popis kao obične tekstove.
-stanje.popis = stanje.popis.map((s) => (typeof s === "string" ? { naziv: s, kom: 1, kupljeno: false } : s));
+stanje.popis = (Array.isArray(stanje.popis) ? stanje.popis : [])
+  .map((s) => typeof s === "string" ? { naziv: s, kom: 1, kupljeno: false } : s)
+  .filter((s) => s && typeof s.naziv === "string" && s.naziv.trim())
+  .map((s) => ({ naziv: s.naziv, kom: Math.min(99, Math.max(1, Math.floor(Number(s.kom) || 1))), kupljeno: !!s.kupljeno }));
+stanje.iskljuceni = Array.isArray(stanje.iskljuceni) ? stanje.iskljuceni : [];
+stanje.odabir = stanje.odabir && typeof stanje.odabir === "object" ? stanje.odabir : {};
+stanje.nacin = stanje.nacin === "pakiranje" ? "pakiranje" : "jedinica";
 function spremi() {
   try { localStorage.setItem(SPREMISTE, JSON.stringify(stanje)); } catch (e) {}
 }
@@ -46,10 +52,18 @@ const NASTAVCI = new Set(["", "a", "e", "i", "o", "u", "om", "em", "im", "ima", 
 const PRIJEDLOZI = new Set(["s", "sa", "od", "za", "u", "na", "bez", "iz", "po"]);
 
 async function ucitajPodatke() {
+  $("ponovi").hidden = true;
+  $("status").textContent = "Učitavam cijene…";
+  $("status").parentElement.classList.remove("greska", "spremno");
   try {
     const odgovor = await fetch("data/proizvodi.json", { cache: "no-cache" });
     if (!odgovor.ok) throw new Error(odgovor.status);
-    podaci = await odgovor.json();
+    const novi = await odgovor.json();
+    if (!novi || !Array.isArray(novi.proizvodi) || !novi.proizvodi.length || !Array.isArray(novi.lanci)
+        || !novi.lanci.length || !/^\d{4}-\d{2}-\d{2}$/.test(novi.datum)) throw new Error("Neispravan cjenik");
+    podaci = novi;
+    pogociCache.clear();
+    ponudeCache.clear();
     if (podaci.verzija !== 2) {
       // Stari oblik: [naziv, količina, lanac, cijena]
       podaci.proizvodi = podaci.proizvodi.map(([n, k, l, c]) => [n, k, 0, "", 0, [l, c]]);
@@ -58,8 +72,13 @@ async function ucitajPodatke() {
     const [g, m, d] = podaci.datum.split("-");
     $("status").textContent =
       `Cijene od ${d}.${m}.${g}. · ${podaci.proizvodi.length.toLocaleString("hr-HR")} proizvoda · ${podaci.lanci.length} lanaca`;
+    $("status").parentElement.classList.add("spremno");
   } catch (e) {
-    $("status").textContent = "Cijene još nisu preuzete. Pokušaj ponovno kasnije.";
+    podaci = null;
+    rijeci = [];
+    $("ponovi").hidden = false;
+    $("status").parentElement.classList.add("greska");
+    $("status").textContent = "Cijene nisu dostupne. Tvoj popis ostaje spremljen.";
   }
   prikaziPostavke();
   prikazi();
@@ -256,7 +275,11 @@ function pokreniSlusanje() {
     $("mikrofon").classList.remove("slusa");
     $("mikrofon-tekst").textContent = "Reci što trebaš kupiti";
   };
-  slusac.start();
+  try { slusac.start(); } catch (e) {
+    slusac = null;
+    alert("Glasovni unos nije dostupan. Pokušaj ponovno ili upiši proizvode.");
+    return;
+  }
   $("mikrofon").classList.add("slusa");
   $("mikrofon-tekst").textContent = "Slušam… (dodirni za kraj)";
 }
@@ -275,6 +298,12 @@ function gumb(tekst, klasa, naKlik, oznaka) {
 function prikazi() {
   $("uredivanje").hidden = stanje.zakljucano;
   $("rezultati").hidden = !stanje.zakljucano;
+  $("korak-popis").classList.toggle("aktivan", !stanje.zakljucano);
+  $("korak-cijene").classList.toggle("aktivan", !!stanje.zakljucano);
+  $("korak-popis").toggleAttribute("aria-current", !stanje.zakljucano);
+  $("korak-cijene").toggleAttribute("aria-current", !!stanje.zakljucano);
+  (stanje.zakljucano ? $("korak-cijene") : $("korak-popis")).setAttribute("aria-current", "step");
+  $("lanci-info").textContent = podaci ? `${sviLanci().size} od ${podaci.lanci.length} trgovina odabrano` : "Trgovine će se prikazati nakon učitavanja cijena.";
   stanje.zakljucano ? prikaziRezultate() : prikaziPopis();
 }
 
@@ -302,7 +331,13 @@ function prikaziPopis() {
     ul.appendChild(li);
   });
   $("prazno").hidden = stanje.popis.length > 0;
-  $("zakljucaj").disabled = stanje.popis.length === 0;
+  const n = stanje.popis.length;
+  $("broj-stavki").textContent = `${n} ${n % 10 === 1 && n % 100 !== 11 ? "stavka" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "stavke" : "stavki"}`;
+  $("zakljucaj").disabled = !n || !podaci || !sviLanci().size;
+  $("pomoc-usporedbe").textContent = !n ? "Dodaj barem jedan proizvod za usporedbu."
+    : !podaci ? "Usporedba će biti dostupna nakon učitavanja cijena."
+    : !sviLanci().size ? "Odaberi barem jednu trgovinu u postavkama."
+    : "Usporedi ponude iz odabranih trgovina.";
 }
 
 // "10 jaja" znači 10 komada, a ne 10 pakiranja po 10 jaja. Kad netko traži
@@ -327,6 +362,7 @@ function prikaziRezultate() {
   let ukupno = 0;
   let preostalo = 0;
   let kupljeno = 0;
+  let nedostaje = 0;
   const poLancu = {};
   const lanciOk = sviLanci().size > 0;
 
@@ -356,6 +392,7 @@ function prikaziRezultate() {
     sadrzaj.appendChild(naslov);
 
     if (!ponude.length) {
+      nedostaje++;
       li.classList.add("nema");
       const poruka = document.createElement("div");
       poruka.className = "naziv";
@@ -399,12 +436,22 @@ function prikaziRezultate() {
     } else {
       mjesto.textContent = `${stanje.nacin === "jedinica" ? "najisplativije" : "najjeftinije"} od ${ponude.length}`;
     }
+    if (ponude.length > 1) {
+      sadrzaj.appendChild(gumb("Sljedeći proizvod →", "sljedeci", (e) => {
+        e.stopPropagation();
+        promijeni(grupa, +1);
+      }, `Sljedeći proizvod za ${grupa}`));
+    }
+    kvacica.setAttribute("aria-pressed", String(!!stavka.kupljeno));
     li.onclick = () => promijeni(grupa, +1);
     ul.appendChild(li);
   }
 
   $("napredak").textContent = stanje.popis.length ? `U košarici: ${kupljeno} od ${stanje.popis.length}` : "";
   $("ukupno").textContent = euro(ukupno);
+  $("ukupno-oznaka").textContent = nedostaje ? "Iznos pronađenih proizvoda" : "Ukupno za popis";
+  $("nedostaje").hidden = nedostaje === 0;
+  $("nedostaje").textContent = `Za ${nedostaje} od ${stanje.popis.length} stavki nema cijene. Prikazani iznos ne obuhvaća cijeli popis.`;
   $("preostalo").hidden = kupljeno === 0 || kupljeno === stanje.popis.length;
   $("preostalo-iznos").textContent = euro(preostalo);
   $("po-trgovinama").textContent = Object.entries(poLancu)
@@ -461,7 +508,7 @@ function prikaziJednuTrgovinu() {
     lijevo.append(naziv, opis);
     const iznos = document.createElement("span");
     iznos.className = "iznos";
-    iznos.textContent = euro(z.ukupno);
+    iznos.textContent = (z.nema.length ? "od " : "") + euro(z.ukupno);
     b.append(lijevo, iznos);
     li.appendChild(b);
     ul.appendChild(li);
@@ -511,6 +558,7 @@ $("lanci-nista").onclick = () => {
 };
 
 // ---------- Gumbi ----------
+$("ponovi").onclick = ucitajPodatke;
 $("mikrofon").onclick = pokreniSlusanje;
 $("rucni-unos").onsubmit = (e) => {
   e.preventDefault();
@@ -519,6 +567,7 @@ $("rucni-unos").onsubmit = (e) => {
   $("unos").value = "";
 };
 $("zakljucaj").onclick = () => {
+  if (!podaci || !stanje.popis.length || !sviLanci().size) return;
   stanje.zakljucano = true;
   stanje.odabir = {};
   stanje.popis.forEach((s) => { s.kupljeno = false; });
@@ -541,3 +590,4 @@ prikazi();
 ucitajPodatke();
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
