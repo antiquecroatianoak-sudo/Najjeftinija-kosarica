@@ -1,0 +1,326 @@
+"use strict";
+
+// Jedna pravila za cijeli cjenik. Marka, lanac i pakiranje ne određuju vrstu.
+// Pravila su namjerno pregledna: nepoznat naziv ostaje neklasificiran i pretraživ.
+(function (root) {
+  const normaliziraj = (s) => String(s).toLowerCase().replace(/đ/g, "d").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const korijen = (s) => s.length >= 4 ? s.replace(/[aeiou]+$/, "") : s;
+  const nastavci = new Set(["", "a", "e", "i", "o", "u", "om", "em", "im", "ima", "ama", "ih", "oj", "og", "ja", "je", "ji", "ju", "jom", "ovi", "ove", "ova", "evi", "eve"]);
+  const odgovara = (w, k) => w.startsWith(k) && nastavci.has(w.slice(k.length));
+  const prijedlozi = new Set(["s", "sa", "od", "za", "u", "na", "bez", "iz", "po"]);
+  // id | naziv osnovne vrste | istovrijedni nazivi, a ne sastojci te vrste
+  const zapis = `kruh|Kruh|kruh;hljeb;hleb;ciabatta;baget;baguette;baggette
+pecivo|Pecivo|pecivo;zemicka;zemička;kajzerica;lepinja;somun;žemlja
+tost|Tost|tost;toast
+mrvice|Krušne mrvice|krušne mrvice;prezla;prezle
+brasno|Brašno|brašno
+krmno-brasno|Krmno brašno|krmno brašno;brašno krmno
+secer|Šećer|šećer
+sol|Sol|sol
+riza|Riža|riža
+tjestenina|Tjestenina|tjestenina;špageti;spaghetti;makaroni;penne;fusilli;tagliatelle;rezanci
+njoki|Njoki|njoki;gnocchi
+griz|Griz|griz;krupica
+palenta|Palenta|palenta;žganci
+zobene-pahuljice|Zobene pahuljice|zobene pahuljice
+pahuljice|Pahuljice|pahuljice;cornflakes;muesli;musli;granola
+mlijeko|Mlijeko|mlijeko
+jogurt|Jogurt|jogurt;yogurt
+kefir|Kefir|kefir
+acidofil|Acidofil|acidofil
+sir|Sir|sir;gouda;gauda;edamer;ementaler;mozzarella;mascarpone;ricotta;parmezan;brie;camembert;feta
+vrhnje|Vrhnje|vrhnje;pavlaka
+maslac|Maslac|maslac;butter
+margarin|Margarin|margarin
+jaja|Jaja|jaja;jaje
+puding|Puding|puding;pudding
+sladoled|Sladoled|sladoled
+ulje|Jestivo ulje|ulje
+ocat|Ocat|ocat;sirće
+med|Med|med
+dzem|Džem i marmelada|džem;marmelada;pekmez
+cokoladni-namaz|Čokoladni namaz|čokoladni namaz;nutella
+namaz|Namaz|namaz
+pasteta|Pašteta|pašteta
+humus|Humus|humus;hummus
+ajvar|Ajvar|ajvar
+senf|Senf|senf;mustard
+majoneza|Majoneza|majoneza
+kecap|Kečap|kečap;ketchup;kecap
+umak|Umak|umak;pesto
+juha|Juha|juha;soup
+zacin|Začini|začin
+kvasac|Kvasac|kvasac
+prasak-pecivo|Prašak za pecivo|prašak za pecivo
+soda-bikarbona|Soda bikarbona|soda bikarbona
+zelatina|Želatina|želatina
+cokolada|Čokolada|čokolada;čokol.;čok.
+keks|Keksi|keks;keksi;cookies
+napolitanke|Napolitanke|napolitanka;napolitanke;wafer
+bomboni|Bomboni|bombon;bomboni;karamela;karamele
+praline|Praline|pralina;praline;bombonijera
+zvakace|Žvakaće gume|žvakaća guma;žvakaće gume;žvakaće
+cips|Čips|čips;chips
+smoki|Flips|flips;smoki
+krekeri|Krekeri|kreker;krekeri
+kokice|Kokice|kokice;popcorn
+kolac|Kolači|kolač
+torta|Torte|torta
+kroasan|Kroasani|kroasan;croissant;croasan
+krafna|Krafne|krafna;krofna;donut
+burek|Burek|burek
+pizza|Pizza|pizza;pizza
+sendvic|Sendviči|sendvič
+salata|Gotove salate|salata
+piletina|Piletina|piletina;pileći;pileća;pileće;pile;chicken
+puretina|Puretina|puretina;pureći;pureća;pureće;turkey
+svinjetina|Svinjetina|svinjetina;svinjski;svinjska;svinjsko
+junetina|Junetina|junetina;juneći;juneća;juneće
+govedina|Govedina|govedina;goveđi;goveđa;goveđe
+teletina|Teletina|teletina;teleći;teleća;teleće
+janjetina|Janjetina|janjetina;janjeći;janjeća;janjeće
+mljeveno-meso|Mljeveno meso|mljeveno meso;meso mljeveno
+cevapi|Ćevapi|ćevapi;ćevapčići
+pljeskavica|Pljeskavice|pljeskavica
+sunka|Šunka|šunka
+salama|Salama|salama
+kobasica|Kobasice|kobasica;hrenovka;hrenovke
+prsut|Pršut|pršut
+slanina|Slanina|slanina;panceta;špek
+tuna|Tuna|tuna;tunjevina
+sardina|Sardine|sardina;srdela
+losos|Losos|losos
+oslic|Oslić|oslić
+bakalar|Bakalar|bakalar
+skusa|Skuša|skuša
+pastrva|Pastrva|pastrva
+orada|Orada|orada
+brancin|Brancin|brancin;lubin
+lignje|Lignje|lignja;lignje
+kozice|Kozice i škampi|kozica;kozice;škamp;škampi
+skoljke|Školjke|školjka;školjke;dagnja;dagnje
+krumpir|Krumpir|krumpir;krompir
+rajcica|Rajčica|rajčica;paradajz
+paprika|Paprika|paprika
+krastavac|Krastavci|krastavac;krastavci
+mrkva|Mrkva|mrkva
+luk|Luk|luk
+cesnjak|Češnjak|češnjak;bijeli luk
+kupus|Kupus|kupus;zelje
+kelj|Kelj|kelj
+spinat|Špinat|špinat
+blitva|Blitva|blitva
+tikvica|Tikvice|tikvica;tikvice
+patlidzan|Patlidžan|patlidžan
+brokula|Brokula|brokula
+cvjetaca|Cvjetača|cvjetača;karfiol
+celer|Celer|celer
+cikla|Cikla|cikla
+poriluk|Poriluk|poriluk
+gljive|Gljive|gljiva;gljive;šampinjon;šampinjoni
+grah|Grah|grah
+grasak|Grašak|grašak
+leca|Leća|leća
+slanutak|Slanutak|slanutak
+kukuruz|Kukuruz|kukuruz
+masline|Masline|maslina;masline
+jabuka|Jabuke|jabuka
+banana|Banane|banana
+naranca|Naranče|naranča;naranača;naran.;naranč.
+mandarina|Mandarine|mandarina
+limun|Limun|limun;lemon
+grejp|Grejp|grejp;grapefruit
+kruska|Kruške|kruška
+breskva|Breskve|breskva;peach
+nektarina|Nektarine|nektarina
+marelica|Marelice|marelica;apricot
+sljiva|Šljive|šljiva
+jagoda|Jagode|jagoda;strawberry
+malina|Maline|malina;raspberry
+borovnica|Borovnice|borovnica;blueberry
+visnja|Višnje|višnja
+tresnja|Trešnje|trešnja
+grozdje|Grožđe|grožđe
+lubenica|Lubenica|lubenica
+dinja|Dinja|dinja
+kivi|Kivi|kivi;kiwi
+ananas|Ananas|ananas;pineapple
+mango|Mango|mango
+avokado|Avokado|avokado
+orah|Orasi|orah;orasi
+badem|Bademi|badem
+lješnjak|Lješnjaci|lješnjak;lješnjaci
+kikiriki|Kikiriki|kikiriki
+pistacija|Pistacije|pistacija
+indijski-orah|Indijski oraščići|indijski oraščić;indijski orah
+grozdjice|Grožđice|grožđica;grožđice
+datulje|Datulje|datulja;datulje
+sok|Voćni sok|sok;juice
+nektar|Voćni nektar|nektar;nectar
+sirup|Sirup|sirup
+napitak|Napitci|napitak;piće
+voda|Voda|voda
+mineralna-voda|Mineralna voda|mineralna voda;voda mineralna
+gazirano-pice|Gazirana pića|gazirano piće;gazirani sok;cola;coca cola;fanta;sprite;cockta;pepsi;fizzy;schweppes;sanpellegrino
+energetsko-pice|Energetska pića|energetsko piće;energy drink;red bull
+kava|Kava|kava;coffee;caffe
+caj|Čaj|čaj;tea
+kakao|Kakao|kakao;cocoa
+pivo|Pivo|pivo;beer
+vino|Vino|vino;wine
+pjenušac|Pjenušac|pjenušac;prosecco;šampanjac
+rakija|Rakija|rakija;lozovača;travarica;šljivovica
+votka|Votka|votka;vodka
+gin|Gin|gin
+viski|Viski|viski;whisky;whiskey
+rum|Rum|rum
+liker|Liker|liker
+sampon|Šampon|šampon;shampoo
+regenerator|Regenerator|regenerator
+gel-tusiranje|Gel za tuširanje|gel za tuširanje;gel tuširanje
+sapun|Sapun|sapun;soap
+dezodorans|Dezodorans|dezodorans;deodorant;deo
+krema|Krema|krema;cream
+losion|Losion|losion;lotion
+pasta-zube|Pasta za zube|pasta za zube;zubna pasta
+cetkica-zube|Četkica za zube|četkica za zube
+toaletni-papir|Toaletni papir|toaletni papir;wc papir
+maramice|Maramice|maramica;maramice
+pelene|Pelene|pelena;pelene
+ulosci|Higijenski ulošci|uložak;ulošci
+tamponi|Tamponi|tampon
+deterdzent|Deterdžent|deterdžent;det.
+omeksivac|Omekšivač|omekšivač
+sredstvo-ciscenje|Sredstvo za čišćenje|sredstvo za čišćenje;čistač;čistilo
+spuzvica|Spužve|spužva;spužvica
+krpa|Krpe|krpa
+rukavice|Rukavice|rukavica;rukavice
+hrana-zivotinje|Hrana za životinje|hrana
+pijesak-macke|Pijesak za mačke|pijesak
+vrecice|Vrećice|vrećica;vrećice;vreć.;vreća
+kosara|Košare|košara;košarica
+kalup|Kalupi|kalup
+posuda|Posude|posuda
+kutija|Kutije|kutija
+tanjur|Tanjuri|tanjur
+casa|Čaše|čaša
+salica|Šalice|šalica
+boca|Boce|boca
+tava|Tave|tava
+lonac|Lonci|lonac;lonci
+noz|Noževi|nož;noževi
+daska|Daske|daska
+cjedilo|Cjedila|cjedilo
+stolnjak|Stolnjaci|stolnjak
+salvete|Salvete|salveta;salvete
+boja|Boje|boja
+naljepnica|Naljepnice|naljepnica
+igracka|Igračke|igračka;igr.;igrač.
+svijeca|Svijeće|svijeća;lampion
+zarulja|Žarulje|žarulja
+baterija|Baterije|baterija
+sjeme|Sjeme|sjeme
+cvijet|Cvijeće|cvijet;cvijeće
+majica|Majice|majica
+carape|Čarape|čarapa;čarape
+rucnik|Ručnici|ručnik
+torba|Torbe|torba`;
+
+  const vrste = zapis.split("\n").map((s) => {
+    const [id, naziv, aliases] = s.split("|");
+    return { id, naziv, aliases: aliases.split(";").map((a) => normaliziraj(a).split(" ").map(korijen)) };
+  });
+  const definicije = new Map(vrste.map((v) => [v.id, v]));
+  const indeks = new Map();
+  for (const v of vrste) for (const alias of v.aliases) {
+    const k = alias[0].slice(0, 3);
+    if (!indeks.has(k)) indeks.set(k, []);
+    indeks.get(k).push({ v, alias });
+  }
+  const voce = new Set(["naranca", "jabuka", "banana", "mandarina", "limun", "grejp", "kruska", "breskva", "marelica", "sljiva", "jagoda", "malina", "borovnica", "visnja", "tresnja", "grozdje", "ananas", "mango"]);
+  const okusiVrste = new Set(["sok", "nektar", "sirup", "jogurt", "dzem", "sladoled", "caj", "napitak"]);
+  const overrides = new Map([
+    ["sok", new Set(["nektar", "sirup", "gazirano-pice", "energetsko-pice"])],
+    ["voda", new Set(["mineralna-voda"])],
+    ["brasno", new Set(["krmno-brasno"])],
+    ["namaz", new Set(["cokoladni-namaz"])],
+  ]);
+
+  function pronadiRijeci(r) {
+    const hits = [];
+    for (let pos = 0; pos < r.length; pos++) {
+      for (const { v, alias } of indeks.get(r[pos].slice(0, 3)) || []) {
+        if (alias.every((a, j) => r[pos + j] && odgovara(r[pos + j], a))) hits.push({ id: v.id, pos, duzina: alias.length });
+      }
+    }
+    return hits;
+  }
+
+  function analiziraj(tekst) {
+    const r = normaliziraj(tekst).split(" ").filter(Boolean);
+    const hits = pronadiRijeci(r);
+    // „s okusom”, „za kruh”, „od sira” opisuju sastojak ili namjenu.
+    const boundary = r.findIndex((w) => prijedlozi.has(w));
+    const heads = hits.filter((h) => boundary < 0 || h.pos < boundary || (h.pos === 0 && h.duzina > 1));
+    heads.sort((a, b) => a.pos - b.pos || b.duzina - a.duzina);
+    let glavni = heads[0] || null;
+    if (glavni && overrides.has(glavni.id)) {
+      const special = hits.find((h) => overrides.get(glavni.id).has(h.id));
+      if (special) glavni = special;
+    }
+    // Oprema za kruh i slični proizvodi dobivaju svoju vrstu po glavnoj imenici.
+    // Suhi kruh za životinje nije u skupini kruha za ljudsku prehranu.
+    if (glavni?.id === "kruh" && /\b(suhi|kockice|krutoni|prezle|mrvice)\b/.test(r.join(" "))) glavni = null;
+    if (glavni?.id === "ulje" && /\b(tijelo|tijela|kosu|kose|etericno|motorno|masazu)\b/.test(r.join(" "))) glavni = null;
+    const okusi = [...new Set(hits.filter((h) => voce.has(h.id)).map((h) => h.id))].sort();
+    return { rijeci: r, hits, glavni, okusi };
+  }
+
+  function pripremi(proizvodi) {
+    const analiza = proizvodi.map((p) => analiziraj(p[0]));
+    const poVrsti = new Map();
+    const katalog = new Map();
+    const dodaj = (id, naziv, i, roditelj = null) => {
+      if (!katalog.has(id)) katalog.set(id, { id, naziv, roditelj, indeksi: [] });
+      katalog.get(id).indeksi.push(i);
+    };
+    let nerazvrstano = 0;
+    analiza.forEach((a, i) => {
+      if (!a.glavni) { nerazvrstano++; return; }
+      const id = a.glavni.id;
+      if (!poVrsti.has(id)) poVrsti.set(id, []);
+      poVrsti.get(id).push(i);
+      dodaj(id, definicije.get(id).naziv, i);
+      if (okusiVrste.has(id) && a.okusi.length) {
+        const podid = id + "/" + a.okusi.join("+");
+        dodaj(podid, definicije.get(id).naziv + " · " + a.okusi.map((x) => definicije.get(x).naziv).join(" + "), i, id);
+      }
+    });
+
+    function pogoci(upit) {
+      const q = analiziraj(upit);
+      if (!q.glavni) return null; // Neprepoznati nazivi i dalje koriste postojeće pretraživanje.
+      const id = q.glavni.id;
+      const aliasHit = q.hits.filter((h) => h.id === id).sort((a, b) => b.duzina - a.duzina)[0];
+      const izostavi = new Set();
+      if (aliasHit) for (let j = 0; j < aliasHit.duzina; j++) izostavi.add(aliasHit.pos + j);
+      const trazeniOkusi = okusiVrste.has(id) ? q.okusi : [];
+      if (trazeniOkusi.length) for (const h of q.hits) if (voce.has(h.id)) {
+        for (let j = 0; j < h.duzina; j++) izostavi.add(h.pos + j);
+      }
+      const dodatno = q.rijeci.filter((w, j) => !izostavi.has(j) && !prijedlozi.has(w)).map(korijen);
+      return (poVrsti.get(id) || []).filter((i) => {
+        const a = analiza[i];
+        // Naranča+jabuka nije isto što i sok samo od naranče.
+        if (trazeniOkusi.length && a.okusi.join("+") !== trazeniOkusi.join("+")) return false;
+        return dodatno.every((k) => a.rijeci.some((w) => odgovara(w, k)));
+      });
+    }
+    return { pogoci, katalog: [...katalog.values()], nerazvrstano, ukupno: proizvodi.length,
+      vrstaProizvoda: (i) => analiza[i]?.glavni?.id || null };
+  }
+  const api = { pripremi, analiziraj, definicije: vrste.map(({id,naziv}) => ({id,naziv})) };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.Skupine = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);
