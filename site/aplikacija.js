@@ -147,16 +147,27 @@ function ponuda(i, lanac, cijena) {
   return { i, lanac, cijena, jedinica, poJedinici: iznos ? cijena / iznos : null };
 }
 
-// Uspoređuj samo poznate količine i iste osnovne jedinice.
-function usporedivePonude(ponude) {
-  const valjane = ponude.filter((p) => Number.isFinite(p.poJedinici) && p.poJedinici > 0
-    && ["kg", "l", "kom"].includes(p.jedinica));
-  if (new Set(valjane.map((p) => p.jedinica)).size > 1) return [];
-  return valjane;
+function imaJedinicnu(p) {
+  return Number.isFinite(p.poJedinici) && p.poJedinici > 0 && ["kg", "l", "kom"].includes(p.jedinica);
 }
 
-function usporedba() {
-  return (a, b) => a.poJedinici - b.poJedinici || a.cijena - b.cijena;
+// Različite jedinice ne smiju sakriti cijelu skupinu niti se uspoređivati brojčano.
+// Najzastupljenija jedinica ide prva; sve druge i nepoznate količine ostaju dostupne.
+function jediniceGrupe(grupa) {
+  const broj = new Map();
+  for (const i of pogoci(grupa)) {
+    const p = ponuda(i, 0, 1);
+    if (imaJedinicnu(p)) broj.set(p.jedinica, (broj.get(p.jedinica) || 0) + 1);
+  }
+  return [...broj.keys()].sort((a, b) => broj.get(b) - broj.get(a) || a.localeCompare(b));
+}
+
+function usporedba(jedinice) {
+  const red = (p) => imaJedinicnu(p) ? jedinice.indexOf(p.jedinica) : jedinice.length;
+  return (a, b) => red(a) - red(b)
+    || (imaJedinicnu(a) && imaJedinicnu(b) && a.jedinica === b.jedinica
+      ? a.poJedinici - b.poJedinici || a.cijena - b.cijena
+      : podaci.proizvodi[a.i][0].localeCompare(podaci.proizvodi[b.i][0], "hr"));
 }
 
 // Sve ponude za jednu grupu, od najisplativije prema skupljoj.
@@ -171,9 +182,9 @@ function ponudeZaGrupu(grupa) {
       if (lanci.has(cijene[k])) { ponude.push(ponuda(i, cijene[k], cijene[k + 1])); break; }
     }
   }
-  const usporedive = usporedivePonude(ponude).sort(usporedba());
-  ponudeCache.set(grupa, usporedive);
-  return usporedive;
+  ponude.sort(usporedba(jediniceGrupe(grupa)));
+  ponudeCache.set(grupa, ponude);
+  return ponude;
 }
 
 // Za "sve u jednoj trgovini": najbolja ponuda za grupu u svakom lancu.
@@ -185,9 +196,13 @@ function najboljePoLancu(grupa, lanci) {
       if (lanci.has(cijene[k])) sve.push(ponuda(i, cijene[k], cijene[k + 1]));
     }
   }
-  const usporedi = usporedba();
+  // Usporedba trgovina koristi jedinicu trenutno prikazanog proizvoda.
+  const prikazane = ponudeZaGrupu(grupa);
+  const odabrana = prikazane[(stanje.odabir[grupa] || 0) % prikazane.length];
+  const jedinica = odabrana && imaJedinicnu(odabrana) ? odabrana.jedinica : null;
+  const usporedi = usporedba(jediniceGrupe(grupa));
   const najbolje = new Map();
-  for (const p of usporedivePonude(sve)) {
+  for (const p of sve.filter((p) => imaJedinicnu(p) && p.jedinica === jedinica)) {
     const dosad = najbolje.get(p.lanac);
     if (!dosad || usporedi(p, dosad) < 0) najbolje.set(p.lanac, p);
   }
@@ -365,9 +380,7 @@ function brojPakiranja(stavka, p) {
 }
 
 function opisJedinicne(p) {
-  if (!p.poJedinici) return "";
-  const iznos = podaci.proizvodi[p.i][2];
-  if (p.jedinica === "kom" && iznos <= 1) return "";
+  if (!imaJedinicnu(p)) return "";
   return `${euro(p.poJedinici)}/${p.jedinica}`;
 }
 
@@ -414,7 +427,7 @@ function prikaziRezultate() {
       poruka.textContent = !podaci ? "Cijene još nisu učitane."
         : !lanciOk ? "Nijedna trgovina nije odabrana (vidi Postavke)."
         : stanje.jedna ? `Nema u trgovini ${stanje.jedna}.`
-        : "Nema ponuda s usporedivom količinom i jedinicom mjere. Preciziraj naziv proizvoda.";
+        : "Nema pronađenih ponuda u odabranim trgovinama.";
       sadrzaj.appendChild(poruka);
       ul.appendChild(li);
       continue;
@@ -440,7 +453,7 @@ function prikaziRezultate() {
     sadrzaj.querySelector(".kolicina").textContent = [
       pakiranja > 1 ? `${pakiranja} × ${euro(p.cijena)}` : "",
       kolicina,
-      opisJedinicne(p),
+      imaJedinicnu(p) ? opisJedinicne(p) : "Količina nije poznata · bez poretka po jediničnoj cijeni",
     ].filter(Boolean).join(" · ");
     const mjesto = sadrzaj.querySelector(".mjesto");
     if (rb > 0) {
@@ -449,8 +462,18 @@ function prikaziRezultate() {
         promijeni(grupa, -1);
       }));
     } else {
-      mjesto.textContent = `${stanje.nacin === "jedinica" ? "najisplativije" : "najjeftinije"} od ${ponude.length}`;
+      mjesto.textContent = `${ponude.length} pronađenih proizvoda`;
     }
+    const poredak = document.createElement("div");
+    poredak.className = "detalji";
+    if (imaJedinicnu(p)) {
+      const iste = ponude.filter((x) => imaJedinicnu(x) && x.jedinica === p.jedinica);
+      const redni = iste.indexOf(p) + 1;
+      poredak.textContent = `${redni === 1 ? "Najpovoljnije" : `${redni}. po cijeni`} po ${p.jedinica} · ${iste.length} ponuda s tom jedinicom`;
+    } else {
+      poredak.textContent = "Ponuda je dostupna; povoljnost se ne može usporediti bez količine.";
+    }
+    sadrzaj.appendChild(poredak);
     if (ponude.length > 1) {
       sadrzaj.appendChild(gumb("Sljedeći proizvod →", "sljedeci", (e) => {
         e.stopPropagation();
@@ -516,7 +539,7 @@ function prikaziJednuTrgovinu() {
     naziv.textContent = ime;
     const opis = document.createElement("small");
     opis.textContent = z.nema.length
-      ? `nema: ${z.nema.join(", ")}`
+      ? `nema usporedive ponude: ${z.nema.join(", ")}`
       : sveMijesanoIma && z.ukupno - najboljeMijesano >= 0.005
         ? `ima sve · ${euro(z.ukupno - najboljeMijesano)} više nego po svim trgovinama`
         : "ima sve";
@@ -605,4 +628,5 @@ prikazi();
 ucitajPodatke();
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
 

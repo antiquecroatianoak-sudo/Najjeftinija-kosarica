@@ -1,5 +1,5 @@
 // Omogućuje da se aplikacija otvori i bez interneta (s posljednjim cijenama).
-const CACHE = "kosarica-v8";
+const CACHE = "kosarica-v9";
 const OSNOVA = ["./", "index.html", "stil.css", "aplikacija.js", "manifest.webmanifest", "ikona.svg", "ikona-192.png", "ikona-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -28,4 +28,5 @@ self.addEventListener("fetch", (e) => {
         || new Response("Nema internetske veze.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
   );
 });
+
 
