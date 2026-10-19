@@ -1,0 +1,2411 @@
+{
+  "datum": "2026-10-19",
+  "ukupno": 237881,
+  "definicije": 223,
+  "skupine": 400,
+  "prepoznataVrsta": 77743,
+  "neutvrdjenaVrsta": 160138,
+  "napomena": "Automatska procjena vrste nije ručna potvrda točnosti. Neutvrđeni proizvodi ostaju u cjeniku i pretrazi.",
+  "katalog": [
+    {
+      "id": "vrecice",
+      "naziv": "Vrećice",
+      "roditelj": null,
+      "broj": 2194
+    },
+    {
+      "id": "secer",
+      "naziv": "Šećer",
+      "roditelj": null,
+      "broj": 197
+    },
+    {
+      "id": "sol",
+      "naziv": "Sol",
+      "roditelj": null,
+      "broj": 230
+    },
+    {
+      "id": "cokolada",
+      "naziv": "Čokolada",
+      "roditelj": null,
+      "broj": 1363
+    },
+    {
+      "id": "caj",
+      "naziv": "Čaj",
+      "roditelj": null,
+      "broj": 948
+    },
+    {
+      "id": "dezodorans",
+      "naziv": "Dezodorans",
+      "roditelj": null,
+      "broj": 868
+    },
+    {
+      "id": "pivo",
+      "naziv": "Pivo",
+      "roditelj": null,
+      "broj": 1176
+    },
+    {
+      "id": "posuda",
+      "naziv": "Posude",
+      "roditelj": null,
+      "broj": 1427
+    },
+    {
+      "id": "boja",
+      "naziv": "Boje",
+      "roditelj": null,
+      "broj": 355
+    },
+    {
+      "id": "grozdjice",
+      "naziv": "Grožđice",
+      "roditelj": null,
+      "broj": 59
+    },
+    {
+      "id": "kava",
+      "naziv": "Kava",
+      "roditelj": null,
+      "broj": 795
+    },
+    {
+      "id": "smoki",
+      "naziv": "Flips",
+      "roditelj": null,
+      "broj": 217
+    },
+    {
+      "id": "keks",
+      "naziv": "Keksi",
+      "roditelj": null,
+      "broj": 1360
+    },
+    {
+      "id": "zacin",
+      "naziv": "Začini",
+      "roditelj": null,
+      "broj": 314
+    },
+    {
+      "id": "juha",
+      "naziv": "Juha",
+      "roditelj": null,
+      "broj": 257
+    },
+    {
+      "id": "naljepnica",
+      "naziv": "Naljepnice",
+      "roditelj": null,
+      "broj": 183
+    },
+    {
+      "id": "umak",
+      "naziv": "Umak",
+      "roditelj": null,
+      "broj": 561
+    },
+    {
+      "id": "krema",
+      "naziv": "Krema",
+      "roditelj": null,
+      "broj": 908
+    },
+    {
+      "id": "pasteta",
+      "naziv": "Pašteta",
+      "roditelj": null,
+      "broj": 338
+    },
+    {
+      "id": "maramice",
+      "naziv": "Maramice",
+      "roditelj": null,
+      "broj": 209
+    },
+    {
+      "id": "med",
+      "naziv": "Med",
+      "roditelj": null,
+      "broj": 332
+    },
+    {
+      "id": "kalup",
+      "naziv": "Kalupi",
+      "roditelj": null,
+      "broj": 363
+    },
+    {
+      "id": "svinjetina",
+      "naziv": "Svinjetina",
+      "roditelj": null,
+      "broj": 865
+    },
+    {
+      "id": "baterija",
+      "naziv": "Baterije",
+      "roditelj": null,
+      "broj": 201
+    },
+    {
+      "id": "svijeca",
+      "naziv": "Svijeće",
+      "roditelj": null,
+      "broj": 1416
+    },
+    {
+      "id": "rukavice",
+      "naziv": "Rukavice",
+      "roditelj": null,
+      "broj": 610
+    },
+    {
+      "id": "ulosci",
+      "naziv": "Higijenski ulošci",
+      "roditelj": null,
+      "broj": 246
+    },
+    {
+      "id": "gazirano-pice",
+      "naziv": "Gazirana pića",
+      "roditelj": null,
+      "broj": 438
+    },
+    {
+      "id": "casa",
+      "naziv": "Čaše",
+      "roditelj": null,
+      "broj": 1526
+    },
+    {
+      "id": "zvakace",
+      "naziv": "Žvakaće gume",
+      "roditelj": null,
+      "broj": 69
+    },
+    {
+      "id": "prasak-pecivo",
+      "naziv": "Prašak za pecivo",
+      "roditelj": null,
+      "broj": 32
+    },
+    {
+      "id": "jaja",
+      "naziv": "Jaja",
+      "roditelj": null,
+      "broj": 372
+    },
+    {
+      "id": "bomboni",
+      "naziv": "Bomboni",
+      "roditelj": null,
+      "broj": 739
+    },
+    {
+      "id": "boca",
+      "naziv": "Boce",
+      "roditelj": null,
+      "broj": 403
+    },
+    {
+      "id": "salvete",
+      "naziv": "Salvete",
+      "roditelj": null,
+      "broj": 471
+    },
+    {
+      "id": "zarulja",
+      "naziv": "Žarulje",
+      "roditelj": null,
+      "broj": 415
+    },
+    {
+      "id": "pecivo",
+      "naziv": "Pecivo",
+      "roditelj": null,
+      "broj": 1395
+    },
+    {
+      "id": "igracka",
+      "naziv": "Igračke",
+      "roditelj": null,
+      "broj": 3412
+    },
+    {
+      "id": "teletina",
+      "naziv": "Teletina",
+      "roditelj": null,
+      "broj": 379
+    },
+    {
+      "id": "kecap",
+      "naziv": "Kečap",
+      "roditelj": null,
+      "broj": 140
+    },
+    {
+      "id": "spuzvica",
+      "naziv": "Spužve",
+      "roditelj": null,
+      "broj": 391
+    },
+    {
+      "id": "kikiriki",
+      "naziv": "Kikiriki",
+      "roditelj": null,
+      "broj": 248
+    },
+    {
+      "id": "sok",
+      "naziv": "Voćni sok",
+      "roditelj": null,
+      "broj": 833
+    },
+    {
+      "id": "sok/grejp",
+      "naziv": "Voćni sok · Grejp",
+      "roditelj": "sok",
+      "broj": 8
+    },
+    {
+      "id": "ajvar",
+      "naziv": "Ajvar",
+      "roditelj": null,
+      "broj": 184
+    },
+    {
+      "id": "kolac",
+      "naziv": "Kolači",
+      "roditelj": null,
+      "broj": 565
+    },
+    {
+      "id": "sampon",
+      "naziv": "Šampon",
+      "roditelj": null,
+      "broj": 616
+    },
+    {
+      "id": "rum",
+      "naziv": "Rum",
+      "roditelj": null,
+      "broj": 249
+    },
+    {
+      "id": "dzem",
+      "naziv": "Džem i marmelada",
+      "roditelj": null,
+      "broj": 405
+    },
+    {
+      "id": "dzem/visnja",
+      "naziv": "Džem i marmelada · Višnje",
+      "roditelj": "dzem",
+      "broj": 28
+    },
+    {
+      "id": "voda",
+      "naziv": "Voda",
+      "roditelj": null,
+      "broj": 342
+    },
+    {
+      "id": "gin",
+      "naziv": "Gin",
+      "roditelj": null,
+      "broj": 348
+    },
+    {
+      "id": "liker",
+      "naziv": "Liker",
+      "roditelj": null,
+      "broj": 838
+    },
+    {
+      "id": "kroasan",
+      "naziv": "Kroasani",
+      "roditelj": null,
+      "broj": 464
+    },
+    {
+      "id": "cips",
+      "naziv": "Čips",
+      "roditelj": null,
+      "broj": 581
+    },
+    {
+      "id": "sapun",
+      "naziv": "Sapun",
+      "roditelj": null,
+      "broj": 317
+    },
+    {
+      "id": "cetkica-zube",
+      "naziv": "Četkica za zube",
+      "roditelj": null,
+      "broj": 102
+    },
+    {
+      "id": "pahuljice",
+      "naziv": "Pahuljice",
+      "roditelj": null,
+      "broj": 375
+    },
+    {
+      "id": "krpa",
+      "naziv": "Krpe",
+      "roditelj": null,
+      "broj": 409
+    },
+    {
+      "id": "viski",
+      "naziv": "Viski",
+      "roditelj": null,
+      "broj": 376
+    },
+    {
+      "id": "limun",
+      "naziv": "Limun",
+      "roditelj": null,
+      "broj": 120
+    },
+    {
+      "id": "naranca",
+      "naziv": "Naranče",
+      "roditelj": null,
+      "broj": 164
+    },
+    {
+      "id": "masline",
+      "naziv": "Masline",
+      "roditelj": null,
+      "broj": 356
+    },
+    {
+      "id": "torba",
+      "naziv": "Torbe",
+      "roditelj": null,
+      "broj": 381
+    },
+    {
+      "id": "sir",
+      "naziv": "Sir",
+      "roditelj": null,
+      "broj": 2570
+    },
+    {
+      "id": "napitak",
+      "naziv": "Napitci",
+      "roditelj": null,
+      "broj": 515
+    },
+    {
+      "id": "deterdzent",
+      "naziv": "Deterdžent",
+      "roditelj": null,
+      "broj": 532
+    },
+    {
+      "id": "jogurt",
+      "naziv": "Jogurt",
+      "roditelj": null,
+      "broj": 392
+    },
+    {
+      "id": "vino",
+      "naziv": "Vino",
+      "roditelj": null,
+      "broj": 2288
+    },
+    {
+      "id": "torta",
+      "naziv": "Torte",
+      "roditelj": null,
+      "broj": 394
+    },
+    {
+      "id": "kokice",
+      "naziv": "Kokice",
+      "roditelj": null,
+      "broj": 106
+    },
+    {
+      "id": "votka",
+      "naziv": "Votka",
+      "roditelj": null,
+      "broj": 325
+    },
+    {
+      "id": "sirup",
+      "naziv": "Sirup",
+      "roditelj": null,
+      "broj": 461
+    },
+    {
+      "id": "sirup/marelica",
+      "naziv": "Sirup · Marelice",
+      "roditelj": "sirup",
+      "broj": 13
+    },
+    {
+      "id": "pjenušac",
+      "naziv": "Pjenušac",
+      "roditelj": null,
+      "broj": 533
+    },
+    {
+      "id": "rakija",
+      "naziv": "Rakija",
+      "roditelj": null,
+      "broj": 464
+    },
+    {
+      "id": "krumpir",
+      "naziv": "Krumpir",
+      "roditelj": null,
+      "broj": 275
+    },
+    {
+      "id": "senf",
+      "naziv": "Senf",
+      "roditelj": null,
+      "broj": 79
+    },
+    {
+      "id": "lubenica",
+      "naziv": "Lubenica",
+      "roditelj": null,
+      "broj": 56
+    },
+    {
+      "id": "pelene",
+      "naziv": "Pelene",
+      "roditelj": null,
+      "broj": 154
+    },
+    {
+      "id": "nektar",
+      "naziv": "Voćni nektar",
+      "roditelj": null,
+      "broj": 209
+    },
+    {
+      "id": "nektar/breskva+jabuka",
+      "naziv": "Voćni nektar · Breskve + Jabuke",
+      "roditelj": "nektar",
+      "broj": 6
+    },
+    {
+      "id": "kruh",
+      "naziv": "Kruh",
+      "roditelj": null,
+      "broj": 2789
+    },
+    {
+      "id": "maslac",
+      "naziv": "Maslac",
+      "roditelj": null,
+      "broj": 164
+    },
+    {
+      "id": "mlijeko",
+      "naziv": "Mlijeko",
+      "roditelj": null,
+      "broj": 289
+    },
+    {
+      "id": "kutija",
+      "naziv": "Kutije",
+      "roditelj": null,
+      "broj": 530
+    },
+    {
+      "id": "namaz",
+      "naziv": "Namaz",
+      "roditelj": null,
+      "broj": 455
+    },
+    {
+      "id": "dzem/marelica",
+      "naziv": "Džem i marmelada · Marelice",
+      "roditelj": "dzem",
+      "broj": 68
+    },
+    {
+      "id": "kasa",
+      "naziv": "Kaše",
+      "roditelj": null,
+      "broj": 226
+    },
+    {
+      "id": "gel-tusiranje",
+      "naziv": "Gel za tuširanje",
+      "roditelj": null,
+      "broj": 184
+    },
+    {
+      "id": "soda-bikarbona",
+      "naziv": "Soda bikarbona",
+      "roditelj": null,
+      "broj": 38
+    },
+    {
+      "id": "cvijet",
+      "naziv": "Cvijeće",
+      "roditelj": null,
+      "broj": 352
+    },
+    {
+      "id": "carape",
+      "naziv": "Čarape",
+      "roditelj": null,
+      "broj": 572
+    },
+    {
+      "id": "puding",
+      "naziv": "Puding",
+      "roditelj": null,
+      "broj": 182
+    },
+    {
+      "id": "kukuruz",
+      "naziv": "Kukuruz",
+      "roditelj": null,
+      "broj": 186
+    },
+    {
+      "id": "majoneza",
+      "naziv": "Majoneza",
+      "roditelj": null,
+      "broj": 129
+    },
+    {
+      "id": "nektarina",
+      "naziv": "Nektarine",
+      "roditelj": null,
+      "broj": 38
+    },
+    {
+      "id": "biljno-mlijeko",
+      "naziv": "Biljni napitci",
+      "roditelj": null,
+      "broj": 9
+    },
+    {
+      "id": "sjeme",
+      "naziv": "Sjeme",
+      "roditelj": null,
+      "broj": 303
+    },
+    {
+      "id": "majica",
+      "naziv": "Majice",
+      "roditelj": null,
+      "broj": 483
+    },
+    {
+      "id": "paprika",
+      "naziv": "Paprika",
+      "roditelj": null,
+      "broj": 410
+    },
+    {
+      "id": "tanjur",
+      "naziv": "Tanjuri",
+      "roditelj": null,
+      "broj": 713
+    },
+    {
+      "id": "sok/naranca",
+      "naziv": "Voćni sok · Naranče",
+      "roditelj": "sok",
+      "broj": 122
+    },
+    {
+      "id": "kupus",
+      "naziv": "Kupus",
+      "roditelj": null,
+      "broj": 184
+    },
+    {
+      "id": "luk",
+      "naziv": "Luk",
+      "roditelj": null,
+      "broj": 213
+    },
+    {
+      "id": "cevapi",
+      "naziv": "Ćevapi",
+      "roditelj": null,
+      "broj": 124
+    },
+    {
+      "id": "nektar/jabuka",
+      "naziv": "Voćni nektar · Jabuke",
+      "roditelj": "nektar",
+      "broj": 38
+    },
+    {
+      "id": "piletina",
+      "naziv": "Piletina",
+      "roditelj": null,
+      "broj": 1024
+    },
+    {
+      "id": "sladoled",
+      "naziv": "Sladoled",
+      "roditelj": null,
+      "broj": 494
+    },
+    {
+      "id": "jabuka",
+      "naziv": "Jabuke",
+      "roditelj": null,
+      "broj": 350
+    },
+    {
+      "id": "cvjetaca",
+      "naziv": "Cvjetača",
+      "roditelj": null,
+      "broj": 59
+    },
+    {
+      "id": "dzem/borovnica",
+      "naziv": "Džem i marmelada · Borovnice",
+      "roditelj": "dzem",
+      "broj": 13
+    },
+    {
+      "id": "kvasac",
+      "naziv": "Kvasac",
+      "roditelj": null,
+      "broj": 31
+    },
+    {
+      "id": "nektar/naranca",
+      "naziv": "Voćni nektar · Naranče",
+      "roditelj": "nektar",
+      "broj": 40
+    },
+    {
+      "id": "dzem/jagoda",
+      "naziv": "Džem i marmelada · Jagode",
+      "roditelj": "dzem",
+      "broj": 53
+    },
+    {
+      "id": "salata",
+      "naziv": "Gotove salate",
+      "roditelj": null,
+      "broj": 418
+    },
+    {
+      "id": "napolitanke",
+      "naziv": "Napolitanke",
+      "roditelj": null,
+      "broj": 191
+    },
+    {
+      "id": "tjestenina",
+      "naziv": "Tjestenina",
+      "roditelj": null,
+      "broj": 676
+    },
+    {
+      "id": "mandarina",
+      "naziv": "Mandarine",
+      "roditelj": null,
+      "broj": 61
+    },
+    {
+      "id": "noz",
+      "naziv": "Noževi",
+      "roditelj": null,
+      "broj": 568
+    },
+    {
+      "id": "kosara",
+      "naziv": "Košare",
+      "roditelj": null,
+      "broj": 597
+    },
+    {
+      "id": "nektar/breskva",
+      "naziv": "Voćni nektar · Breskve",
+      "roditelj": "nektar",
+      "broj": 8
+    },
+    {
+      "id": "kruska",
+      "naziv": "Kruške",
+      "roditelj": null,
+      "broj": 135
+    },
+    {
+      "id": "cjedilo",
+      "naziv": "Cjedila",
+      "roditelj": null,
+      "broj": 294
+    },
+    {
+      "id": "jogurt/limun",
+      "naziv": "Jogurt · Limun",
+      "roditelj": "jogurt",
+      "broj": 3
+    },
+    {
+      "id": "junetina",
+      "naziv": "Junetina",
+      "roditelj": null,
+      "broj": 617
+    },
+    {
+      "id": "praline",
+      "naziv": "Praline",
+      "roditelj": null,
+      "broj": 392
+    },
+    {
+      "id": "kobasica",
+      "naziv": "Kobasice",
+      "roditelj": null,
+      "broj": 539
+    },
+    {
+      "id": "krafna",
+      "naziv": "Krafne",
+      "roditelj": null,
+      "broj": 400
+    },
+    {
+      "id": "krekeri",
+      "naziv": "Krekeri",
+      "roditelj": null,
+      "broj": 255
+    },
+    {
+      "id": "rajcica",
+      "naziv": "Rajčica",
+      "roditelj": null,
+      "broj": 438
+    },
+    {
+      "id": "ocat",
+      "naziv": "Ocat",
+      "roditelj": null,
+      "broj": 166
+    },
+    {
+      "id": "dzem/malina",
+      "naziv": "Džem i marmelada · Maline",
+      "roditelj": "dzem",
+      "broj": 12
+    },
+    {
+      "id": "brasno",
+      "naziv": "Brašno",
+      "roditelj": null,
+      "broj": 319
+    },
+    {
+      "id": "kivi",
+      "naziv": "Kivi",
+      "roditelj": null,
+      "broj": 64
+    },
+    {
+      "id": "kozmeticko-ulje",
+      "naziv": "Kozmetičko ulje",
+      "roditelj": null,
+      "broj": 95
+    },
+    {
+      "id": "celer",
+      "naziv": "Celer",
+      "roditelj": null,
+      "broj": 66
+    },
+    {
+      "id": "cikla",
+      "naziv": "Cikla",
+      "roditelj": null,
+      "broj": 137
+    },
+    {
+      "id": "rucnik",
+      "naziv": "Ručnici",
+      "roditelj": null,
+      "broj": 743
+    },
+    {
+      "id": "govedina",
+      "naziv": "Govedina",
+      "roditelj": null,
+      "broj": 109
+    },
+    {
+      "id": "omeksivac",
+      "naziv": "Omekšivač",
+      "roditelj": null,
+      "broj": 292
+    },
+    {
+      "id": "poriluk",
+      "naziv": "Poriluk",
+      "roditelj": null,
+      "broj": 27
+    },
+    {
+      "id": "krmno-brasno",
+      "naziv": "Krmno brašno",
+      "roditelj": null,
+      "broj": 2
+    },
+    {
+      "id": "dinja",
+      "naziv": "Dinja",
+      "roditelj": null,
+      "broj": 53
+    },
+    {
+      "id": "vrhnje",
+      "naziv": "Vrhnje",
+      "roditelj": null,
+      "broj": 134
+    },
+    {
+      "id": "margarin",
+      "naziv": "Margarin",
+      "roditelj": null,
+      "broj": 47
+    },
+    {
+      "id": "jogurt/jagoda",
+      "naziv": "Jogurt · Jagode",
+      "roditelj": "jogurt",
+      "broj": 41
+    },
+    {
+      "id": "jogurt/breskva",
+      "naziv": "Jogurt · Breskve",
+      "roditelj": "jogurt",
+      "broj": 3
+    },
+    {
+      "id": "sendvic",
+      "naziv": "Sendviči",
+      "roditelj": null,
+      "broj": 186
+    },
+    {
+      "id": "grah",
+      "naziv": "Grah",
+      "roditelj": null,
+      "broj": 398
+    },
+    {
+      "id": "mineralna-voda",
+      "naziv": "Mineralna voda",
+      "roditelj": null,
+      "broj": 14
+    },
+    {
+      "id": "jogurt/breskva+marelica",
+      "naziv": "Jogurt · Breskve + Marelice",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "jogurt/visnja",
+      "naziv": "Jogurt · Višnje",
+      "roditelj": "jogurt",
+      "broj": 6
+    },
+    {
+      "id": "cesnjak",
+      "naziv": "Češnjak",
+      "roditelj": null,
+      "broj": 114
+    },
+    {
+      "id": "napitak/naranca",
+      "naziv": "Napitci · Naranče",
+      "roditelj": "napitak",
+      "broj": 26
+    },
+    {
+      "id": "cokoladni-namaz",
+      "naziv": "Čokoladni namaz",
+      "roditelj": null,
+      "broj": 27
+    },
+    {
+      "id": "nektar/limun",
+      "naziv": "Voćni nektar · Limun",
+      "roditelj": "nektar",
+      "broj": 1
+    },
+    {
+      "id": "mrvice",
+      "naziv": "Krušne mrvice",
+      "roditelj": null,
+      "broj": 67
+    },
+    {
+      "id": "jogurt/borovnica",
+      "naziv": "Jogurt · Borovnice",
+      "roditelj": "jogurt",
+      "broj": 10
+    },
+    {
+      "id": "sok/jabuka",
+      "naziv": "Voćni sok · Jabuke",
+      "roditelj": "sok",
+      "broj": 145
+    },
+    {
+      "id": "sok/visnja",
+      "naziv": "Voćni sok · Višnje",
+      "roditelj": "sok",
+      "broj": 12
+    },
+    {
+      "id": "hrana-zivotinje",
+      "naziv": "Hrana za životinje",
+      "roditelj": null,
+      "broj": 623
+    },
+    {
+      "id": "sok/mandarina+naranca",
+      "naziv": "Voćni sok · Mandarine + Naranče",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "energetsko-pice",
+      "naziv": "Energetska pića",
+      "roditelj": null,
+      "broj": 54
+    },
+    {
+      "id": "sok/borovnica",
+      "naziv": "Voćni sok · Borovnice",
+      "roditelj": "sok",
+      "broj": 16
+    },
+    {
+      "id": "sardina",
+      "naziv": "Sardine",
+      "roditelj": null,
+      "broj": 163
+    },
+    {
+      "id": "grasak",
+      "naziv": "Grašak",
+      "roditelj": null,
+      "broj": 166
+    },
+    {
+      "id": "sok/tresnja",
+      "naziv": "Voćni sok · Trešnje",
+      "roditelj": "sok",
+      "broj": 2
+    },
+    {
+      "id": "acidofil",
+      "naziv": "Acidofil",
+      "roditelj": null,
+      "broj": 3
+    },
+    {
+      "id": "sok/jagoda",
+      "naziv": "Voćni sok · Jagode",
+      "roditelj": "sok",
+      "broj": 22
+    },
+    {
+      "id": "sok/breskva+jabuka",
+      "naziv": "Voćni sok · Breskve + Jabuke",
+      "roditelj": "sok",
+      "broj": 7
+    },
+    {
+      "id": "stolnjak",
+      "naziv": "Stolnjaci",
+      "roditelj": null,
+      "broj": 457
+    },
+    {
+      "id": "sok/breskva",
+      "naziv": "Voćni sok · Breskve",
+      "roditelj": "sok",
+      "broj": 28
+    },
+    {
+      "id": "gljive",
+      "naziv": "Gljive",
+      "roditelj": null,
+      "broj": 198
+    },
+    {
+      "id": "kelj",
+      "naziv": "Kelj",
+      "roditelj": null,
+      "broj": 67
+    },
+    {
+      "id": "leca",
+      "naziv": "Leća",
+      "roditelj": null,
+      "broj": 95
+    },
+    {
+      "id": "kefir",
+      "naziv": "Kefir",
+      "roditelj": null,
+      "broj": 42
+    },
+    {
+      "id": "mrkva",
+      "naziv": "Mrkva",
+      "roditelj": null,
+      "broj": 135
+    },
+    {
+      "id": "breskva",
+      "naziv": "Breskve",
+      "roditelj": null,
+      "broj": 61
+    },
+    {
+      "id": "lješnjak",
+      "naziv": "Lješnjaci",
+      "roditelj": null,
+      "broj": 92
+    },
+    {
+      "id": "napitak/jagoda",
+      "naziv": "Napitci · Jagode",
+      "roditelj": "napitak",
+      "broj": 5
+    },
+    {
+      "id": "nektar/jabuka+visnja",
+      "naziv": "Voćni nektar · Jabuke + Višnje",
+      "roditelj": "nektar",
+      "broj": 4
+    },
+    {
+      "id": "sok/marelica",
+      "naziv": "Voćni sok · Marelice",
+      "roditelj": "sok",
+      "broj": 16
+    },
+    {
+      "id": "sok/malina",
+      "naziv": "Voćni sok · Maline",
+      "roditelj": "sok",
+      "broj": 3
+    },
+    {
+      "id": "pizza",
+      "naziv": "Pizza",
+      "roditelj": null,
+      "broj": 255
+    },
+    {
+      "id": "palenta",
+      "naziv": "Palenta",
+      "roditelj": null,
+      "broj": 40
+    },
+    {
+      "id": "jagoda",
+      "naziv": "Jagode",
+      "roditelj": null,
+      "broj": 110
+    },
+    {
+      "id": "tikvica",
+      "naziv": "Tikvice",
+      "roditelj": null,
+      "broj": 49
+    },
+    {
+      "id": "sladoled/banana",
+      "naziv": "Sladoled · Banane",
+      "roditelj": "sladoled",
+      "broj": 6
+    },
+    {
+      "id": "nektar/borovnica",
+      "naziv": "Voćni nektar · Borovnice",
+      "roditelj": "nektar",
+      "broj": 6
+    },
+    {
+      "id": "mango",
+      "naziv": "Mango",
+      "roditelj": null,
+      "broj": 76
+    },
+    {
+      "id": "sok/limun",
+      "naziv": "Voćni sok · Limun",
+      "roditelj": "sok",
+      "broj": 25
+    },
+    {
+      "id": "salica",
+      "naziv": "Šalice",
+      "roditelj": null,
+      "broj": 1075
+    },
+    {
+      "id": "sljiva",
+      "naziv": "Šljive",
+      "roditelj": null,
+      "broj": 96
+    },
+    {
+      "id": "krastavac",
+      "naziv": "Krastavci",
+      "roditelj": null,
+      "broj": 188
+    },
+    {
+      "id": "borovnica",
+      "naziv": "Borovnice",
+      "roditelj": null,
+      "broj": 110
+    },
+    {
+      "id": "nektar/jagoda",
+      "naziv": "Voćni nektar · Jagode",
+      "roditelj": "nektar",
+      "broj": 10
+    },
+    {
+      "id": "sok/jabuka+naranca",
+      "naziv": "Voćni sok · Jabuke + Naranče",
+      "roditelj": "sok",
+      "broj": 7
+    },
+    {
+      "id": "sirup/jabuka",
+      "naziv": "Sirup · Jabuke",
+      "roditelj": "sirup",
+      "broj": 32
+    },
+    {
+      "id": "sirup/limun",
+      "naziv": "Sirup · Limun",
+      "roditelj": "sirup",
+      "broj": 55
+    },
+    {
+      "id": "sirup/visnja",
+      "naziv": "Sirup · Višnje",
+      "roditelj": "sirup",
+      "broj": 28
+    },
+    {
+      "id": "sirup/malina",
+      "naziv": "Sirup · Maline",
+      "roditelj": "sirup",
+      "broj": 24
+    },
+    {
+      "id": "nektar/visnja",
+      "naziv": "Voćni nektar · Višnje",
+      "roditelj": "nektar",
+      "broj": 5
+    },
+    {
+      "id": "grejp",
+      "naziv": "Grejp",
+      "roditelj": null,
+      "broj": 38
+    },
+    {
+      "id": "ulje",
+      "naziv": "Jestivo ulje",
+      "roditelj": null,
+      "broj": 536
+    },
+    {
+      "id": "sladoled/breskva",
+      "naziv": "Sladoled · Breskve",
+      "roditelj": "sladoled",
+      "broj": 2
+    },
+    {
+      "id": "caj/limun",
+      "naziv": "Čaj · Limun",
+      "roditelj": "caj",
+      "broj": 33
+    },
+    {
+      "id": "losion",
+      "naziv": "Losion",
+      "roditelj": null,
+      "broj": 219
+    },
+    {
+      "id": "jogurt/sljiva",
+      "naziv": "Jogurt · Šljive",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "banana",
+      "naziv": "Banane",
+      "roditelj": null,
+      "broj": 98
+    },
+    {
+      "id": "brokula",
+      "naziv": "Brokula",
+      "roditelj": null,
+      "broj": 74
+    },
+    {
+      "id": "jogurt/marelica",
+      "naziv": "Jogurt · Marelice",
+      "roditelj": "jogurt",
+      "broj": 4
+    },
+    {
+      "id": "spinat",
+      "naziv": "Špinat",
+      "roditelj": null,
+      "broj": 80
+    },
+    {
+      "id": "blitva",
+      "naziv": "Blitva",
+      "roditelj": null,
+      "broj": 57
+    },
+    {
+      "id": "puretina",
+      "naziv": "Puretina",
+      "roditelj": null,
+      "broj": 262
+    },
+    {
+      "id": "slanutak",
+      "naziv": "Slanutak",
+      "roditelj": null,
+      "broj": 85
+    },
+    {
+      "id": "zobene-pahuljice",
+      "naziv": "Zobene pahuljice",
+      "roditelj": null,
+      "broj": 30
+    },
+    {
+      "id": "sladoled/jagoda",
+      "naziv": "Sladoled · Jagode",
+      "roditelj": "sladoled",
+      "broj": 23
+    },
+    {
+      "id": "tamponi",
+      "naziv": "Tamponi",
+      "roditelj": null,
+      "broj": 43
+    },
+    {
+      "id": "regenerator",
+      "naziv": "Regenerator",
+      "roditelj": null,
+      "broj": 114
+    },
+    {
+      "id": "grozdje",
+      "naziv": "Grožđe",
+      "roditelj": null,
+      "broj": 111
+    },
+    {
+      "id": "burek",
+      "naziv": "Burek",
+      "roditelj": null,
+      "broj": 271
+    },
+    {
+      "id": "griz",
+      "naziv": "Griz",
+      "roditelj": null,
+      "broj": 30
+    },
+    {
+      "id": "napitak/mango",
+      "naziv": "Napitci · Mango",
+      "roditelj": "napitak",
+      "broj": 4
+    },
+    {
+      "id": "napitak/banana+jagoda",
+      "naziv": "Napitci · Banane + Jagode",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "pasta-zube",
+      "naziv": "Pasta za zube",
+      "roditelj": null,
+      "broj": 130
+    },
+    {
+      "id": "tost",
+      "naziv": "Tost",
+      "roditelj": null,
+      "broj": 114
+    },
+    {
+      "id": "riza",
+      "naziv": "Riža",
+      "roditelj": null,
+      "broj": 351
+    },
+    {
+      "id": "avokado",
+      "naziv": "Avokado",
+      "roditelj": null,
+      "broj": 52
+    },
+    {
+      "id": "salama",
+      "naziv": "Salama",
+      "roditelj": null,
+      "broj": 333
+    },
+    {
+      "id": "nektar/marelica",
+      "naziv": "Voćni nektar · Marelice",
+      "roditelj": "nektar",
+      "broj": 10
+    },
+    {
+      "id": "tuna",
+      "naziv": "Tuna",
+      "roditelj": null,
+      "broj": 360
+    },
+    {
+      "id": "daska",
+      "naziv": "Daske",
+      "roditelj": null,
+      "broj": 502
+    },
+    {
+      "id": "datulje",
+      "naziv": "Datulje",
+      "roditelj": null,
+      "broj": 68
+    },
+    {
+      "id": "napitak/visnja",
+      "naziv": "Napitci · Višnje",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "napitak/malina",
+      "naziv": "Napitci · Maline",
+      "roditelj": "napitak",
+      "broj": 2
+    },
+    {
+      "id": "mirisno-ulje",
+      "naziv": "Mirisno ulje",
+      "roditelj": null,
+      "broj": 42
+    },
+    {
+      "id": "caj/breskva",
+      "naziv": "Čaj · Breskve",
+      "roditelj": "caj",
+      "broj": 14
+    },
+    {
+      "id": "sok/kruska",
+      "naziv": "Voćni sok · Kruške",
+      "roditelj": "sok",
+      "broj": 10
+    },
+    {
+      "id": "sunka",
+      "naziv": "Šunka",
+      "roditelj": null,
+      "broj": 459
+    },
+    {
+      "id": "zelatina",
+      "naziv": "Želatina",
+      "roditelj": null,
+      "broj": 16
+    },
+    {
+      "id": "jogurt/ananas",
+      "naziv": "Jogurt · Ananas",
+      "roditelj": "jogurt",
+      "broj": 3
+    },
+    {
+      "id": "jogurt/jabuka",
+      "naziv": "Jogurt · Jabuke",
+      "roditelj": "jogurt",
+      "broj": 3
+    },
+    {
+      "id": "losos",
+      "naziv": "Losos",
+      "roditelj": null,
+      "broj": 106
+    },
+    {
+      "id": "sladoled/naranca",
+      "naziv": "Sladoled · Naranče",
+      "roditelj": "sladoled",
+      "broj": 1
+    },
+    {
+      "id": "sredstvo-ciscenje",
+      "naziv": "Sredstvo za čišćenje",
+      "roditelj": null,
+      "broj": 129
+    },
+    {
+      "id": "sok/jabuka+sljiva",
+      "naziv": "Voćni sok · Jabuke + Šljive",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sok/breskva+kruska",
+      "naziv": "Voćni sok · Breskve + Kruške",
+      "roditelj": "sok",
+      "broj": 2
+    },
+    {
+      "id": "sok/banana+kruska",
+      "naziv": "Voćni sok · Banane + Kruške",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "tehnicko-ulje",
+      "naziv": "Tehničko ulje",
+      "roditelj": null,
+      "broj": 13
+    },
+    {
+      "id": "patlidzan",
+      "naziv": "Patlidžan",
+      "roditelj": null,
+      "broj": 22
+    },
+    {
+      "id": "marelica",
+      "naziv": "Marelice",
+      "roditelj": null,
+      "broj": 68
+    },
+    {
+      "id": "napitak/limun",
+      "naziv": "Napitci · Limun",
+      "roditelj": "napitak",
+      "broj": 12
+    },
+    {
+      "id": "caj/borovnica",
+      "naziv": "Čaj · Borovnice",
+      "roditelj": "caj",
+      "broj": 9
+    },
+    {
+      "id": "nektar/banana",
+      "naziv": "Voćni nektar · Banane",
+      "roditelj": "nektar",
+      "broj": 1
+    },
+    {
+      "id": "caj/jabuka",
+      "naziv": "Čaj · Jabuke",
+      "roditelj": "caj",
+      "broj": 15
+    },
+    {
+      "id": "kakao",
+      "naziv": "Kakao",
+      "roditelj": null,
+      "broj": 22
+    },
+    {
+      "id": "sladoled/borovnica",
+      "naziv": "Sladoled · Borovnice",
+      "roditelj": "sladoled",
+      "broj": 4
+    },
+    {
+      "id": "orah",
+      "naziv": "Orasi",
+      "roditelj": null,
+      "broj": 107
+    },
+    {
+      "id": "prsut",
+      "naziv": "Pršut",
+      "roditelj": null,
+      "broj": 352
+    },
+    {
+      "id": "ananas",
+      "naziv": "Ananas",
+      "roditelj": null,
+      "broj": 94
+    },
+    {
+      "id": "jogurt/ananas+mango+naranca",
+      "naziv": "Jogurt · Ananas + Mango + Naranče",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "sok/ananas",
+      "naziv": "Voćni sok · Ananas",
+      "roditelj": "sok",
+      "broj": 30
+    },
+    {
+      "id": "pijesak-macke",
+      "naziv": "Pijesak za mačke",
+      "roditelj": null,
+      "broj": 51
+    },
+    {
+      "id": "caj/jagoda",
+      "naziv": "Čaj · Jagode",
+      "roditelj": "caj",
+      "broj": 10
+    },
+    {
+      "id": "caj/marelica",
+      "naziv": "Čaj · Marelice",
+      "roditelj": "caj",
+      "broj": 4
+    },
+    {
+      "id": "badem",
+      "naziv": "Bademi",
+      "roditelj": null,
+      "broj": 121
+    },
+    {
+      "id": "slanina",
+      "naziv": "Slanina",
+      "roditelj": null,
+      "broj": 353
+    },
+    {
+      "id": "visnja",
+      "naziv": "Višnje",
+      "roditelj": null,
+      "broj": 35
+    },
+    {
+      "id": "sok/limun+naranca",
+      "naziv": "Voćni sok · Limun + Naranče",
+      "roditelj": "sok",
+      "broj": 2
+    },
+    {
+      "id": "malina",
+      "naziv": "Maline",
+      "roditelj": null,
+      "broj": 70
+    },
+    {
+      "id": "jogurt/malina",
+      "naziv": "Jogurt · Maline",
+      "roditelj": "jogurt",
+      "broj": 2
+    },
+    {
+      "id": "napitak/jabuka",
+      "naziv": "Napitci · Jabuke",
+      "roditelj": "napitak",
+      "broj": 16
+    },
+    {
+      "id": "nektar/ananas",
+      "naziv": "Voćni nektar · Ananas",
+      "roditelj": "nektar",
+      "broj": 4
+    },
+    {
+      "id": "sok/jabuka+kruska",
+      "naziv": "Voćni sok · Jabuke + Kruške",
+      "roditelj": "sok",
+      "broj": 8
+    },
+    {
+      "id": "caj/limun+mango",
+      "naziv": "Čaj · Limun + Mango",
+      "roditelj": "caj",
+      "broj": 1
+    },
+    {
+      "id": "pljeskavica",
+      "naziv": "Pljeskavice",
+      "roditelj": null,
+      "broj": 76
+    },
+    {
+      "id": "jogurt/ananas+jagoda",
+      "naziv": "Jogurt · Ananas + Jagode",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "sok/mandarina",
+      "naziv": "Voćni sok · Mandarine",
+      "roditelj": "sok",
+      "broj": 5
+    },
+    {
+      "id": "humus",
+      "naziv": "Humus",
+      "roditelj": null,
+      "broj": 42
+    },
+    {
+      "id": "njoki",
+      "naziv": "Njoki",
+      "roditelj": null,
+      "broj": 127
+    },
+    {
+      "id": "dzem/sljiva",
+      "naziv": "Džem i marmelada · Šljive",
+      "roditelj": "dzem",
+      "broj": 40
+    },
+    {
+      "id": "nektar/jabuka+naranca",
+      "naziv": "Voćni nektar · Jabuke + Naranče",
+      "roditelj": "nektar",
+      "broj": 2
+    },
+    {
+      "id": "caj/sljiva",
+      "naziv": "Čaj · Šljive",
+      "roditelj": "caj",
+      "broj": 2
+    },
+    {
+      "id": "toaletni-papir",
+      "naziv": "Toaletni papir",
+      "roditelj": null,
+      "broj": 76
+    },
+    {
+      "id": "sladoled/limun",
+      "naziv": "Sladoled · Limun",
+      "roditelj": "sladoled",
+      "broj": 9
+    },
+    {
+      "id": "mlijeko-tijelo",
+      "naziv": "Mlijeko za tijelo",
+      "roditelj": null,
+      "broj": 45
+    },
+    {
+      "id": "skoljke",
+      "naziv": "Školjke",
+      "roditelj": null,
+      "broj": 54
+    },
+    {
+      "id": "skusa",
+      "naziv": "Skuša",
+      "roditelj": null,
+      "broj": 67
+    },
+    {
+      "id": "krutoni",
+      "naziv": "Krutoni",
+      "roditelj": null,
+      "broj": 9
+    },
+    {
+      "id": "sok/grozdje+jabuka",
+      "naziv": "Voćni sok · Grožđe + Jabuke",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "nektar/kruska+sljiva",
+      "naziv": "Voćni nektar · Kruške + Šljive",
+      "roditelj": "nektar",
+      "broj": 1
+    },
+    {
+      "id": "jogurt/grozdje",
+      "naziv": "Jogurt · Grožđe",
+      "roditelj": "jogurt",
+      "broj": 2
+    },
+    {
+      "id": "napitak/grozdje",
+      "naziv": "Napitci · Grožđe",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "janjetina",
+      "naziv": "Janjetina",
+      "roditelj": null,
+      "broj": 104
+    },
+    {
+      "id": "sirup/breskva",
+      "naziv": "Sirup · Breskve",
+      "roditelj": "sirup",
+      "broj": 17
+    },
+    {
+      "id": "jogurt/banana+jabuka",
+      "naziv": "Jogurt · Banane + Jabuke",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "jogurt/grozdje+jagoda",
+      "naziv": "Jogurt · Grožđe + Jagode",
+      "roditelj": "jogurt",
+      "broj": 2
+    },
+    {
+      "id": "caj/malina",
+      "naziv": "Čaj · Maline",
+      "roditelj": "caj",
+      "broj": 12
+    },
+    {
+      "id": "napitak/ananas",
+      "naziv": "Napitci · Ananas",
+      "roditelj": "napitak",
+      "broj": 2
+    },
+    {
+      "id": "sirup/naranca",
+      "naziv": "Sirup · Naranče",
+      "roditelj": "sirup",
+      "broj": 49
+    },
+    {
+      "id": "jogurt/banana",
+      "naziv": "Jogurt · Banane",
+      "roditelj": "jogurt",
+      "broj": 2
+    },
+    {
+      "id": "jogurt/mango+naranca",
+      "naziv": "Jogurt · Mango + Naranče",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "lignje",
+      "naziv": "Lignje",
+      "roditelj": null,
+      "broj": 202
+    },
+    {
+      "id": "tava",
+      "naziv": "Tave",
+      "roditelj": null,
+      "broj": 530
+    },
+    {
+      "id": "sok/banana",
+      "naziv": "Voćni sok · Banane",
+      "roditelj": "sok",
+      "broj": 2
+    },
+    {
+      "id": "sok/grozdje",
+      "naziv": "Voćni sok · Grožđe",
+      "roditelj": "sok",
+      "broj": 5
+    },
+    {
+      "id": "sok/jabuka+mango",
+      "naziv": "Voćni sok · Jabuke + Mango",
+      "roditelj": "sok",
+      "broj": 3
+    },
+    {
+      "id": "pistacija",
+      "naziv": "Pistacije",
+      "roditelj": null,
+      "broj": 37
+    },
+    {
+      "id": "indijski-orah",
+      "naziv": "Indijski oraščići",
+      "roditelj": null,
+      "broj": 52
+    },
+    {
+      "id": "caj/naranca",
+      "naziv": "Čaj · Naranče",
+      "roditelj": "caj",
+      "broj": 11
+    },
+    {
+      "id": "sirup/borovnica",
+      "naziv": "Sirup · Borovnice",
+      "roditelj": "sirup",
+      "broj": 32
+    },
+    {
+      "id": "jogurt/jagoda+malina",
+      "naziv": "Jogurt · Jagode + Maline",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/malina",
+      "naziv": "Sladoled · Maline",
+      "roditelj": "sladoled",
+      "broj": 3
+    },
+    {
+      "id": "napitak/jabuka+visnja",
+      "naziv": "Napitci · Jabuke + Višnje",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "sok/mango",
+      "naziv": "Voćni sok · Mango",
+      "roditelj": "sok",
+      "broj": 6
+    },
+    {
+      "id": "sok/limun+tresnja",
+      "naziv": "Voćni sok · Limun + Trešnje",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "nektar/mango",
+      "naziv": "Voćni nektar · Mango",
+      "roditelj": "nektar",
+      "broj": 1
+    },
+    {
+      "id": "sirup/jabuka+kruska",
+      "naziv": "Sirup · Jabuke + Kruške",
+      "roditelj": "sirup",
+      "broj": 2
+    },
+    {
+      "id": "nektar/kruska",
+      "naziv": "Voćni nektar · Kruške",
+      "roditelj": "nektar",
+      "broj": 7
+    },
+    {
+      "id": "sirup/jabuka+malina",
+      "naziv": "Sirup · Jabuke + Maline",
+      "roditelj": "sirup",
+      "broj": 2
+    },
+    {
+      "id": "caj/tresnja",
+      "naziv": "Čaj · Trešnje",
+      "roditelj": "caj",
+      "broj": 5
+    },
+    {
+      "id": "oslic",
+      "naziv": "Oslić",
+      "roditelj": null,
+      "broj": 116
+    },
+    {
+      "id": "napitak/grejp",
+      "naziv": "Napitci · Grejp",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "sirup/jagoda",
+      "naziv": "Sirup · Jagode",
+      "roditelj": "sirup",
+      "broj": 10
+    },
+    {
+      "id": "napitak/mango+marelica",
+      "naziv": "Napitci · Mango + Marelice",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "napitak/grozdje+jabuka",
+      "naziv": "Napitci · Grožđe + Jabuke",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "napitak/breskva",
+      "naziv": "Napitci · Breskve",
+      "roditelj": "napitak",
+      "broj": 3
+    },
+    {
+      "id": "tresnja",
+      "naziv": "Trešnje",
+      "roditelj": null,
+      "broj": 22
+    },
+    {
+      "id": "dzem/mandarina",
+      "naziv": "Džem i marmelada · Mandarine",
+      "roditelj": "dzem",
+      "broj": 5
+    },
+    {
+      "id": "caj/limun+naranca",
+      "naziv": "Čaj · Limun + Naranče",
+      "roditelj": "caj",
+      "broj": 1
+    },
+    {
+      "id": "caj/borovnica+malina",
+      "naziv": "Čaj · Borovnice + Maline",
+      "roditelj": "caj",
+      "broj": 1
+    },
+    {
+      "id": "caj/breskva+naranca",
+      "naziv": "Čaj · Breskve + Naranče",
+      "roditelj": "caj",
+      "broj": 1
+    },
+    {
+      "id": "sok/borovnica+jabuka",
+      "naziv": "Voćni sok · Borovnice + Jabuke",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "caj/kruska",
+      "naziv": "Čaj · Kruške",
+      "roditelj": "caj",
+      "broj": 1
+    },
+    {
+      "id": "caj/mango",
+      "naziv": "Čaj · Mango",
+      "roditelj": "caj",
+      "broj": 4
+    },
+    {
+      "id": "sok/breskva+mandarina",
+      "naziv": "Voćni sok · Breskve + Mandarine",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sok/malina+visnja",
+      "naziv": "Voćni sok · Maline + Višnje",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "caj/mandarina",
+      "naziv": "Čaj · Mandarine",
+      "roditelj": "caj",
+      "broj": 1
+    },
+    {
+      "id": "napitak/jagoda+marelica",
+      "naziv": "Napitci · Jagode + Marelice",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "dzem/jabuka",
+      "naziv": "Džem i marmelada · Jabuke",
+      "roditelj": "dzem",
+      "broj": 2
+    },
+    {
+      "id": "nektar/jabuka+kruska",
+      "naziv": "Voćni nektar · Jabuke + Kruške",
+      "roditelj": "nektar",
+      "broj": 2
+    },
+    {
+      "id": "sok/jabuka+marelica",
+      "naziv": "Voćni sok · Jabuke + Marelice",
+      "roditelj": "sok",
+      "broj": 2
+    },
+    {
+      "id": "kozice",
+      "naziv": "Kozice i škampi",
+      "roditelj": null,
+      "broj": 202
+    },
+    {
+      "id": "dzem/jabuka+marelica",
+      "naziv": "Džem i marmelada · Jabuke + Marelice",
+      "roditelj": "dzem",
+      "broj": 1
+    },
+    {
+      "id": "bakalar",
+      "naziv": "Bakalar",
+      "roditelj": null,
+      "broj": 112
+    },
+    {
+      "id": "sok/breskva+jabuka+marelica",
+      "naziv": "Voćni sok · Breskve + Jabuke + Marelice",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "dzem/jagoda+visnja",
+      "naziv": "Džem i marmelada · Jagode + Višnje",
+      "roditelj": "dzem",
+      "broj": 2
+    },
+    {
+      "id": "sok/breskva+jabuka+naranca",
+      "naziv": "Voćni sok · Breskve + Jabuke + Naranče",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "dzem/tresnja",
+      "naziv": "Džem i marmelada · Trešnje",
+      "roditelj": "dzem",
+      "broj": 4
+    },
+    {
+      "id": "dzem/naranca",
+      "naziv": "Džem i marmelada · Naranče",
+      "roditelj": "dzem",
+      "broj": 19
+    },
+    {
+      "id": "sok/grozdje+kruska",
+      "naziv": "Voćni sok · Grožđe + Kruške",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/mango",
+      "naziv": "Sladoled · Mango",
+      "roditelj": "sladoled",
+      "broj": 5
+    },
+    {
+      "id": "nektar/banana+jabuka",
+      "naziv": "Voćni nektar · Banane + Jabuke",
+      "roditelj": "nektar",
+      "broj": 2
+    },
+    {
+      "id": "nektar/breskva+mango",
+      "naziv": "Voćni nektar · Breskve + Mango",
+      "roditelj": "nektar",
+      "broj": 1
+    },
+    {
+      "id": "caj/visnja",
+      "naziv": "Čaj · Višnje",
+      "roditelj": "caj",
+      "broj": 2
+    },
+    {
+      "id": "caj/breskva+mango",
+      "naziv": "Čaj · Breskve + Mango",
+      "roditelj": "caj",
+      "broj": 1
+    },
+    {
+      "id": "sirup/sljiva",
+      "naziv": "Sirup · Šljive",
+      "roditelj": "sirup",
+      "broj": 1
+    },
+    {
+      "id": "sok/jabuka+visnja",
+      "naziv": "Voćni sok · Jabuke + Višnje",
+      "roditelj": "sok",
+      "broj": 3
+    },
+    {
+      "id": "napitak/kruska",
+      "naziv": "Napitci · Kruške",
+      "roditelj": "napitak",
+      "broj": 3
+    },
+    {
+      "id": "napitak/banana",
+      "naziv": "Napitci · Banane",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/visnja",
+      "naziv": "Sladoled · Višnje",
+      "roditelj": "sladoled",
+      "broj": 6
+    },
+    {
+      "id": "napitak/borovnica",
+      "naziv": "Napitci · Borovnice",
+      "roditelj": "napitak",
+      "broj": 2
+    },
+    {
+      "id": "napitak/limun+naranca",
+      "naziv": "Napitci · Limun + Naranče",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "sok/jabuka+jagoda",
+      "naziv": "Voćni sok · Jabuke + Jagode",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sok/grozdje+malina",
+      "naziv": "Voćni sok · Grožđe + Maline",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sok/grozdje+jagoda",
+      "naziv": "Voćni sok · Grožđe + Jagode",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/breskva+malina",
+      "naziv": "Sladoled · Breskve + Maline",
+      "roditelj": "sladoled",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/jabuka+visnja",
+      "naziv": "Sladoled · Jabuke + Višnje",
+      "roditelj": "sladoled",
+      "broj": 1
+    },
+    {
+      "id": "dzem/breskva",
+      "naziv": "Džem i marmelada · Breskve",
+      "roditelj": "dzem",
+      "broj": 5
+    },
+    {
+      "id": "pastrva",
+      "naziv": "Pastrva",
+      "roditelj": null,
+      "broj": 39
+    },
+    {
+      "id": "dzem/ananas",
+      "naziv": "Džem i marmelada · Ananas",
+      "roditelj": "dzem",
+      "broj": 1
+    },
+    {
+      "id": "sok/breskva+mango",
+      "naziv": "Voćni sok · Breskve + Mango",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sok/limun+malina",
+      "naziv": "Voćni sok · Limun + Maline",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "lonac",
+      "naziv": "Lonci",
+      "roditelj": null,
+      "broj": 423
+    },
+    {
+      "id": "napitak/tresnja",
+      "naziv": "Napitci · Trešnje",
+      "roditelj": "napitak",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/jabuka",
+      "naziv": "Sladoled · Jabuke",
+      "roditelj": "sladoled",
+      "broj": 1
+    },
+    {
+      "id": "sirup/limun+naranca",
+      "naziv": "Sirup · Limun + Naranče",
+      "roditelj": "sirup",
+      "broj": 1
+    },
+    {
+      "id": "sok/sljiva",
+      "naziv": "Voćni sok · Šljive",
+      "roditelj": "sok",
+      "broj": 1
+    },
+    {
+      "id": "sirup/limun+malina",
+      "naziv": "Sirup · Limun + Maline",
+      "roditelj": "sirup",
+      "broj": 1
+    },
+    {
+      "id": "dzem/limun",
+      "naziv": "Džem i marmelada · Limun",
+      "roditelj": "dzem",
+      "broj": 3
+    },
+    {
+      "id": "dzem/mango",
+      "naziv": "Džem i marmelada · Mango",
+      "roditelj": "dzem",
+      "broj": 1
+    },
+    {
+      "id": "orada",
+      "naziv": "Orada",
+      "roditelj": null,
+      "broj": 116
+    },
+    {
+      "id": "brancin",
+      "naziv": "Brancin",
+      "roditelj": null,
+      "broj": 138
+    },
+    {
+      "id": "sirup/mango+naranca",
+      "naziv": "Sirup · Mango + Naranče",
+      "roditelj": "sirup",
+      "broj": 1
+    },
+    {
+      "id": "mljeveno-meso",
+      "naziv": "Mljeveno meso",
+      "roditelj": null,
+      "broj": 9
+    },
+    {
+      "id": "dzem/jagoda+malina",
+      "naziv": "Džem i marmelada · Jagode + Maline",
+      "roditelj": "dzem",
+      "broj": 1
+    },
+    {
+      "id": "jogurt/banana+jagoda+marelica+tresnja",
+      "naziv": "Jogurt · Banane + Jagode + Marelice + Trešnje",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "jogurt/ananas+tresnja",
+      "naziv": "Jogurt · Ananas + Trešnje",
+      "roditelj": "jogurt",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/malina+mango",
+      "naziv": "Sladoled · Maline + Mango",
+      "roditelj": "sladoled",
+      "broj": 3
+    },
+    {
+      "id": "sladoled/marelica",
+      "naziv": "Sladoled · Marelice",
+      "roditelj": "sladoled",
+      "broj": 1
+    },
+    {
+      "id": "dzem/mango+marelica",
+      "naziv": "Džem i marmelada · Mango + Marelice",
+      "roditelj": "dzem",
+      "broj": 1
+    },
+    {
+      "id": "sladoled/limun+malina",
+      "naziv": "Sladoled · Limun + Maline",
+      "roditelj": "sladoled",
+      "broj": 1
+    },
+    {
+      "id": "dzem/kruska",
+      "naziv": "Džem i marmelada · Kruške",
+      "roditelj": "dzem",
+      "broj": 1
+    },
+    {
+      "id": "sirup/breskva+naranca",
+      "naziv": "Sirup · Breskve + Naranče",
+      "roditelj": "sirup",
+      "broj": 1
+    },
+    {
+      "id": "sirup/banana",
+      "naziv": "Sirup · Banane",
+      "roditelj": "sirup",
+      "broj": 2
+    },
+    {
+      "id": "sladoled/grejp",
+      "naziv": "Sladoled · Grejp",
+      "roditelj": "sladoled",
+      "broj": 1
+    },
+    {
+      "id": "sirup/ananas",
+      "naziv": "Sirup · Ananas",
+      "roditelj": "sirup",
+      "broj": 2
+    },
+    {
+      "id": "sirup/grejp",
+      "naziv": "Sirup · Grejp",
+      "roditelj": "sirup",
+      "broj": 1
+    },
+    {
+      "id": "sirup/tresnja",
+      "naziv": "Sirup · Trešnje",
+      "roditelj": "sirup",
+      "broj": 1
+    }
+  ]
+}

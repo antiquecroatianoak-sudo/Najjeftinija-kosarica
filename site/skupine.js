@@ -5,7 +5,10 @@
 (function (root) {
   const normaliziraj = (s) => String(s).toLowerCase().replace(/đ/g, "d").normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-  const korijen = (s) => s.length >= 4 ? s.replace(/[aeiou]+$/, "") : s;
+  const korijen = (s) => {
+    const k = s.length >= 4 ? s.replace(/[aeiou]+$/, "") : s;
+    return k.length < 3 ? s : k; // Brie ne smije postati kratica „br.”.
+  };
   const nastavci = new Set(["", "a", "e", "i", "o", "u", "om", "em", "im", "ima", "ama", "ih", "oj", "og", "ja", "je", "ji", "ju", "jom", "ovi", "ove", "ova", "evi", "eve"]);
   const odgovara = (w, k) => w.startsWith(k) && nastavci.has(w.slice(k.length));
   const prijedlozi = new Set(["s", "sa", "od", "za", "u", "na", "bez", "iz", "po"]);
@@ -14,6 +17,7 @@
 pecivo|Pecivo|pecivo;zemicka;zemička;kajzerica;lepinja;somun;žemlja
 tost|Tost|tost;toast
 mrvice|Krušne mrvice|krušne mrvice;prezla;prezle
+krutoni|Krutoni|krutoni;kockice kruha
 brasno|Brašno|brašno
 krmno-brasno|Krmno brašno|krmno brašno;brašno krmno
 secer|Šećer|šećer
@@ -22,10 +26,13 @@ riza|Riža|riža
 tjestenina|Tjestenina|tjestenina;špageti;spaghetti;makaroni;penne;fusilli;tagliatelle;rezanci
 njoki|Njoki|njoki;gnocchi
 griz|Griz|griz;krupica
+kasa|Kaše|kaša
 palenta|Palenta|palenta;žganci
 zobene-pahuljice|Zobene pahuljice|zobene pahuljice
 pahuljice|Pahuljice|pahuljice;cornflakes;muesli;musli;granola
 mlijeko|Mlijeko|mlijeko
+biljno-mlijeko|Biljni napitci|biljni napitak;bademovo mlijeko;zobeno mlijeko;kokosovo mlijeko;sojino mlijeko
+mlijeko-tijelo|Mlijeko za tijelo|mlijeko za tijelo;mlijeko za njegu tijela;mlijeko tijelo
 jogurt|Jogurt|jogurt;yogurt
 kefir|Kefir|kefir
 acidofil|Acidofil|acidofil
@@ -37,6 +44,9 @@ jaja|Jaja|jaja;jaje
 puding|Puding|puding;pudding
 sladoled|Sladoled|sladoled
 ulje|Jestivo ulje|ulje
+tehnicko-ulje|Tehničko ulje|motorno ulje;ulje za motore
+kozmeticko-ulje|Kozmetičko ulje|ulje za tijelo;ulje za kosu;ulje za usne;ulje za nokte
+mirisno-ulje|Mirisno ulje|mirisno ulje;ulje mirisno;eterično ulje
 ocat|Ocat|ocat;sirće
 med|Med|med
 dzem|Džem i marmelada|džem;marmelada;pekmez
@@ -127,7 +137,7 @@ kukuruz|Kukuruz|kukuruz
 masline|Masline|maslina;masline
 jabuka|Jabuke|jabuka
 banana|Banane|banana
-naranca|Naranče|naranča;naranača;naran.;naranč.
+naranca|Naranče|naranča;naranača;naran.;naranč.;orange
 mandarina|Mandarine|mandarina
 limun|Limun|limun;lemon
 grejp|Grejp|grejp;grapefruit
@@ -257,7 +267,8 @@ torba|Torbe|torba`;
     return hits;
   }
 
-  function analiziraj(tekst) {
+  const opisne = new Set(["bio", "eko", "organsko", "organic", "premium", "mini", "maxi", "xxl", "xl", "domaci", "domaca", "domace", "svjezi", "svjeza", "svjeze", "trajno", "trajno", "snizeno", "pak", "pakirano", "pakirani", "svj", "smrznuti", "smrznuta", "smrznuto", "zamrznuti", "zamrznuta", "zamrznuto", "bijeli", "crni", "polubijeli", "razani", "integralni", "rezani", "tvrdi", "meki", "mladi", "trajni", "prirodni", "vocni", "100", "n", "fis"]);
+  function analiziraj(tekst, marka = 0, upit = false) {
     const r = normaliziraj(tekst).split(" ").filter(Boolean);
     const hits = pronadiRijeci(r);
     // „s okusom”, „za kruh”, „od sira” opisuju sastojak ili namjenu.
@@ -265,20 +276,37 @@ torba|Torbe|torba`;
     const heads = hits.filter((h) => boundary < 0 || h.pos < boundary || (h.pos === 0 && h.duzina > 1));
     heads.sort((a, b) => a.pos - b.pos || b.duzina - a.duzina);
     let glavni = heads[0] || null;
+    // Nepoznate riječi prije glavne imenice mogu skrivati stvarnu vrstu.
+    // Ne nagađaj da je sastojak (npr. mlijeko u kavi) glavni proizvod.
+    if (glavni && !upit && r.slice(Math.max(0, Number(marka) || 0), glavni.pos)
+      .some((w) => !opisne.has(w) && !/^\d/.test(w))) glavni = null;
     if (glavni && overrides.has(glavni.id)) {
       const special = hits.find((h) => overrides.get(glavni.id).has(h.id));
       if (special) glavni = special;
     }
     // Oprema za kruh i slični proizvodi dobivaju svoju vrstu po glavnoj imenici.
-    // Suhi kruh za životinje nije u skupini kruha za ljudsku prehranu.
-    if (glavni?.id === "kruh" && /\b(suhi|kockice|krutoni|prezle|mrvice)\b/.test(r.join(" "))) glavni = null;
-    if (glavni?.id === "ulje" && /\b(tijelo|tijela|kosu|kose|etericno|motorno|masazu)\b/.test(r.join(" "))) glavni = null;
+    const naziv = r.join(" ");
+    const promijeni = (id) => { glavni = { ...glavni, id }; };
+    if (glavni?.id === "mlijeko") {
+      if (/\b(tijel\w*|njeg\w*|lice|lica|ruke|suncanje)\b/.test(naziv)) promijeni("mlijeko-tijelo");
+      else if (/\b(kokos\w*|sojin\w*|soja|bademov\w*|zoben\w*|rizino)\b/.test(naziv)) promijeni("biljno-mlijeko");
+    }
+    if (glavni?.id === "ulje") {
+      if (/\b(motor\w*|lancol|pantherol|dvotaktn\w*|cetverotaktn\w*)\b/.test(naziv)) promijeni("tehnicko-ulje");
+      else if (/\b(mirisno|mirisna|etericn\w*)\b/.test(naziv)) promijeni("mirisno-ulje");
+      else if (/\b(tijel\w*|kosu|kose|masazu|nokte|usne|lica|lice|celul\w*|ogx)\b/.test(naziv)) promijeni("kozmeticko-ulje");
+    }
+    if (glavni?.id === "jaja" && /\b(ukras\w*|uskr\w*|plast\w*|stirop\w*|styropor|pik|privjesak|staklen\w*|cm|kosaric\w*|sarena|bojan\w*)\b/.test(naziv)) glavni = null;
+    if (glavni && (glavni.id === "kruh" || voce.has(glavni.id))
+      && /\b(ukras\w*|umjetn\w*|bozic\w*|stirop\w*|staklen\w*)\b/.test(naziv)) glavni = null;
+    const kozmetika = /^(balea|nivea|essence|alverde|sundance|afrodita|uriage|ogx|weleda|eucerin)\b/.test(naziv);
+    if (kozmetika && glavni && !["mlijeko-tijelo", "kozmeticko-ulje", "mirisno-ulje", "krema", "losion", "sampon", "regenerator", "sapun", "gel-tusiranje", "dezodorans", "pasta-zube"].includes(glavni.id)) glavni = null;
     const okusi = [...new Set(hits.filter((h) => voce.has(h.id)).map((h) => h.id))].sort();
     return { rijeci: r, hits, glavni, okusi };
   }
 
   function pripremi(proizvodi) {
-    const analiza = proizvodi.map((p) => analiziraj(p[0]));
+    const analiza = proizvodi.map((p) => analiziraj(p[0], p[4]));
     const poVrsti = new Map();
     const katalog = new Map();
     const dodaj = (id, naziv, i, roditelj = null) => {
@@ -298,9 +326,9 @@ torba|Torbe|torba`;
       }
     });
 
-    function pogoci(upit) {
-      const q = analiziraj(upit);
-      if (!q.glavni) return null; // Neprepoznati nazivi i dalje koriste postojeće pretraživanje.
+    function razrijesiUpit(upit) {
+      const q = analiziraj(upit, 0, true);
+      if (!q.glavni) return null;
       const id = q.glavni.id;
       const aliasHit = q.hits.filter((h) => h.id === id).sort((a, b) => b.duzina - a.duzina)[0];
       const izostavi = new Set();
@@ -310,14 +338,36 @@ torba|Torbe|torba`;
         for (let j = 0; j < h.duzina; j++) izostavi.add(h.pos + j);
       }
       const dodatno = q.rijeci.filter((w, j) => !izostavi.has(j) && !prijedlozi.has(w)).map(korijen);
-      return (poVrsti.get(id) || []).filter((i) => {
+      return { q, id, dodatno, trazeniOkusi };
+    }
+    function pogoci(upit) {
+      const up = razrijesiUpit(upit);
+      if (!up) return null; // Neprepoznati nazivi ostaju u postojećem pretraživanju.
+      const {id, dodatno, trazeniOkusi} = up;
+      const clanovi = id === "kruh" ? [...(poVrsti.get(id) || []), ...(poVrsti.get("tost") || [])] : poVrsti.get(id) || [];
+      return clanovi.filter((i) => {
         const a = analiza[i];
         // Naranča+jabuka nije isto što i sok samo od naranče.
         if (trazeniOkusi.length && a.okusi.join("+") !== trazeniOkusi.join("+")) return false;
         return dodatno.every((k) => a.rijeci.some((w) => odgovara(w, k)));
       });
     }
-    return { pogoci, katalog: [...katalog.values()], nerazvrstano, ukupno: proizvodi.length,
+    // Moguća podudaranja nisu potvrđeni članovi skupine. Ostaju vidljiva za pregled.
+    function moguciPogoci(upit) {
+      const up = razrijesiUpit(upit);
+      if (!up) return [];
+      const aliasi = definicije.get(up.id).aliases;
+      const nadji = [];
+      analiza.forEach((a, i) => {
+        if (a.glavni) return;
+        const imaVrstu = aliasi.some((alias) => a.rijeci.some((_, p) => alias.every((k, j) => a.rijeci[p+j] && odgovara(a.rijeci[p+j], k))));
+        if (!imaVrstu) return;
+        if (up.trazeniOkusi.length && a.okusi.join("+") !== up.trazeniOkusi.join("+")) return;
+        if (up.dodatno.every((k) => a.rijeci.some((w) => odgovara(w, k)))) nadji.push(i);
+      });
+      return nadji;
+    }
+    return { pogoci, moguciPogoci, katalog: [...katalog.values()], nerazvrstano, ukupno: proizvodi.length,
       vrstaProizvoda: (i) => analiza[i]?.glavni?.id || null };
   }
   const api = { pripremi, analiziraj, definicije: vrste.map(({id,naziv}) => ({id,naziv})) };

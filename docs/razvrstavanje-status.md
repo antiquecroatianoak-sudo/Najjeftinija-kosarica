@@ -1,17 +1,14 @@
-# Razvrstavanje — rad u tijeku
+# Razvrstavanje — provjerena radna verzija, bez objave
 
-Polazna objavljena verzija: 5014e1656381434d40e68304fbd188696849fb99.
-Sigurnosna grana: backup/prije-razvrstavanja-2026-10-19.
-Radna grana: codex/razvrstavanje-proizvoda-2026-10-19.
+Polazna i povratna verzija: 5014e1656381434d40e68304fbd188696849fb99, grana backup/prije-razvrstavanja-2026-10-19.
+Radna grana: codex/razvrstavanje-proizvoda-2026-10-19. Produkcija nije promijenjena.
 
-Prvi eksperimentalni mehanizam spremljen je u site/skupine.js. Još NIJE spojen s aplikacijom i NIJE objavljen. Svi postojeći dohvat i produkcijsko ponašanje ostaju na polaznoj verziji.
+Zajednički mehanizam primijenjen je na svih 237.881 artikl aktualnog cjenika. Ima 223 osnovne definicije i 400 nepraznih skupina uključujući izvedene kombinacije okusa. Automatski prepoznaje vrstu za 77.743 retka; 160.138 ostaje nerazvrstano. Te brojke nisu ručna potvrda kvalitete. Ne tvrditi da su svi artikli ispravno razvrstani.
 
-Pravila: osnovna vrsta prema glavnom nazivu; marka i pakiranje ne mijenjaju skupinu; okus sužava vrstu; mješavina voća nije isto što i jedan okus; neprepoznati nazivi ostaju pretraživi.
+Prolaze fixture testovi različitih proizvođača i pakiranja kruha i soka; mješavina naranče i jabuke nije sok samo od naranče; sirup, nektar i gazirano imaju vlastitu vrstu; vrećice, košare i kalupi nisu kruh; krušne mrvice nisu kruh; boje/ukrasi za jaja nisu jaja; BR. nije Brie; mlijeko za tijelo i biljni napitci odvojeni su od običnog mlijeka; tehničko i mirisno ulje odvojeni su od jestivog; krmno brašno odvojeno od običnog. Ručno nije pregledan cijeli cjenik.
 
-Početna automatizirana obrada cjenika od 19.10.2026. (237.881 red) traje oko sekunde u lokalnom Nodeu. To je vrijeme izvršavanja pravila, a ne vrijeme razvoja ili dokaz kvalitete. Trenutno ima 216 eksperimentalnih definicija i izvedene podskupine. Broj točno razvrstanih proizvoda nije potvrđen.
+Neutvrđene proizvode treba sačuvati kao moguća podudaranja, jasno označena i bez proglašenja najpovoljnijeg. Testovi i audit: tests/skupine.cjs i docs/razvrstavanje-pregled.json.
 
-Poznati problemi prve radne verzije koje treba riješiti PRIJE integracije: kratice BR. pogrešno prepoznaje kao brie; ukrasna jaja i neki kozmetički proizvodi ulaze u hranu; neki nazivi bez prepoznate glavne imenice se pogrešno klasificiraju prema sastojku. Potrebni su testovi i konzervativno označavanje nejasnih artikala. Ne tvrditi da je razvrstavanje završeno.
+Sljedeće: povezati pripremljeni indeks s aplikacijom u radnoj grani, provjeriti memoriju/učitavanje na mobitelu i dnevno automatsko obnavljanje; pregled prije objave. Poznata pogrešna količina kruha 310g ->31kg u cjeniku nije riješena ovim razvrstavanjem.
 
-Dalje: ispraviti lematizaciju kratkih naziva i granice sastojaka, dodati negativne primjere, pregledati stvarne pogotke kruha/soka i ostalih skupina; tek zatim povezati modul s pretraživanjem u radnoj grani i pripremiti pregled prije objave.
-
-Korisnik traži spremanje napretka nakon dovršene cjeline ili približno svakih pet minuta aktivnog rada. To nije zakazani proces i ne uklanja limite računa.
+Spremati nakon cjeline ili otprilike svakih pet minuta aktivnog rada; korisnik ne želi stalna pitanja i potvrde.
