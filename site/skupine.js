@@ -268,8 +268,8 @@ torba|Torbe|torba`;
   }
 
   const opisne = new Set(["bio", "eko", "organsko", "organic", "premium", "mini", "maxi", "xxl", "xl", "domaci", "domaca", "domace", "svjezi", "svjeza", "svjeze", "trajno", "trajno", "snizeno", "pak", "pakirano", "pakirani", "svj", "smrznuti", "smrznuta", "smrznuto", "zamrznuti", "zamrznuta", "zamrznuto", "bijeli", "crni", "polubijeli", "razani", "integralni", "rezani", "tvrdi", "meki", "mladi", "trajni", "prirodni", "vocni", "100", "n", "fis"]);
-  function analiziraj(tekst, marka = 0, upit = false) {
-    const r = normaliziraj(tekst).split(" ").filter(Boolean);
+  function analiziraj(tekst, marka = 0, upit = false, pripremljeneRijeci = null) {
+    const r = pripremljeneRijeci || normaliziraj(tekst).split(" ").filter(Boolean);
     const hits = pronadiRijeci(r);
     // „s okusom”, „za kruh”, „od sira” opisuju sastojak ili namjenu.
     const boundary = r.findIndex((w) => prijedlozi.has(w));
@@ -305,18 +305,44 @@ torba|Torbe|torba`;
     return { rijeci: r, hits, glavni, okusi };
   }
 
-  function pripremi(proizvodi) {
-    const analiza = proizvodi.map((p) => analiziraj(p[0], p[4]));
+  function otisak(proizvodi) {
+    let hash = 2166136261;
+    for (const p of proizvodi) {
+      const s = p[0] + "\x00" + p[1] + "\x00" + p[4] + "\n";
+      for (let j = 0; j < s.length; j++) hash = Math.imul(hash ^ s.charCodeAt(j), 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+  function pripremi(proizvodi, spremljeno = null, tokeni = null) {
+    if (spremljeno && (spremljeno.verzija !== 1 || spremljeno.brojProizvoda !== proizvodi.length
+      || spremljeno.otisak !== otisak(proizvodi))) throw new Error("Indeks skupina ne odgovara cjeniku");
+    // Na mobitel šalji mali unaprijed pripremljeni indeks, bez analize 237.000 naziva u memoriji.
+    const analiza = spremljeno ? null : proizvodi.map((p) => analiziraj(p[0], p[4]));
+    const dajAnalizu = (i) => analiza ? analiza[i] : analiziraj(proizvodi[i][0], proizvodi[i][4], false, tokeni?.[i]);
     const poVrsti = new Map();
     const katalog = new Map();
+    const vrstePoRedu = new Array(proizvodi.length).fill(null);
     const dodaj = (id, naziv, i, roditelj = null) => {
       if (!katalog.has(id)) katalog.set(id, { id, naziv, roditelj, indeksi: [] });
       katalog.get(id).indeksi.push(i);
     };
     let nerazvrstano = 0;
-    analiza.forEach((a, i) => {
+    if (spremljeno) {
+      for (const s of spremljeno.katalog) {
+        katalog.set(s.id, s);
+        if (!s.roditelj) {
+          poVrsti.set(s.id, s.indeksi);
+          for (const i of s.indeksi) {
+            if (!Number.isInteger(i) || i < 0 || i >= proizvodi.length) throw new Error("Neispravan indeks proizvoda");
+            vrstePoRedu[i] = s.id;
+          }
+        }
+      }
+      nerazvrstano = vrstePoRedu.filter((x) => !x).length;
+    } else analiza.forEach((a, i) => {
       if (!a.glavni) { nerazvrstano++; return; }
       const id = a.glavni.id;
+      vrstePoRedu[i] = id;
       if (!poVrsti.has(id)) poVrsti.set(id, []);
       poVrsti.get(id).push(i);
       dodaj(id, definicije.get(id).naziv, i);
@@ -346,7 +372,7 @@ torba|Torbe|torba`;
       const {id, dodatno, trazeniOkusi} = up;
       const clanovi = id === "kruh" ? [...(poVrsti.get(id) || []), ...(poVrsti.get("tost") || [])] : poVrsti.get(id) || [];
       return clanovi.filter((i) => {
-        const a = analiza[i];
+        const a = dajAnalizu(i);
         // Naranča+jabuka nije isto što i sok samo od naranče.
         if (trazeniOkusi.length && a.okusi.join("+") !== trazeniOkusi.join("+")) return false;
         return dodatno.every((k) => a.rijeci.some((w) => odgovara(w, k)));
@@ -358,17 +384,21 @@ torba|Torbe|torba`;
       if (!up) return [];
       const aliasi = definicije.get(up.id).aliases;
       const nadji = [];
-      analiza.forEach((a, i) => {
-        if (a.glavni) return;
-        const imaVrstu = aliasi.some((alias) => a.rijeci.some((_, p) => alias.every((k, j) => a.rijeci[p+j] && odgovara(a.rijeci[p+j], k))));
-        if (!imaVrstu) return;
-        if (up.trazeniOkusi.length && a.okusi.join("+") !== up.trazeniOkusi.join("+")) return;
-        if (up.dodatno.every((k) => a.rijeci.some((w) => odgovara(w, k)))) nadji.push(i);
-      });
+      for (let i = 0; i < proizvodi.length; i++) {
+        if (vrstePoRedu[i]) continue;
+        const rijeci = analiza ? analiza[i].rijeci : tokeni?.[i] || normaliziraj(proizvodi[i][0]).split(" ");
+        const imaVrstu = aliasi.some((alias) => rijeci.some((_, p) => alias.every((k, j) => rijeci[p+j] && odgovara(rijeci[p+j], k))));
+        if (!imaVrstu) continue;
+        if (!up.dodatno.every((k) => rijeci.some((w) => odgovara(w, k)))) continue;
+        const a = dajAnalizu(i);
+        if (up.trazeniOkusi.length && a.okusi.join("+") !== up.trazeniOkusi.join("+")) continue;
+        nadji.push(i);
+      }
       return nadji;
     }
     return { pogoci, moguciPogoci, katalog: [...katalog.values()], nerazvrstano, ukupno: proizvodi.length,
-      vrstaProizvoda: (i) => analiza[i]?.glavni?.id || null };
+      vrstaProizvoda: (i) => vrstePoRedu[i],
+      izvezi: () => ({ verzija: 1, brojProizvoda: proizvodi.length, otisak: otisak(proizvodi), katalog: [...katalog.values()] }) };
   }
   const api = { pripremi, analiziraj, definicije: vrste.map(({id,naziv}) => ({id,naziv})) };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

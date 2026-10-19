@@ -17,6 +17,7 @@ const names=[
 ];
 const input=names.map(n=>[n,'',1,'kom',n.startsWith('Marka ')?1:0,[0,2]]);
 const g=Skupine.pripremi(input);
+const ponovno=Skupine.pripremi(input, JSON.parse(JSON.stringify(g.izvezi())));
 function exact(q,wanted){assert.deepEqual([...g.pogoci(q)].sort((a,b)=>a-b),wanted.sort((a,b)=>a-b),q);}
 exact('kruh',[0,1,2,3,4]);
 exact('sok od naranče',[10,11,12,18,19]);
@@ -27,6 +28,14 @@ exact('mlijeko svježe',[43]);exact('maslinovo ulje',[41,42]);
 assert(g.moguciPogoci('jaja').includes(28), 'nejasan naziv ostaje za pregled');
 assert(!g.pogoci('sir').includes(22),'BR. nije Brie');
 assert.equal(g.pogoci('nepoznati naziv'),null,'nepoznati upit ne blokira pretragu');
+for (const q of ['kruh','sok od naranče','jaja','ulje','sir','mlijeko']) {
+ assert.deepEqual(ponovno.pogoci(q),g.pogoci(q),'pripremljeni indeks '+q);
+ assert.deepEqual(ponovno.moguciPogoci(q),g.moguciPogoci(q),'nejasni nazivi '+q);
+}
+assert.throws(()=>Skupine.pripremi([...input].reverse(),g.izvezi()), /ne odgovara/);
+assert.throws(()=>Skupine.pripremi(input.slice(1),g.izvezi()), /ne odgovara/);
+const zastarjelo=g.izvezi();zastarjelo.verzija=99;
+assert.throws(()=>Skupine.pripremi(input,zastarjelo),/ne odgovara/);
 if (!process.argv[2]) { console.log('GROUP FIXTURES PASS'); process.exit(0); }
 const p=JSON.parse(fs.readFileSync(process.argv[2]));
 console.time('Cijeli cjenik');const all=Skupine.pripremi(p.proizvodi);console.timeEnd('Cijeli cjenik');

@@ -34,6 +34,16 @@ jobs:
       - name: Preuzmi cijene svih trgovačkih lanaca
         run: python scripts/azuriraj_cijene.py
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Provjeri zajednička pravila skupina
+        run: node tests/skupine.cjs
+
+      - name: Pripremi skupine za novi cjenik
+        run: node scripts/razvrstaj.cjs
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

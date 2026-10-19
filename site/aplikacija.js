@@ -30,6 +30,7 @@ function spremi() {
 // ---------- Podaci o cijenama ----------
 // { datum, lanci: [...], proizvodi: [[naziv, količina, iznos, jedinica, riječi marke, [lanac, cijena, ...]], ...] }
 let podaci = null;
+let klasifikacija = null;
 let rijeci = [];       // za svaki proizvod: normalizirane riječi naziva
 const pogociCache = new Map();
 const ponudeCache = new Map();
@@ -85,12 +86,20 @@ async function ucitajPodatke() {
     }).filter((p) => p[5].length);
     if (!podaci.proizvodi.length) throw new Error("Nema valjanih cijena");
     rijeci = podaci.proizvodi.map((p) => normaliziraj(p[0]).split(" "));
+    klasifikacija = null;
+    if (typeof Skupine !== "undefined") {
+      try {
+        const indeksOdgovor = await fetch("data/skupine.json", { cache: "no-cache" });
+        if (indeksOdgovor.ok) klasifikacija = Skupine.pripremi(podaci.proizvodi, await indeksOdgovor.json(), rijeci);
+      } catch (e) { /* Cjenik ostaje dostupan i ako indeks nedostaje ili je zastario. */ }
+    }
     const [g, m, d] = podaci.datum.split("-");
     $("status").textContent =
       `Cijene od ${d}.${m}.${g}. · ${podaci.proizvodi.length.toLocaleString("hr-HR")} proizvoda · ${podaci.lanci.length} lanaca`;
     $("status").parentElement.classList.add("spremno");
   } catch (e) {
     podaci = null;
+    klasifikacija = null;
     rijeci = [];
     $("ponovi").hidden = false;
     $("status").parentElement.classList.add("greska");
@@ -104,6 +113,14 @@ async function ucitajPodatke() {
 // Indeksi proizvoda koji odgovaraju grupi (npr. "mlijeko").
 function pogoci(grupa) {
   if (pogociCache.has(grupa)) return pogociCache.get(grupa);
+  if (klasifikacija) {
+    const prepoznati = klasifikacija.pogoci(grupa);
+    if (prepoznati !== null) {
+      const rezultat = [...prepoznati, ...klasifikacija.moguciPogoci(grupa)];
+      pogociCache.set(grupa, rezultat);
+      return rezultat;
+    }
+  }
   const korijeni = normaliziraj(grupa).split(" ").filter(Boolean).map(korijen);
   let rezultat = [];
   if (korijeni.length) {
@@ -144,11 +161,12 @@ function dozvoljeniLanci() {
 
 function ponuda(i, lanac, cijena) {
   const [, , iznos, jedinica] = podaci.proizvodi[i];
-  return { i, lanac, cijena, jedinica, poJedinici: iznos ? cijena / iznos : null };
+  return { i, lanac, cijena, jedinica, poJedinici: iznos ? cijena / iznos : null,
+    vrstaNejasna: !!klasifikacija && !klasifikacija.vrstaProizvoda(i) };
 }
 
 function imaJedinicnu(p) {
-  return Number.isFinite(p.poJedinici) && p.poJedinici > 0 && ["kg", "l", "kom"].includes(p.jedinica);
+  return !p.vrstaNejasna && Number.isFinite(p.poJedinici) && p.poJedinici > 0 && ["kg", "l", "kom"].includes(p.jedinica);
 }
 
 // Različite jedinice ne smiju sakriti cijelu skupinu niti se uspoređivati brojčano.
@@ -347,7 +365,7 @@ function brojPakiranja(stavka, p) {
 }
 
 function opisJedinicne(p) {
-  if (!imaJedinicnu(p)) return "";
+  if (!Number.isFinite(p.poJedinici) || p.poJedinici <= 0 || !["kg", "l", "kom"].includes(p.jedinica)) return "";
   return `${euro(p.poJedinici)}/${p.jedinica}`;
 }
 
@@ -358,6 +376,7 @@ function prikaziRezultate() {
   let preostalo = 0;
   let kupljeno = 0;
   let nedostaje = 0;
+  let zaProvjeru = 0;
   const poLancu = {};
   const lanciOk = sviLanci().size > 0;
 
@@ -413,6 +432,7 @@ function prikaziRezultate() {
 
     const rb = (stanje.odabir[grupa] || 0) % ponude.length;
     const p = ponude[rb];
+    if (p.vrstaNejasna) zaProvjeru++;
     const [naziv, kolicina] = podaci.proizvodi[p.i];
     const lanac = podaci.lanci[p.lanac];
     const pakiranja = brojPakiranja(stavka, p);
@@ -431,7 +451,8 @@ function prikaziRezultate() {
     sadrzaj.querySelector(".kolicina").textContent = [
       pakiranja > 1 ? `${pakiranja} × ${euro(p.cijena)}` : "",
       kolicina,
-      imaJedinicnu(p) ? opisJedinicne(p) : "Količina nije poznata · bez poretka po jediničnoj cijeni",
+      p.vrstaNejasna ? "Moguće podudaranje · vrsta za provjeru"
+        : imaJedinicnu(p) ? opisJedinicne(p) : "Količina nije poznata · bez poretka po jediničnoj cijeni",
     ].filter(Boolean).join(" · ");
     const mjesto = sadrzaj.querySelector(".mjesto");
     if (rb > 0) {
@@ -449,7 +470,9 @@ function prikaziRezultate() {
       const redni = iste.indexOf(p) + 1;
       poredak.textContent = `${redni === 1 ? "Najpovoljnije" : `${redni}. po cijeni`} po ${p.jedinica} · ${iste.length} ponuda s tom jedinicom`;
     } else {
-      poredak.textContent = "Ponuda je dostupna; povoljnost se ne može usporediti bez količine.";
+      poredak.textContent = p.vrstaNejasna
+        ? "Provjeri odgovara li proizvod tvojem popisu. Ne proglašavamo ga najpovoljnijim."
+        : "Ponuda je dostupna; povoljnost se ne može usporediti bez količine.";
     }
     sadrzaj.appendChild(poredak);
     if (ponude.length > 1) {
@@ -464,9 +487,12 @@ function prikaziRezultate() {
 
   $("napredak").textContent = stanje.popis.length ? `U košarici: ${kupljeno} od ${stanje.popis.length}` : "";
   $("ukupno").textContent = euro(ukupno);
-  $("ukupno-oznaka").textContent = nedostaje ? "Iznos pronađenih proizvoda" : "Ukupno za popis";
-  $("nedostaje").hidden = nedostaje === 0;
-  $("nedostaje").textContent = `Za ${nedostaje} od ${stanje.popis.length} stavki nema cijene. Prikazani iznos ne obuhvaća cijeli popis.`;
+  $("ukupno-oznaka").textContent = nedostaje ? "Iznos pronađenih proizvoda" : zaProvjeru ? "Iznos prikazanih ponuda" : "Ukupno za popis";
+  $("nedostaje").hidden = nedostaje === 0 && zaProvjeru === 0;
+  $("nedostaje").textContent = [
+    nedostaje ? `Za ${nedostaje} od ${stanje.popis.length} stavki nema cijene. Iznos ne obuhvaća cijeli popis.` : "",
+    zaProvjeru ? `Za ${zaProvjeru} stavki provjeri vrstu prikazanog proizvoda prije kupnje.` : "",
+  ].filter(Boolean).join(" ");
   $("preostalo").hidden = kupljeno === 0 || kupljeno === stanje.popis.length;
   $("preostalo-iznos").textContent = euro(preostalo);
   $("po-trgovinama").textContent = Object.entries(poLancu)
