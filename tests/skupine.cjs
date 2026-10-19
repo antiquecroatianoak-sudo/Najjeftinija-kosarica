@@ -17,6 +17,11 @@ const names=[
 ];
 const input=names.map(n=>[n,'',1,'kom',n.startsWith('Marka ')?1:0,[0,2]]);
 const g=Skupine.pripremi(input);
+const dodatni=Skupine.pripremi(['Hrana za bebe 200 g','Hrana za mačke 400 g','Sol za perilicu 1 kg','Sol morska 1 kg'].map(n=>[n,'',1,'kg',0,[0,1]]));
+assert.equal(dodatni.vrstaProizvoda(0),'hrana-bebe');
+assert.equal(dodatni.vrstaProizvoda(1),'hrana-zivotinje');
+assert.equal(dodatni.vrstaProizvoda(2),null);
+assert.equal(dodatni.vrstaProizvoda(3),'sol');
 const ponovno=Skupine.pripremi(input, JSON.parse(JSON.stringify(g.izvezi())));
 function exact(q,wanted){assert.deepEqual([...g.pogoci(q)].sort((a,b)=>a-b),wanted.sort((a,b)=>a-b),q);}
 exact('kruh',[0,1,2,3,4]);

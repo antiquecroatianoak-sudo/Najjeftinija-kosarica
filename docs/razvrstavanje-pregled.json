@@ -1,10 +1,10 @@
 {
   "datum": "2026-10-19",
   "ukupno": 237881,
-  "definicije": 223,
+  "definicije": 224,
   "skupine": 400,
-  "prepoznataVrsta": 77743,
-  "neutvrdjenaVrsta": 160138,
+  "prepoznataVrsta": 77536,
+  "neutvrdjenaVrsta": 160345,
   "napomena": "Automatska procjena vrste nije ručna potvrda točnosti. Neutvrđeni proizvodi ostaju u cjeniku i pretrazi.",
   "katalog": [
     {
@@ -23,7 +23,7 @@
       "id": "sol",
       "naziv": "Sol",
       "roditelj": null,
-      "broj": 230
+      "broj": 210
     },
     {
       "id": "cokolada",
@@ -977,7 +977,7 @@
       "id": "hrana-zivotinje",
       "naziv": "Hrana za životinje",
       "roditelj": null,
-      "broj": 623
+      "broj": 436
     },
     {
       "id": "sok/mandarina+naranca",

@@ -207,6 +207,7 @@ spuzvica|Spužve|spužva;spužvica
 krpa|Krpe|krpa
 rukavice|Rukavice|rukavica;rukavice
 hrana-zivotinje|Hrana za životinje|hrana
+hrana-bebe|Hrana za bebe|hrana za bebe;hrana za dojenčad
 pijesak-macke|Pijesak za mačke|pijesak
 vrecice|Vrećice|vrećica;vrećice;vreć.;vreća
 kosara|Košare|košara;košarica
@@ -297,6 +298,11 @@ torba|Torbe|torba`;
       else if (/\b(tijel\w*|kosu|kose|masazu|nokte|usne|lica|lice|celul\w*|ogx)\b/.test(naziv)) promijeni("kozmeticko-ulje");
     }
     if (glavni?.id === "jaja" && /\b(ukras\w*|uskr\w*|plast\w*|stirop\w*|styropor|pik|privjesak|staklen\w*|cm|kosaric\w*|sarena|bojan\w*)\b/.test(naziv)) glavni = null;
+    if (glavni?.id === "hrana-zivotinje") {
+      if (/\b(beb\w*|dojenc\w*|djeca|djecu)\b/.test(naziv)) promijeni("hrana-bebe");
+      else if (!/\b(pas|pse|psa|psi|ps\w*|mack\w*|ptice|ptic\w*|glodav\w*|ribic\w*|zivotinj\w*)\b/.test(naziv)) glavni = null;
+    }
+    if (glavni?.id === "sol" && /\b(kupku|kupanje|peril\w*|odmrz\w*|ceste)\b/.test(naziv)) glavni = null;
     if (glavni && (glavni.id === "kruh" || voce.has(glavni.id))
       && /\b(ukras\w*|umjetn\w*|bozic\w*|stirop\w*|staklen\w*)\b/.test(naziv)) glavni = null;
     const kozmetika = /^(balea|nivea|essence|alverde|sundance|afrodita|uriage|ogx|weleda|eucerin)\b/.test(naziv);
