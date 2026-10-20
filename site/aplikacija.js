@@ -6,6 +6,7 @@ let stanje = {
   popis: [],          // [{ naziv, kom, kupljeno }]
   zakljucano: false,
   odabir: {},         // grupa -> redni broj ponude
+  odabirSvi: {},      // odabir iz pregleda svih trgovina; referentna količina za usporedbu
   nacin: "jedinica",  // Poredak uvijek određuje jedinična cijena.
   iskljuceni: [],     // nazivi lanaca koji korisniku ne odgovaraju
   jedna: null,        // naziv lanca ako se kupuje sve u jednoj trgovini
@@ -23,6 +24,7 @@ stanje.nacin = "jedinica";
 stanje.iskljuceni = [];
 stanje.jedna = null;
 stanje.odabir = {};
+stanje.odabirSvi = {};
 function spremi() {
   try { localStorage.setItem(SPREMISTE, JSON.stringify(stanje)); } catch (e) {}
 }
@@ -190,9 +192,9 @@ function usporedba(jedinice) {
 
 // Sve ponude za jednu grupu, od najisplativije prema skupljoj.
 // Svaki proizvod se pojavljuje samo jednom, u najjeftinijem dopuštenom lancu.
-function ponudeZaGrupu(grupa) {
-  if (ponudeCache.has(grupa)) return ponudeCache.get(grupa);
-  const lanci = dozvoljeniLanci();
+function ponudeZaGrupu(grupa, lanci = dozvoljeniLanci()) {
+  const kljuc = grupa + "|" + [...lanci].join(",");
+  if (ponudeCache.has(kljuc)) return ponudeCache.get(kljuc);
   const ponude = [];
   for (const i of pogoci(grupa)) {
     const cijene = podaci.proizvodi[i][5];
@@ -205,7 +207,7 @@ function ponudeZaGrupu(grupa) {
     if (najjeftinija) ponude.push(najjeftinija);
   }
   ponude.sort(usporedba(jediniceGrupe(grupa)));
-  ponudeCache.set(grupa, ponude);
+  ponudeCache.set(kljuc, ponude);
   return ponude;
 }
 
@@ -229,9 +231,11 @@ function najboljePoLancu(grupa, lanci, trazenaJedinica = null) {
   return { najbolje, usporedi };
 }
 
-function promijeniPostavke() {
+// Pregled jedne trgovine zadržava referentni odabir; promjena dopuštenih trgovina ga briše.
+function promijeniPostavke(zadrziReferencu = false) {
   ponudeCache.clear();
-  stanje.odabir = {};
+  stanje.odabir = zadrziReferencu && !stanje.jedna ? { ...stanje.odabirSvi } : {};
+  if (!zadrziReferencu) stanje.odabirSvi = {};
   spremi();
   prikazi();
 }
@@ -417,11 +421,24 @@ function prikaziPopis() {
 
 // Količina na popisu uvijek označava broj cijelih pakiranja.
 // Broj komada unutar pakiranja koristi se samo za jediničnu cijenu.
+// Broj pakiranja prikazane ponude. U pregledu jedne trgovine to su cijela pakiranja za barem
+// referentnu količinu iz pregleda svih trgovina, kako bi iznos odgovarao usporedbi trgovina.
 function brojPakiranja(stavka, p) {
-  return stavka.kom;
+  if (!stanje.jedna || !imaJedinicnu(p)) return stavka.kom;
+  const ref = referentnaPonuda(stavka.naziv);
+  if (!ref || !imaJedinicnu(ref) || ref.jedinica !== p.jedinica) return stavka.kom;
+  return Math.ceil(podaci.proizvodi[ref.i][2] * stavka.kom / podaci.proizvodi[p.i][2] - 1e-9);
 }
 
-// Sve trgovine uspoređuju istu fizičku količinu trenutno odabranih artikala.
+// Referentni artikl uvijek dolazi iz pregleda svih dopuštenih trgovina, pa odabir
+// jedne trgovine ne mijenja traženu fizičku količinu.
+function referentnaPonuda(grupa) {
+  const sve = ponudeZaGrupu(grupa, sviLanci());
+  const rb = stanje.jedna ? stanje.odabirSvi[grupa] : stanje.odabir[grupa];
+  return sve[(rb || 0) % sve.length];
+}
+
+// Sve trgovine uspoređuju istu fizičku količinu referentnih artikala.
 // Količina = broj odabranih pakiranja × sadržaj pakiranja; ne zaokružuje se za usporedbu.
 function usporedbaKosarice() {
   const lanci = sviLanci();
@@ -430,10 +447,9 @@ function usporedbaKosarice() {
   let sveMijesanoIma = true;
   const jedinice = [];
   for (const stavka of stanje.popis) {
-    const prikazane = ponudeZaGrupu(stavka.naziv);
-    const odabrana = prikazane[(stanje.odabir[stavka.naziv] || 0) % prikazane.length];
+    const odabrana = referentnaPonuda(stavka.naziv);
     const kolicina = odabrana && imaJedinicnu(odabrana)
-      ? podaci.proizvodi[odabrana.i][2] * brojPakiranja(stavka, odabrana) : 0;
+      ? podaci.proizvodi[odabrana.i][2] * stavka.kom : 0;
     const { najbolje, usporedi } = kolicina > 0
       ? najboljePoLancu(stavka.naziv, lanci, odabrana.jedinica)
       : { najbolje: new Map(), usporedi: () => 0 };
@@ -617,8 +633,9 @@ function prikaziJednuTrgovinu() {
     const ime = podaci.lanci[l];
     const li = document.createElement("li");
     const b = gumb("", "trgovina-red" + (stanje.jedna === ime ? " odabrana" : ""), () => {
+      if (!stanje.jedna) stanje.odabirSvi = { ...stanje.odabir };
       stanje.jedna = stanje.jedna === ime ? null : ime;
-      promijeniPostavke();
+      promijeniPostavke(true);
       window.scrollTo(0, 0);
     });
     const lijevo = document.createElement("span");
@@ -647,6 +664,7 @@ function prikaziJednuTrgovinu() {
 function promijeni(grupa, smjer) {
   const n = ponudeZaGrupu(grupa).length;
   stanje.odabir[grupa] = ((stanje.odabir[grupa] || 0) + smjer + n) % n;
+  if (!stanje.jedna) stanje.odabirSvi[grupa] = stanje.odabir[grupa];
   spremi();
   prikaziRezultate();
 }
@@ -723,7 +741,7 @@ $("rucni-unos").onsubmit = (e) => {
 };
 $("samo-trgovina-makni").onclick = () => {
   stanje.jedna = null;
-  promijeniPostavke();
+  promijeniPostavke(true);
 };
 
 prikaziPostavke();

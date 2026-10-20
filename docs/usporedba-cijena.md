@@ -12,3 +12,18 @@ Provjere: node tests/kosarica.cjs; node tests/skupine.cjs; node --check site/apl
 
 ## Dopuna nakon korisnikove provjere — 20.10.2026.
 Prethodna fiksna usporedba po jednoj osnovnoj jedinici nije odgovarala očekivanju. Sve trgovine sada dobivaju stvarnu referentnu količinu trenutno prikazanog odabranog artikla: broj pakiranja puta sadržaj. Dva mlijeka od litre znače 2 l u svakoj trgovini, odnosno deset pakiranja po 200 ml. Referentna osnovna jedinica također se uzima iz odabranog proizvoda. Nepotpune košarice nemaju usporedni novčani zbroj. Jedinična cijena i dalje određuje izbor proizvoda; ukupna košarica uvažava stvarne odabrane količine. Za pakiranja koja ne daju točnu količinu, posebno se prikazuje cijena cijelih pakiranja za barem traženu količinu.
+
+## Ispravak: odabir jedne trgovine mijenjao je referentnu količinu — 20.10.2026.
+Uzrok (reproducirano): referentna količina uzimala se iz trenutno prikazanog popisa ponuda, a on se u pregledu jedne trgovine sužava na tu trgovinu. Ako ta trgovina ima drugo pakiranje (npr. 100 ml umjesto 1 l), usporedba se tiho prebacivala s 1 l na 0,1 l, a glavni iznos zbrajao je jedno malo pakiranje. Razlika između mješovite košarice i jedne trgovine tako je mogla biti i desetak puta.
+
+Namjeravano ponašanje (nepromijenjeno značenje količine: broj pakiranja × sadržaj odabranog artikla):
+- Referentni artikl uvijek dolazi iz pregleda svih dopuštenih trgovina. Ulazak u jednu trgovinu i izlazak iz nje ne mijenjaju ga; listanje proizvoda unutar jedne trgovine ne mijenja referencu.
+- U pregledu jedne trgovine kartica i glavni iznos prikazuju cijela pakiranja te trgovine za barem referentnu količinu (npr. 10 × 100 ml za 1 l), isto kao redak te trgovine u usporedbi.
+- Promjena dopuštenih trgovina (uključivanje/isključivanje) vraća referencu na najpovoljniju ponudu.
+
+Provjere: node tests/kosarica.cjs (novi regresijski slučaj za različita pakiranja po trgovinama pada na starom kodu), node tests/skupine.cjs, node tests/glasovni-unos.cjs, Playwright sa sintetičkim cjenikom na 320/390/1280 px bez JS grešaka i vodoravnog prelijevanja.
+
+## Uvoz količina: pakiranje iza količine — 20.10.2026.
+Nazivi poput „Jogurt 125 g x 4” ili „Voda 0,5 L x 6” prije su se čitali kao jedno pakiranje (125 g), pa je cijena po kg bila četiri puta previsoka. Sada se prepoznaju kao 500 g odnosno 3 l, kao i postojeći oblik „6x0,5 l”. Provjera: python3 tests/kolicine.py.
+
+Nije provjereno na produkcijskom cjeniku: iz ovog okruženja nisu dostupni github.io ni cijene.dev, pa broj zahvaćenih proizvoda, svježina, duplikati i greške uvoza nisu izmjereni. Poznati 310 g -> 31 kg nije reproduciran na samom parseru; vjerojatno dolazi iz izvornog zapisa količine ili dopune.

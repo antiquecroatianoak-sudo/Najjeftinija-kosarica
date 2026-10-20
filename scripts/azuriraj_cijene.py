@@ -63,6 +63,8 @@ BROJ = r"(\d+(?:[.,]\d+)?)"
 JED = r"(mg|g|gr|dag|kg|ml|cl|dl|l|lit|litra|ltr|kom|komad|kos|par|pak|kut)\b\.?"
 # "6x0,5 l", "4 x 125 g"
 RE_VISE = re.compile(rf"(\d+)\s*[x×*]\s*{BROJ}\s*{JED}", re.I)
+# "125 g x 4", "0,5 l x 6"
+RE_VISE_IZA = re.compile(rf"{BROJ}\s*{JED}\s*[x×*]\s*(\d+)(?![.,]?\d)", re.I)
 # "500 g", "1,5L"
 RE_JEDNO = re.compile(rf"{BROJ}\s*{JED}", re.I)
 
@@ -134,12 +136,15 @@ def _u_osnovnu(iznos: float, jedinica: str) -> tuple[float, str] | None:
 
 def iz_teksta(tekst: str) -> tuple[float, str] | None:
     """Traži količinu zapisanu u tekstu, npr. "Mlijeko 2,8% 1 l" ili "6x0,5 l"."""
-    m = RE_VISE.search(tekst)
-    if m:
-        komada = int(m.group(1))
-        jedno = _u_osnovnu(float(m.group(2).replace(",", ".")), m.group(3))
-        if jedno and komada > 0:
-            return _u_osnovnu(komada * jedno[0], jedno[1])
+    pakiranja = []
+    if m := RE_VISE.search(tekst):
+        pakiranja.append((m.group(1), m.group(2), m.group(3)))
+    if m := RE_VISE_IZA.search(tekst):
+        pakiranja.append((m.group(3), m.group(1), m.group(2)))
+    for komada, iznos, jed in pakiranja:
+        jedno = _u_osnovnu(float(iznos.replace(",", ".")), jed)
+        if jedno and int(komada) > 0:
+            return _u_osnovnu(int(komada) * jedno[0], jedno[1])
     for m in RE_JEDNO.finditer(tekst):
         rezultat = _u_osnovnu(float(m.group(1).replace(",", ".")), m.group(2))
         if rezultat:

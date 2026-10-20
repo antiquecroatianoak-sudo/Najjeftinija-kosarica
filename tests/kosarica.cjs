@@ -57,5 +57,43 @@ stanje.odabir.Mlijeko = 1;
 assert(usporedbaKosarice().jedinice[0].includes('0,6 l'));
 stanje.iskljuceni = ['A', 'B', 'C']; ponudeCache.clear();
 assert.equal(usporedbaKosarice().sveMijesanoIma, false);
+prikazi = prikaziRezultate = () => {}; // UI rendering is not under test here
+// Regression: browsing one chain must not change the reference quantity
+// when chains sell the same group in different package volumes.
+podaci = {lanci: ['A', 'B'], proizvodi: [
+ ['Mlijeko 1 l', '1 l', 1, 'l', 0, [0, 1]],
+ ['Mlijeko 100 ml', '100 ml', 0.1, 'l', 0, [1, 0.2]],
+]};
+rijeci = podaci.proizvodi.map(p => normaliziraj(p[0]).split(' '));
+pogociCache.clear(); ponudeCache.clear();
+stanje.iskljuceni = []; stanje.jedna = null; stanje.odabir = {}; stanje.odabirSvi = {};
+stanje.popis = [{naziv: 'Mlijeko', kom: 1}];
+const allChains = usporedbaKosarice();
+assert.deepEqual([...allChains.jedinice], ['Mlijeko: 1 l']);
+assert.equal(allChains.najboljeMijesano, 1);
+assert.equal(allChains.zbroj.get(1).ukupno, 2, 'ten 100 ml packs in B supply the litre');
+stanje.jedna = 'B'; promijeniPostavke(true);
+assert.equal(ponudeZaGrupu('Mlijeko')[0].lanac, 1, 'list still shows only chain B');
+const oneChain = usporedbaKosarice();
+assert.deepEqual([...oneChain.jedinice], ['Mlijeko: 1 l'], 'chain B view keeps one litre');
+assert.equal(oneChain.najboljeMijesano, 1);
+assert.equal(oneChain.zbroj.get(1).usporedno, 2);
+assert.equal(oneChain.zbroj.get(1).ukupno, 2);
+assert.equal(brojPakiranja(stanje.popis[0], ponudeZaGrupu('Mlijeko')[0]), 10, 'card in chain B buys ten 100 ml packs for the litre');
+stanje.popis[0].kom = 3;
+assert.deepEqual([...usporedbaKosarice().jedinice], ['Mlijeko: 3 l'], 'quantity changes still apply in one-chain view');
+// A chosen alternative from the all-chains view survives entering and leaving one chain.
+stanje.popis[0].kom = 1; stanje.jedna = null; promijeniPostavke(true);
+promijeni('Mlijeko', +1);
+assert(usporedbaKosarice().jedinice[0].includes('0,1 l'));
+stanje.odabirSvi = {...stanje.odabir}; stanje.jedna = 'A'; promijeniPostavke(true);
+assert(usporedbaKosarice().jedinice[0].includes('0,1 l'), 'reference kept in chain A view');
+promijeni('Mlijeko', +1);
+assert(usporedbaKosarice().jedinice[0].includes('0,1 l'), 'browsing inside one chain does not move the reference');
+stanje.jedna = null; promijeniPostavke(true);
+assert.equal(stanje.odabir.Mlijeko, 1, 'leaving one chain restores the all-chains choice');
+// Changing allowed chains resets the reference to the cheapest offer.
+stanje.iskljuceni = ['B']; promijeniPostavke();
+assert.deepEqual([...usporedbaKosarice().jedinice], ['Mlijeko: 1 l']);
 `, context);
 console.log('BASKET TESTS PASS: normalized units, unsorted prices, package totals, missing items, filters');
