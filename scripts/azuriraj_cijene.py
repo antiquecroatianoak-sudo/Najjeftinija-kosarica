@@ -176,6 +176,24 @@ def mjera(kolicina: str, jedinica: str, naziv: str = "") -> tuple[float, str] | 
     return rezultat
 
 
+def uskladi_s_nazivom(rezultat: tuple[float, str] | None, naziv: str,
+                      potvrde: list | None = None) -> tuple[float, str] | None:
+    """
+    Polje količine ili dopuna ponekad imaju pogrešan decimalni red ("KRUH 310 g" zapisan kao 31 kg).
+    Naziv vrijedi samo ako navodi količinu iste jedinice, razlika je točno 10, 100 ili 1000 puta
+    I neki drugi lanac za isti barkod daje baš količinu iz naziva. Bez te potvrde razlika može biti
+    valjano pakiranje (npr. 10 kapsula po 5,5 g = 55 g), pa ostaje kako jest.
+    """
+    iz_naziva = iz_teksta(naziv or "")
+    if not rezultat or not iz_naziva or rezultat[1] != iz_naziva[1] or rezultat[1] == "kom":
+        return rezultat
+    omjer = max(rezultat[0], iz_naziva[0]) / min(rezultat[0], iz_naziva[0])
+    if not any(abs(omjer - f) < 1e-6 * f for f in (10, 100, 1000)):
+        return rezultat
+    potvrdeno = any(m and m[1] == iz_naziva[1] and abs(m[0] - iz_naziva[0]) < 1e-9 for m in potvrde or [])
+    return iz_naziva if potvrdeno else rezultat
+
+
 def opis_mjere(iznos: float, jedinica: str) -> str:
     if jedinica == "kg" and iznos < 1:
         tekst, jedinica = f"{iznos * 1000:g}", "g"
@@ -237,7 +255,7 @@ def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
                 kljuc = barkod or f"{lanac}:{pid}"
                 zapis = svi.get(kljuc)
                 if zapis is None:
-                    zapis = svi[kljuc] = {"cijene": {}, "mjera": None, "najniza": None}
+                    zapis = svi[kljuc] = {"cijene": {}, "mjera": None, "najniza": None, "kandidati": []}
                 stara = zapis["cijene"].get(lanac_idx)
                 if stara is None or cijena < stara:
                     zapis["cijene"][lanac_idx] = cijena
@@ -246,16 +264,17 @@ def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
                     zapis["najniza"] = cijena
                     zapis["naziv"] = p["name"].strip()
                     zapis["marka"] = (p.get("brand") or "").strip()
+                # Količina svakog lanca služi kao potvrda pri provjeri decimalnog reda.
+                zapis["kandidati"].append(mjera(p.get("quantity", ""), p.get("unit", ""), p["name"]))
                 if zapis["mjera"] is None:
-                    zapis["mjera"] = dopuna.get(barkod) or mjera(
-                        p.get("quantity", ""), p.get("unit", ""), p["name"]
-                    )
+                    zapis["mjera"] = dopuna.get(barkod) or zapis["kandidati"][-1]
+                    zapis["naziv_mjere"] = p["name"]
             print(f"  {lanci[-1]}: {len(min_cijena)} proizvoda")
 
     proizvodi = []
     for z in svi.values():
         cijene = sorted(z["cijene"].items(), key=lambda lc: lc[1])
-        iznos, jedinica = z["mjera"] or (0, "")
+        iznos, jedinica = uskladi_s_nazivom(z["mjera"], z.get("naziv_mjere", ""), z["kandidati"]) or (0, "")
         proizvodi.append([
             z["naziv"],
             opis_mjere(iznos, jedinica) if jedinica else "",

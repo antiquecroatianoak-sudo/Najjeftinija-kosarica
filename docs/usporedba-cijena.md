@@ -28,6 +28,11 @@ Nazivi poput „Jogurt 125 g x 4” ili „Voda 0,5 L x 6” prije su se čitali
 
 Nije provjereno na produkcijskom cjeniku: iz ovog okruženja nisu dostupni github.io ni cijene.dev, pa broj zahvaćenih proizvoda, svježina, duplikati i greške uvoza nisu izmjereni. Poznati 310 g -> 31 kg nije reproduciran na samom parseru; vjerojatno dolazi iz izvornog zapisa količine ili dopune.
 
+## Pogrešan decimalni red količine (310 g -> 31 kg) — 20.10.2026.
+U objavljenom cjeniku 20.10.2026. „KRUH RUSTIKA 310 g PP MLINAR” imao je 31 kg. Parser naziva daje ispravno 310 g; pogrešan iznos dolazi iz polja količine lanca ili iz dopune po barkodu, koje imaju prednost pred nazivom. Sada: naziv vrijedi samo ako navodi količinu iste jedinice, polje/dopuna se razlikuje točno 10, 100 ili 1000 puta **i** neki lanac za isti barkod daje baš količinu iz naziva. Bez te potvrde vrijednost ostaje, jer razlika od 10× može biti valjano pakiranje (10 kapsula po 5,5 g = 55 g, 10 × 0,2 l). Ako proizvod ima samo jedan lanac s pogrešnim poljem, pogreška ostaje dok ne budu dostupni izvorni retci. Provjera: python3 tests/kolicine.py (i cijeli uvoz sa sintetičkom arhivom).
+
+Nije riješeno: „BILJEŽNICA A4/D SKY CITY EUROCOM” s 42 l — naziv ne navodi količinu, pa ovo pravilo ne pomaže. Vjerojatno izvor piše „42 L” u značenju listova; za siguran popravak potrebni su izvorni redak lanca i redak dopune.
+
 ## Istaknuti iznos trgovine = zbroj kartica te trgovine — 20.10.2026.
 Prije: redak trgovine istaknuto je prikazivao usporedni iznos (jedinična cijena × referentna količina, s decimalnim dijelovima pakiranja) i po njemu poredao trgovine, a nakon otvaranja trgovine kartice zbrajaju cijela pakiranja. Uz to, proizvodi bez usporedive količine nisu ulazili u iznos retka, ali jesu u kartice.
 Sada: istaknuti iznos i poredak trgovina su iznos cijelih pakiranja, izračunat istom ponudom i istim brojem pakiranja kao kartica kad se trgovina otvori (uključujući alternativu odabranu u toj trgovini). Pri otvaranju trgovine kartice zadano prikazuju iste ponude kao njezin redak. Usporedni iznos po jedinici ostaje kao sporedan redak s oznakom „usporedba, nije iznos na blagajni”. Poredak proizvoda po jediničnoj cijeni nije promijenjen. Nepotpune košarice i dalje su „Nepotpuno”, uz iznos za prikazane proizvode.
