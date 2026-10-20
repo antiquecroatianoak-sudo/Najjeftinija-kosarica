@@ -9,38 +9,48 @@
 
 .trgovine-usporedba>.savjet{grid-column:1/-1}.trgovina-red .lijevo{min-width:0;overflow-wrap:anywhere}
 
-/* Vedrija paleta: isti raspored, velike kontrole i čitljiv taman tekst. */
-:root{--cream:#fff8e8;--yellow:#ffda57;--coral:#f07857}
-body{background:radial-gradient(ellipse at 0 0,#fff0b5 0,transparent 42%),radial-gradient(ellipse at 100% 25%,#e5f4ec 0,transparent 40%),var(--cream)}
-.brend-ikona{background:#ffe18a;box-shadow:3px 3px 0 #f8c96c}
-.popis-panel{border-color:#f0dfb8;box-shadow:0 7px 0 #eacc9238}
-.oznaka{background:#ffe5bd;color:#694124}
-.sunce{color:#e96b47}
-.glasovni-gumb{background:linear-gradient(125deg,#ffe77e,#ffd34e);border-color:#e9bd36;box-shadow:0 4px 0 #e6b947}
-.glasovni-gumb.slusa{background:#ffb29f;border-color:#dc7359;box-shadow:0 4px 0 #dc7359}
-.mikrofon-krug{background:#fff9dd}
-input[type=text]{background:#fffcf4;border-color:#d4dfd5}
-.trgovine-panel{background:linear-gradient(115deg,#e4f4df,#e7f5f5);border-color:#c4dfcd}
-.lanci label{--tint:#d9efdf}
-.lanci label:nth-child(4n+2){--tint:#ffe2d3}
-.lanci label:nth-child(4n+3){--tint:#dcecfb}
-.lanci label:nth-child(4n){--tint:#fff0b9}
-.lanci label:has(input:checked){background:var(--tint);color:#243e36;border-color:#50836b;box-shadow:0 2px 0 #8bb39c40}
-.lanci input{accent-color:#17624c}
-.kartica:nth-child(4n+1):not(.kupljeno){background:#fffbec;border-color:#f2dfa4;border-left-color:#edbd49}
-.kartica:nth-child(4n+2):not(.kupljeno){background:#f1faf2;border-color:#cfe5d2;border-left-color:#7fbd97}
-.kartica:nth-child(4n+3):not(.kupljeno){background:#fff3ed;border-color:#f2d5c5;border-left-color:#f29575}
-.kartica:nth-child(4n):not(.kupljeno){background:#f0f7ff;border-color:#d2e2f3;border-left-color:#8fb9df}
-.kolicina-gumb{background:#e0efdf;border-color:#bcd6be}
-.ukloni{background:#ffe4d9;color:#873b2d}
-.sljedeci{background:#ffedb9;border-color:#e8cc83;color:#654b17}
-.sazetak{background:linear-gradient(115deg,#17624c,#22745d);box-shadow:0 4px 0 #124c3b}
-.jedna-trgovina{background:#fff9ed;border-color:#ecd8b6}
-.trgovina-red{background:#eef7eb;border-color:#c9dfc5}
-.trgovine-usporedba>li:nth-child(2n+1) .trgovina-red{background:#eef5ff;border-color:#cddff2}
-.trgovina-red.odabrana{border-color:var(--green);background:#def0df}
-.prazno{background:#fff4d6;border-color:#e7c87d}
-
-.trgovina-red .iznos{white-space:normal;text-align:right;font-size:20px;min-width:80px;max-width:45%}
-
-.glasovni-nacrt{margin:0 0 20px;padding:14px 18px;border:2px solid #edc95a;border-radius:16px;background:#fff4c7;color:#4c4329;overflow-wrap:anywhere}
+/* Topli narančasto-žuti tonovi s plavom. Mijenjaju se samo boje. */
+:root{--ink:#173552;--muted:#3e5267;--green:#1b4d7b;--cream:#f7d79e;--line:#c5a57b;--yellow:#ffd36a;--coral:#b84e28}
+body{background:linear-gradient(135deg,#eab574 0%,#f8dba3 38%,#b9d3eb 100%);min-height:100vh}
+.preskoci{background:linear-gradient(120deg,#e8b56e,#ffe0a2);color:#173552}
+.brend-ikona{background:linear-gradient(135deg,#ecaa3d,#ffdc79);box-shadow:3px 3px 0 #c38d39;color:#173f69}
+.popis-panel{background:linear-gradient(145deg,#efbc85 0%,#f9d39f 42%,#fbe1b3 100%);border-color:#d3a16a;box-shadow:0 7px 0 #af784b30}
+.oznaka{background:linear-gradient(130deg,#eba45e,#ffd18e);color:#563019}
+.sunce{color:#ae4827}
+.glasovni-gumb{background:linear-gradient(125deg,#efac34,#ffdb6c);color:#483217;border-color:#b98526;box-shadow:0 4px 0 #b98526}
+.glasovni-gumb.slusa{background:linear-gradient(125deg,#e87f4e,#ffc28a);color:#49291c;border-color:#b45c31;box-shadow:0 4px 0 #b45c31}
+.mikrofon-krug{background:linear-gradient(135deg,#efb746,#ffe49a)}
+input[type=text]{background:linear-gradient(120deg,#f1cd8a,#ffe5b6);border-color:#ae8959;color:#173552}
+input::placeholder{color:#4e5760}
+.dodaj-gumb{background:linear-gradient(125deg,#1b4c7d,#2e6a9e);color:#fff2d3;border-color:#19436c;border-bottom-color:#163d63}
+.trgovine-panel{background:linear-gradient(125deg,#a6c5e7,#d0e1ef);border-color:#779cbc}
+.lanci{scrollbar-color:#51799f #c4daec}
+.lanci-gumbi button,.savjet button{background:linear-gradient(130deg,#eebd78,#ffdb9b);color:#243f59;border-color:#a47d49}
+.lanci label{background:linear-gradient(135deg,#d6ba92,#f3d8af);color:#23415f;border-color:#7c8e9f}
+.lanci label:has(input:checked){background:linear-gradient(125deg,#204f7b,#2e6a9e);color:#fff2d3;border-color:#1a436a;box-shadow:0 2px 0 #355e8240}
+.lanci input{accent-color:#efb744}
+.kartica{background:linear-gradient(125deg,#eab67f,#f8dab0);border-color:#cda478}
+.kartica:nth-child(4n+1):not(.kupljeno){background:linear-gradient(125deg,#efc16f,#fbe0a1);border-color:#c29b4d;border-left-color:#bb7b24}
+.kartica:nth-child(4n+2):not(.kupljeno){background:linear-gradient(125deg,#a8c5e8,#d0e0f2);border-color:#7fa0c4;border-left-color:#356a9c}
+.kartica:nth-child(4n+3):not(.kupljeno){background:linear-gradient(125deg,#edac82,#fad4b1);border-color:#cb946e;border-left-color:#bd613e}
+.kartica:nth-child(4n):not(.kupljeno){background:linear-gradient(125deg,#b3ccdf,#d8e4ec);border-color:#86a7c1;border-left-color:#3d729c}
+.kartica.kupljeno{background:linear-gradient(125deg,#b4cad7,#d4dde0);border-color:#7999b0;border-left-color:#567f9c}
+.kvacica{background:linear-gradient(135deg,#eec68c,#ffe0ae);border-color:#6b849d;color:#fff2d3}
+.kupljeno .kvacica{background:linear-gradient(125deg,#20527f,#3c77a8);border-color:#234f75}
+.kolicina-gumb{background:linear-gradient(125deg,#a3bedc,#d2e1ee);border-color:#7895b2;color:#173f68}
+.ukloni{background:linear-gradient(125deg,#edb38c,#fbd3b3);color:#71351e;border-color:#c18d69}
+.naziv{color:#29465f}
+.trgovina{background:linear-gradient(125deg,#92b8d8,#c7dced);color:#153d61}
+.sljedeci,.natrag{background:linear-gradient(125deg,#eeb964,#ffdc99);border-color:#af8846;color:#513817}
+.sazetak{background:linear-gradient(125deg,#183e6d,#306f9f);color:#fff2d3;box-shadow:0 4px 0 #14365c}
+.po-trgovinama{color:#f5deb2}
+.upozorenje{background:linear-gradient(125deg,#eac073,#ffe0a2);color:#503616}
+.samo-trgovina{background:linear-gradient(125deg,#a7c4df,#d4e1eb);border-color:#7b9bbb}
+.samo-trgovina button{background:linear-gradient(125deg,#e9b86f,#ffda97);color:#23435f;border-color:#a47d49}
+.jedna-trgovina{background:linear-gradient(125deg,#a5c4e3,#d0e0ee);border-color:#7e9fbe}
+.trgovina-red,.trgovine-usporedba>li:nth-child(2n+1) .trgovina-red{background:linear-gradient(125deg,#b0cce3,#d6e3ed);border-color:#7e9fbd;color:#173552}
+.trgovina-red.odabrana{background:linear-gradient(125deg,#8fb5d7,#c2d9eb);border-color:#225b91}
+.trgovina-red .iznos{white-space:normal;text-align:right;font-size:20px;min-width:80px;max-width:45%;color:#18496f}
+.prazno{background:linear-gradient(125deg,#edbe71,#ffdfa2);border-color:#b98c42}
+.stanje-podataka button{background:linear-gradient(125deg,#e9ae78,#ffd0a1);color:#623518;border-color:#af7e4d}
+.glasovni-nacrt{margin:0 0 20px;padding:14px 18px;border:2px solid #b58a3d;border-radius:16px;background:linear-gradient(125deg,#eac16d,#ffe0a1);color:#483318;overflow-wrap:anywhere}
