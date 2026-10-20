@@ -1,0 +1,50 @@
+name: Claude task bridge
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: claude-task-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    if: >-
+      github.event.issue.pull_request == null &&
+      ((github.event_name == 'issues' &&
+        startsWith(github.event.issue.body, '@claude')) ||
+       (github.event_name == 'issue_comment' &&
+        startsWith(github.event.comment.body, '@claude')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Check Claude authentication
+        env:
+          CLAUDE_AUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$CLAUDE_AUTH" ]; then
+            echo "::error::Configure CLAUDE_CODE_OAUTH_TOKEN in Actions secrets before dispatching tasks."
+            exit 1
+          fi
+      - name: Run Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --max-turns 30
+            --append-system-prompt "Read repository instructions and relevant project documentation first. Preserve unrelated work. Implement only the requested task, run appropriate checks, and report actual results. Put changes on a task branch for review; do not merge or deploy."
