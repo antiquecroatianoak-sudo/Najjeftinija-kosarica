@@ -769,13 +769,38 @@ function promijeni(grupa, smjer) {
 }
 
 // ---------- Postavke ----------
+// Izričit korisnički prioritet za hrvatsko tržište; nije rang po broju poslovnica.
+const REDOSLIJED_LANACA = ["Konzum", "Lidl", "Plodine", "Kaufland", "NTL", "Eurospin", "Spar"];
+// Posljednji dostupni objavljeni brojevi; izvori i ograničenja u docs/redoslijed-lanaca.md.
+// null/odsutan broj nije nula: takav lanac ostaje dostupan na kraju.
+const BROJ_POSLOVNICA = {
+  "Studenac": 1165, "Trgovina Krk": 417, "Tommy": 244, "Boso": 230,
+  "dm": 180, "Ribola": 98, "Trgocentar": 90, "Stridon": 43,
+  "Djelo Vodice": 33, "KTC": 30, "Roto": 26, "Jadranka": 20,
+  "Žabac": 8, "Vrutak": 8, "Dukat": 6, "Bure": 3, "Branka": 2,
+};
+function nazivLanca(ime) { return ime === "Spar" ? "SPAR / INTERSPAR" : ime; }
+function redoslijedLanaca(lanci) {
+  const prioritet = (ime) => {
+    const i = REDOSLIJED_LANACA.indexOf(ime);
+    return i < 0 ? REDOSLIJED_LANACA.length : i;
+  };
+  // Sortira se kopija: izvorni indeksi cijena ostaju nepromijenjeni.
+  return [...lanci].sort((a, b) => {
+    const red = prioritet(a) - prioritet(b);
+    if (red || prioritet(a) < REDOSLIJED_LANACA.length) return red;
+    const brojA = BROJ_POSLOVNICA[a], brojB = BROJ_POSLOVNICA[b];
+    if (brojA === undefined || brojB === undefined) return Number(brojA === undefined) - Number(brojB === undefined);
+    return brojB - brojA;
+  });
+}
 function prikaziPostavke() {
   for (const r of document.querySelectorAll('input[name="nacin"]')) r.checked = r.value === stanje.nacin;
   const div = $("lanci");
   div.innerHTML = "";
   if (!podaci) return;
   const iskljuceni = new Set(stanje.iskljuceni);
-  [...podaci.lanci].sort((a, b) => a.localeCompare(b, "hr")).forEach((ime) => {
+  redoslijedLanaca(podaci.lanci).forEach((ime) => {
     const label = document.createElement("label");
     const cb = document.createElement("input");
     cb.type = "checkbox";
@@ -787,7 +812,7 @@ function prikaziPostavke() {
       if (!cb.checked && stanje.jedna === ime) stanje.jedna = null;
       promijeniPostavke();
     };
-    label.append(cb, " " + ime);
+    label.append(cb, " " + nazivLanca(ime));
     div.appendChild(label);
   });
 }
