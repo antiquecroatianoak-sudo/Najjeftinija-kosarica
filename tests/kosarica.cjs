@@ -3,7 +3,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 let source = fs.readFileSync(require('node:path').join(__dirname, '../site/aplikacija.js'), 'utf8');
 source = source.slice(0, source.lastIndexOf('\nfor (const r of document.querySelectorAll'));
-const context = vm.createContext({assert, window: {}, localStorage: {getItem: () => null}, document: {}});
+const context = vm.createContext({assert, window: {}, localStorage: {getItem: () => null}, document: {addEventListener: () => {}}});
 vm.runInContext(source + `
 podaci = {lanci: ['A', 'B', 'C'], proizvodi: [
  ['Mlijeko 200 ml', '200 ml', 0.2, 'l', 0, [0, 0.5, 1, 0.6]],

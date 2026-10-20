@@ -305,34 +305,130 @@ function promijeniKolicinu(i, za) {
 // ---------- Prepoznavanje govora ----------
 const Prepoznavanje = window.SpeechRecognition || window.webkitSpeechRecognition;
 let slusac = null;
+let glasovniUnos = null;
+
+// Granice artikala prepoznaj iz poznatih naziva, a višerječne nazive zadrži.
+// Neprepoznati dijelovi ostaju u tekstu; korisnik ih može urediti na popisu.
+function razdvojiGlasovniPopis(tekst) {
+  const poznati = [
+    ...(typeof Skupine !== "undefined" ? Skupine.definicije.map((d) => d.naziv) : []),
+    "sok", "crno vino", "bijelo vino", "crveno vino", "svježe mlijeko", "trajno mlijeko",
+    "bijeli kruh", "crni kruh", "polubijeli kruh", "maslinovo ulje", "suncokretovo ulje",
+  ].map((s) => normaliziraj(s).split(" ").map(korijen)).sort((a, b) => b.length - a.length);
+  return tekst.split(/[,;.!?]|\s+(?:i|pa|te|onda)\s+/i).flatMap((dio) => {
+    const rijeci = dio.trim().split(/\s+/).filter(Boolean);
+    const norm = rijeci.map((r) => normaliziraj(r));
+    const granice = [0];
+    for (let i = 0; i < rijeci.length; i++) {
+      const hit = poznati.find((p) => p.every((k, j) => norm[i+j]
+        && norm[i+j].startsWith(k) && NASTAVCI.has(norm[i+j].slice(k.length))));
+      if (!hit || (i && PRIJEDLOZI.has(norm[i-1]))) continue;
+      let pocetak = i;
+      // Količina pripada sljedećem artiklu, npr. „kruh dva mlijeka”.
+      if (i && (/^\d+$/.test(norm[i-1]) || BROJEVI[norm[i-1]])) pocetak--;
+      if (pocetak > granice[granice.length - 1]) granice.push(pocetak);
+      i += hit.length - 1;
+    }
+    return granice.map((p, j) => rijeci.slice(p, granice[j+1] ?? rijeci.length).join(" ")).filter(Boolean);
+  });
+}
+
+function prikaziGlasovniUnos() {
+  const aktivan = !!glasovniUnos;
+  $("mikrofon").classList.toggle("slusa", aktivan);
+  $("mikrofon").setAttribute("aria-pressed", String(aktivan));
+  $("mikrofon-tekst").textContent = aktivan
+    ? "Nabrajaj… dodirni za kraj" : "Reci što trebaš kupiti";
+  const nacrt = $("glasovni-nacrt");
+  nacrt.hidden = !aktivan;
+  nacrt.textContent = aktivan
+    ? [glasovniUnos.tekst, glasovniUnos.trenutni].filter(Boolean).join(" ") || "Slušam. Možeš nabrojiti više proizvoda."
+    : "";
+}
+
+function dovrsiGlasovniUnos(sesija) {
+  if (glasovniUnos !== sesija) return;
+  clearTimeout(sesija.timer);
+  const tekst = [sesija.tekst, sesija.trenutni].filter(Boolean).join(" ").trim();
+  glasovniUnos = null;
+  slusac = null;
+  prikaziGlasovniUnos();
+  if (tekst) dodajIzTeksta(razdvojiGlasovniPopis(tekst).join(", "));
+}
+
+function noviSlusac(sesija) {
+  if (glasovniUnos !== sesija || !sesija.aktivan) return;
+  const novi = new Prepoznavanje();
+  slusac = novi;
+  novi.lang = "hr-HR";
+  novi.continuous = true;
+  novi.interimResults = true;
+  novi.maxAlternatives = 1;
+  // Rezultati se mogu ponovno poslati; cijeli trenutni niz zamjenjuje prethodni.
+  const prije = sesija.tekst;
+  novi.onresult = (e) => {
+    if (glasovniUnos !== sesija) return;
+    const zavrseni = [], privremeni = [];
+    for (let i = 0; i < e.results.length; i++) {
+      const r = e.results[i];
+      (r.isFinal ? zavrseni : privremeni).push(r[0].transcript);
+    }
+    sesija.tekst = [prije, ...zavrseni].filter(Boolean).join(" ");
+    sesija.trenutni = privremeni.join(" ");
+    prikaziGlasovniUnos();
+  };
+  novi.onerror = (e) => {
+    if (glasovniUnos !== sesija || e.error === "no-speech") return;
+    sesija.aktivan = false;
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      alert("Dopusti pristup mikrofonu u postavkama preglednika.");
+    } else if (e.error !== "aborted") {
+      alert("Glasovni unos je prekinut. Prepoznate stavke ostaju sačuvane.");
+    }
+    dovrsiGlasovniUnos(sesija);
+  };
+  novi.onend = () => {
+    if (glasovniUnos !== sesija) return;
+    slusac = null;
+    if (!sesija.aktivan) { dovrsiGlasovniUnos(sesija); return; }
+    // Mobilni preglednik može završiti prepoznavanje nakon pauze.
+    if (sesija.trenutni) {
+      sesija.tekst = [sesija.tekst, sesija.trenutni].filter(Boolean).join(" ");
+      sesija.trenutni = "";
+    }
+    sesija.timer = setTimeout(() => noviSlusac(sesija), 200);
+  };
+  try { novi.start(); } catch (e) {
+    sesija.aktivan = false;
+    dovrsiGlasovniUnos(sesija);
+    alert("Glasovni unos nije dostupan. Pokušaj ponovno ili upiši proizvode.");
+  }
+}
 
 function pokreniSlusanje() {
+  if (glasovniUnos) {
+    const sesija = glasovniUnos;
+    sesija.aktivan = false;
+    clearTimeout(sesija.timer);
+    if (slusac) {
+      $("mikrofon-tekst").textContent = "Dovršavam popis…";
+      try { slusac.stop(); } catch (e) { dovrsiGlasovniUnos(sesija); }
+    } else dovrsiGlasovniUnos(sesija);
+    return;
+  }
   if (!Prepoznavanje) {
     alert("Ovaj preglednik ne podržava glasovni unos. Otvori aplikaciju u Google Chromeu ili upiši proizvode rukom.");
     return;
   }
-  if (slusac) { slusac.stop(); return; }
-  slusac = new Prepoznavanje();
-  slusac.lang = "hr-HR";
-  slusac.interimResults = false;
-  slusac.maxAlternatives = 1;
-  slusac.onresult = (e) => dodajIzTeksta(e.results[0][0].transcript);
-  slusac.onerror = (e) => {
-    if (e.error === "not-allowed") alert("Dopusti pristup mikrofonu u postavkama preglednika.");
-  };
-  slusac.onend = () => {
-    slusac = null;
-    $("mikrofon").classList.remove("slusa");
-    $("mikrofon-tekst").textContent = "Reci što trebaš kupiti";
-  };
-  try { slusac.start(); } catch (e) {
-    slusac = null;
-    alert("Glasovni unos nije dostupan. Pokušaj ponovno ili upiši proizvode.");
-    return;
-  }
-  $("mikrofon").classList.add("slusa");
-  $("mikrofon-tekst").textContent = "Slušam… (dodirni za kraj)";
+  glasovniUnos = { aktivan: true, tekst: "", trenutni: "", timer: null };
+  prikaziGlasovniUnos();
+  noviSlusac(glasovniUnos);
 }
+
+// Ne nastavljaj mikrofon u pozadini kada korisnik ode iz aplikacije.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && glasovniUnos && glasovniUnos.aktivan) pokreniSlusanje();
+});
 
 // ---------- Prikaz ----------
 function gumb(tekst, klasa, naKlik, oznaka) {
