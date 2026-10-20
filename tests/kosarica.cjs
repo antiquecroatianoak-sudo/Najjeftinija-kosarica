@@ -95,5 +95,51 @@ assert.equal(stanje.odabir.Mlijeko, 1, 'leaving one chain restores the all-chain
 // Changing allowed chains resets the reference to the cheapest offer.
 stanje.iskljuceni = ['B']; promijeniPostavke();
 assert.deepEqual([...usporedbaKosarice().jedinice], ['Mlijeko: 1 l']);
+// Regression: the prominent chain amount equals the sum of that chain's cards once opened.
+podaci = {lanci: ['A', 'B', 'C'], proizvodi: [
+ ['Mlijeko 1 l', '1 l', 1, 'l', 0, [0, 1, 1, 1.5]],
+ ['Mlijeko 200 ml', '200 ml', 0.2, 'l', 0, [1, 0.25, 2, 0.4]],
+ ['Kruh 500 g', '500 g', 0.5, 'kg', 0, [0, 1.2, 2, 1]],
+ ['Kruh bez mase', '', 0, '', 0, [1, 0.9]],
+ ['Jaja 10 kom', '10 kom', 10, 'kom', 0, [0, 2, 1, 2.4, 2, 2.2]],
+]};
+rijeci = podaci.proizvodi.map(p => normaliziraj(p[0]).split(' '));
+pogociCache.clear(); ponudeCache.clear();
+stanje.iskljuceni = []; stanje.jedna = null; stanje.odabir = {}; stanje.odabirSvi = {};
+stanje.popis = [{naziv: 'Mlijeko', kom: 2}, {naziv: 'Kruh', kom: 1}, {naziv: 'Jaja', kom: 1}];
+// Same two lines prikaziRezultate uses for each card.
+const zbrojKartica = () => stanje.popis.reduce((sum, st) => {
+  const ponude = ponudeZaGrupu(st.naziv);
+  if (!ponude.length) return sum;
+  const p = ponude[(stanje.odabir[st.naziv] || 0) % ponude.length];
+  return sum + p.cijena * brojPakiranja(st, p);
+}, 0);
+const blizu = (a, b, poruka) => assert(Math.abs(a - b) < 1e-9, poruka + ': ' + a + ' != ' + b);
+const redovi = usporedbaKosarice().zbroj;
+for (const [l, ime] of ['A', 'B', 'C'].entries()) {
+  stanje.jedna = ime; promijeniPostavke(true);
+  blizu(redovi.get(l).ukupno, zbrojKartica(), 'chain ' + ime + ' row equals its opened cards');
+  stanje.jedna = null; promijeniPostavke(true);
+}
+assert.equal(redovi.get(1).ukupno, 10 * 0.25 + 0.9 + 2.4, 'B: ten 200 ml packs, unranked bread, eggs');
+assert.deepEqual([...redovi.get(1).nema], ['Kruh'], 'bread without mass is not comparable in B');
+assert.deepEqual([...redovi.get(1).neusporedivo], ['Kruh'], 'but its price still counts in the B checkout amount');
+assert(redovi.get(0).usporedno === redovi.get(0).ukupno, 'A sells exactly the reference packs');
+// A chosen alternative inside an opened chain moves that chain's row with the cards.
+stanje.jedna = 'B'; promijeniPostavke(true);
+promijeni('Mlijeko', +1);
+blizu(usporedbaKosarice().zbroj.get(1).ukupno, zbrojKartica(), 'B row follows the alternative chosen in B');
+assert.deepEqual([...usporedbaKosarice().jedinice].slice(0, 1), ['Mlijeko: 2 l'], 'reference quantity unchanged');
+// An alternative chosen in the all-chains view changes the reference for every chain row and card.
+stanje.jedna = null; promijeniPostavke(true);
+stanje.odabir = {Mlijeko: 1}; stanje.odabirSvi = {Mlijeko: 1};
+const alt = usporedbaKosarice();
+assert.deepEqual([...alt.jedinice].slice(0, 1), ['Mlijeko: 0,4 l']);
+for (const [l, ime] of ['A', 'B', 'C'].entries()) {
+  stanje.jedna = ime; promijeniPostavke(true);
+  blizu(alt.zbroj.get(l).ukupno, zbrojKartica(), 'chain ' + ime + ' row equals its cards after an all-chains alternative');
+  stanje.jedna = null; promijeniPostavke(true);
+}
+assert.equal(alt.zbroj.get(0).ukupno, 1 + 1.2 + 2, 'A buys one whole litre for 0,4 l');
 `, context);
 console.log('BASKET TESTS PASS: normalized units, unsorted prices, package totals, missing items, filters');
