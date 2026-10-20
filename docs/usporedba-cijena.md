@@ -27,3 +27,8 @@ Provjere: node tests/kosarica.cjs (novi regresijski slučaj za različita pakira
 Nazivi poput „Jogurt 125 g x 4” ili „Voda 0,5 L x 6” prije su se čitali kao jedno pakiranje (125 g), pa je cijena po kg bila četiri puta previsoka. Sada se prepoznaju kao 500 g odnosno 3 l, kao i postojeći oblik „6x0,5 l”. Provjera: python3 tests/kolicine.py.
 
 Nije provjereno na produkcijskom cjeniku: iz ovog okruženja nisu dostupni github.io ni cijene.dev, pa broj zahvaćenih proizvoda, svježina, duplikati i greške uvoza nisu izmjereni. Poznati 310 g -> 31 kg nije reproduciran na samom parseru; vjerojatno dolazi iz izvornog zapisa količine ili dopune.
+
+## Pogrešan decimalni red količine (310 g -> 31 kg) — 20.10.2026.
+U objavljenom cjeniku 20.10.2026. „KRUH RUSTIKA 310 g PP MLINAR” imao je 31 kg. Parser naziva daje ispravno 310 g; pogrešan iznos dolazi iz polja količine lanca ili iz dopune po barkodu, koje imaju prednost pred nazivom. Sada: ako naziv izričito navodi količinu iste jedinice, a polje/dopuna se razlikuje točno 10, 100 ili 1000 puta, vrijedi naziv. Ostale razlike (npr. pakiranje 6 × 0,5 l, količina koju naziv ne navodi, druga jedinica) ostaju nepromijenjene. Provjera: python3 tests/kolicine.py (i cijeli uvoz sa sintetičkom arhivom).
+
+Nije riješeno: „BILJEŽNICA A4/D SKY CITY EUROCOM” s 42 l — naziv ne navodi količinu, pa ovo pravilo ne pomaže. Vjerojatno izvor piše „42 L” u značenju listova; za siguran popravak potrebni su izvorni redak lanca i redak dopune.

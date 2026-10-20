@@ -176,6 +176,21 @@ def mjera(kolicina: str, jedinica: str, naziv: str = "") -> tuple[float, str] | 
     return rezultat
 
 
+def uskladi_s_nazivom(rezultat: tuple[float, str] | None, naziv: str) -> tuple[float, str] | None:
+    """
+    Polje količine ili dopuna ponekad imaju pogrešan decimalni red ("KRUH 310 g" zapisan kao 31 kg).
+    Ako naziv izričito navodi količinu iste jedinice, a razlika je točno 10, 100 ili 1000 puta,
+    vrijedi naziv. Ostale razlike (npr. pakiranje 6 boca prema "0,5 l" u nazivu) ostaju kako jesu.
+    """
+    iz_naziva = iz_teksta(naziv or "")
+    if not rezultat or not iz_naziva or rezultat[1] != iz_naziva[1] or rezultat[1] == "kom":
+        return rezultat
+    omjer = max(rezultat[0], iz_naziva[0]) / min(rezultat[0], iz_naziva[0])
+    if any(abs(omjer - f) < 1e-6 * f for f in (10, 100, 1000)):
+        return iz_naziva
+    return rezultat
+
+
 def opis_mjere(iznos: float, jedinica: str) -> str:
     if jedinica == "kg" and iznos < 1:
         tekst, jedinica = f"{iznos * 1000:g}", "g"
@@ -247,9 +262,9 @@ def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
                     zapis["naziv"] = p["name"].strip()
                     zapis["marka"] = (p.get("brand") or "").strip()
                 if zapis["mjera"] is None:
-                    zapis["mjera"] = dopuna.get(barkod) or mjera(
+                    zapis["mjera"] = uskladi_s_nazivom(dopuna.get(barkod) or mjera(
                         p.get("quantity", ""), p.get("unit", ""), p["name"]
-                    )
+                    ), p["name"])
             print(f"  {lanci[-1]}: {len(min_cijena)} proizvoda")
 
     proizvodi = []
