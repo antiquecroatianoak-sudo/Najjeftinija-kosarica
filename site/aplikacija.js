@@ -340,9 +340,9 @@ function prikaziGlasovniUnos() {
   const aktivan = !!sesija;
   $("mikrofon").classList.toggle("slusa", !!sesija?.snima);
   $("mikrofon").setAttribute("aria-pressed", String(aktivan));
-  $("mikrofon-tekst").textContent = !aktivan ? "Reci što trebaš kupiti"
+  $("mikrofon-tekst").textContent = !aktivan ? "Dodaj na popis"
     : !sesija.aktivan ? "Dovršavam popis…"
-    : sesija.snima ? "Nabrajaj… dodirni za kraj" : "Pokrećem mikrofon… dodirni za odustajanje";
+    : sesija.snima ? "Završi narudžbu" : "Pokrećem mikrofon… dodirni za odustajanje";
   const nacrt = $("glasovni-nacrt");
   nacrt.hidden = !aktivan && !glasovnaPoruka;
   nacrt.textContent = aktivan
@@ -402,6 +402,7 @@ function noviSlusac(sesija) {
   novi.maxAlternatives = 1;
   const vrijedi = () => glasovniUnos === sesija && slusac === novi;
   const prije = sesija.tekst;
+  let snimljenZvuk = false;
   sesija.pokretanje = setTimeout(() => {
     if (vrijedi()) glasovniNeuspjeh(sesija, "Mikrofon se nije pokrenuo. Provjeri dozvolu mikrofona za ovu stranicu i preglednik.");
   }, 15000);
@@ -420,14 +421,16 @@ function noviSlusac(sesija) {
     if (!vrijedi()) return;
     clearTimeout(sesija.pokretanje);
     sesija.snima = true;
-    pratiRezultate();
+    snimljenZvuk = true;
+    clearTimeout(sesija.bezRezultata);
     prikaziGlasovniUnos();
   };
+  novi.onspeechstart = () => { if (vrijedi()) pratiRezultate(); };
   novi.onresult = (e) => {
     if (!vrijedi()) return;
     clearTimeout(sesija.pokretanje);
     sesija.prazniPokusaji = 0;
-    pratiRezultate();
+    clearTimeout(sesija.bezRezultata);
     const zavrseni = [], privremeni = [];
     for (let i = 0; i < e.results.length; i++) {
       const r = e.results[i];
@@ -463,7 +466,8 @@ function noviSlusac(sesija) {
       sesija.trenutni = "";
     }
     // Prekini petlju ako servis stalno završava bez ijednog novog rezultata.
-    sesija.prazniPokusaji = sesija.tekst === prije ? sesija.prazniPokusaji + 1 : 0;
+    // Potvrđena snimka bez govora znači običnu pauzu, ne kvar servisa.
+    sesija.prazniPokusaji = !snimljenZvuk && sesija.tekst === prije ? sesija.prazniPokusaji + 1 : 0;
     if (sesija.prazniPokusaji >= 2) {
       glasovniNeuspjeh(sesija, "Preglednik završava slušanje bez prepoznatog govora.");
       return;

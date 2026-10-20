@@ -30,7 +30,7 @@ assert.match(node('mikrofon-tekst').textContent,/Pokrećem/);
 instances[0].onstart();
 assert.match(node('mikrofon-tekst').textContent,/Pokrećem/,'service start is not microphone capture');
 instances[0].onaudiostart();
-assert.match(node('mikrofon-tekst').textContent,/Nabrajaj/);
+assert.match(node('mikrofon-tekst').textContent,/Završi narudžbu/);
 instances[0].result('kruh mlijeko sok od naranče crno vino',false);
 run('assert.equal(stanje.popis.length,0)');
 instances[0].result('kruh mlijeko sok od naranče crno vino');
@@ -70,6 +70,8 @@ assert.equal(run('stanje.popis.length'),count);
 assert.equal(timers.size,0);
 // Audio capture confirmed but no text: timeout, not an endless Listening label.
 run('pokreniSlusanje()');current=instances.at(-1);current.onaudiostart();
+assert.equal(timers.size,0,'silence after microphone capture must not finish the session');
+current.onspeechstart();
 [...timers.values()][0]();
 assert.equal(run('glasovniUnos'),null);
 assert.match(node('glasovni-nacrt').textContent,/nije vratilo tekst/);
@@ -97,3 +99,14 @@ assert(node('unos').focused);assert.match(node('glasovni-nacrt').textContent,/ti
 vm.runInContext('dodajIzTeksta(razdvojiGlasovniPopis("kruh mlijeko crno vino").join(", "))',unsupported);
 assert.equal(vm.runInContext('stanje.popis.length',unsupported),3);
 console.log('VOICE FAILURE PASS: start/audio/result watchdogs, late callbacks, missing end, bounded retries, error reasons, unsupported fallback');
+
+// Several normal audio pauses keep the user-controlled session open.
+run('pokreniSlusanje()');
+for(let pause=0;pause<4;pause++) {
+ current=instances.at(-1);current.onaudiostart();current.onerror({error:'no-speech'});current.onend();
+ assert.notEqual(run('glasovniUnos'),null);
+ const resume=[...timers.values()][0];timers.clear();resume();
+}
+current=instances.at(-1);current.result('rajčica');run('pokreniSlusanje()');current.onend();
+assert.equal(run('stanje.popis.at(-1).naziv'),'Rajčica');assert.equal(timers.size,0);
+console.log('PAUSE PASS: silence and repeated normal audio pauses never submit or erase the list');
