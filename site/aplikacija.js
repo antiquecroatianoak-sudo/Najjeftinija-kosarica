@@ -769,7 +769,6 @@ $("lanci-nista").onclick = () => {
 // ---------- Gumbi ----------
 $("ponovi").onclick = ucitajPodatke;
 $("mikrofon").onclick = pokreniSlusanje;
-$("tipkovnica-unos").onclick = alternativniUnos;
 $("rucni-unos").onsubmit = (e) => {
   e.preventDefault();
   const tekst = $("unos").value.trim();

@@ -33,14 +33,13 @@
           <div class="unos-red"><input id="unos" type="text" placeholder="Npr. kruh, mlijeko, jaja…" autocomplete="off" enterkeyhint="done" maxlength="500"><button type="submit" class="dodaj-gumb">+ Dodaj</button></div>
         </form>
       </div>
-      <p class="savjet">Ako glasovni unos ne uspije: <button id="tipkovnica-unos" type="button">Otvori unos</button>. Možeš koristiti i mikrofon svoje tipkovnice, ako je dostupan.</p>
       <p id="glasovni-nacrt" class="glasovni-nacrt" role="status" hidden></p>
       <section class="trgovine-panel" aria-labelledby="trgovine-naslov">
         <div class="trgovine-zaglavlje"><div><h2 id="trgovine-naslov">Trgovine</h2><p id="lanci-info" class="sitno">Učitavam trgovine…</p></div><div class="lanci-gumbi"><button id="lanci-sve" type="button">Sve</button><button id="lanci-nista" type="button">Nijedna</button></div></div>
-        <div id="lanci" class="lanci" role="group" aria-label="Odaberi trgovine za usporedbu" tabindex="0"></div><p class="trgovine-uputa">Označi svoje trgovine · povuci za ostale →</p>
+        <div id="lanci" class="lanci" role="group" aria-label="Odaberi trgovine za usporedbu" tabindex="0"></div>
       </section>
       <div class="popis-zaglavlje"><h2>Na tvom popisu</h2><p id="napredak" role="status"></p></div>
-      <div id="prazno" class="prazno"><svg class="prazno-crtez" aria-hidden="true" viewBox="0 0 240 70" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><g stroke="#d78245"><path fill="#ffe0a6" d="m60 22-27 35c-4 5-9 1-7-4l16-42z"/><path d="m42 11 3-10m3 15 11-9m-7 14 14-1m-21 9 5 4m-14 7 5 4"/></g><g stroke="#b88643"><path fill="#ffe8a9" d="M91 51 116 13c9-14 29-4 23 11l-17 34c-6 12-39 5-31-7z"/><path d="m117 19 7 6m-14 6 7 6m-15 6 7 6"/></g><g stroke="#ce6852"><path fill="#ffc7a5" d="M187 24c-26-12-34 20-16 36 5 5 13 2 16 2s11 3 16-2c18-16 10-48-16-36z"/><path d="m187 24 2-14m0 6c0-10 11-14 18-10-2 8-10 12-18 10z"/></g></svg><h3>Što ti danas treba?</h3><p>Dodirni mikrofon ili upiši proizvode.<br>Cijene se uspoređuju čim ih dodaš.</p></div>
+      <div id="prazno" class="prazno"><svg class="prazno-crtez" aria-hidden="true" viewBox="0 0 240 70" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><g stroke="#d78245"><path fill="#ffe0a6" d="m60 22-27 35c-4 5-9 1-7-4l16-42z"/><path d="m42 11 3-10m3 15 11-9m-7 14 14-1m-21 9 5 4m-14 7 5 4"/></g><g stroke="#b88643"><path fill="#ffe8a9" d="M91 51 116 13c9-14 29-4 23 11l-17 34c-6 12-39 5-31-7z"/><path d="m117 19 7 6m-14 6 7 6m-15 6 7 6"/></g><g stroke="#ce6852"><path fill="#ffc7a5" d="M187 24c-26-12-34 20-16 36 5 5 13 2 16 2s11 3 16-2c18-16 10-48-16-36z"/><path d="m187 24 2-14m0 6c0-10 11-14 18-10-2 8-10 12-18 10z"/></g></svg><h3>Što ti danas treba?</h3></div>
       <div id="samo-trgovina" class="samo-trgovina" hidden><span>Sve iz trgovine <strong id="samo-trgovina-naziv"></strong></span><button id="samo-trgovina-makni" type="button">Sve trgovine</button></div>
       <ul id="kartice" class="kartice" aria-label="Popis za kupnju s ponudama"></ul>
       <div class="sazetak" aria-live="polite">
@@ -49,12 +48,11 @@
         <div id="preostalo" class="preostalo" hidden>Još za kupiti: <strong id="preostalo-iznos"></strong></div>
         <div id="po-trgovinama" class="po-trgovinama"></div>
       </div>
-      <p class="spremanje"><span aria-hidden="true">✓</span> Tvoj popis ostaje spremljen na ovom uređaju.</p>
     </section>
-    <section id="jedna-trgovina" class="jedna-trgovina" hidden><details><summary>Usporedba trgovina po jedinici <span aria-hidden="true">⌄</span></summary><p class="savjet">Svaka trgovina računa iste ukupne kg, litre i komade kao artikli odabrani na tvom popisu. Usporedni iznos koristi jedinične cijene. Cijela pakiranja za kupnju prikazana su zasebno jer mogu sadržavati višak.</p><ul id="trgovine-usporedba" class="trgovine-usporedba"></ul></details></section>
+    <section id="jedna-trgovina" class="jedna-trgovina" hidden><details><summary>Usporedba trgovina po jedinici <span aria-hidden="true">⌄</span></summary><ul id="trgovine-usporedba" class="trgovine-usporedba"></ul></details></section>
     <footer>
       <div class="stanje-podataka"><p id="status" role="status">Učitavam cijene…</p><button id="ponovi" type="button" hidden>Pokušaj ponovno</button></div>
-      <details class="pomoc"><summary>Kako uspoređujemo cijene?</summary><p>Ponude su razvrstane po kilogramu, litri ili komadu i unutar iste jedinice poredane po jediničnoj cijeni. Najzastupljenija jedinica prikazuje se prva. Vrstu proizvoda određujemo iz naziva. Moguća podudaranja s nejasnom vrstom ostaju dostupna za pregled, bez proglašenja najpovoljnijeg. Sve pronađene proizvode možeš pregledati strelicama. Bez poznate količine ponuda ostaje dostupna na kraju, bez oznake najpovoljnijeg.</p><p>Ukupan iznos računa se prema cijeni odabranih pakiranja. Prikazujemo najnižu cijenu unutar lanca; cijena u tvojoj poslovnici može se razlikovati.</p></details>
+      <details class="pomoc"><summary>Kako uspoređujemo cijene?</summary><p>Poredak je po jediničnoj cijeni (kg, l ili kom). Prikazana je najniža cijena unutar lanca; u tvojoj poslovnici može biti drukčija.</p></details>
     </footer>
   </main>
   <script src="skupine.js"></script>
