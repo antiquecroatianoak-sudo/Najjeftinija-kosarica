@@ -27,3 +27,8 @@ Provjere: node tests/kosarica.cjs (novi regresijski slučaj za različita pakira
 Nazivi poput „Jogurt 125 g x 4” ili „Voda 0,5 L x 6” prije su se čitali kao jedno pakiranje (125 g), pa je cijena po kg bila četiri puta previsoka. Sada se prepoznaju kao 500 g odnosno 3 l, kao i postojeći oblik „6x0,5 l”. Provjera: python3 tests/kolicine.py.
 
 Nije provjereno na produkcijskom cjeniku: iz ovog okruženja nisu dostupni github.io ni cijene.dev, pa broj zahvaćenih proizvoda, svježina, duplikati i greške uvoza nisu izmjereni. Poznati 310 g -> 31 kg nije reproduciran na samom parseru; vjerojatno dolazi iz izvornog zapisa količine ili dopune.
+
+## Istaknuti iznos trgovine = zbroj kartica te trgovine — 20.10.2026.
+Prije: redak trgovine istaknuto je prikazivao usporedni iznos (jedinična cijena × referentna količina, s decimalnim dijelovima pakiranja) i po njemu poredao trgovine, a nakon otvaranja trgovine kartice zbrajaju cijela pakiranja. Uz to, proizvodi bez usporedive količine nisu ulazili u iznos retka, ali jesu u kartice.
+Sada: istaknuti iznos i poredak trgovina su iznos cijelih pakiranja, izračunat istom ponudom i istim brojem pakiranja kao kartica kad se trgovina otvori (uključujući alternativu odabranu u toj trgovini). Pri otvaranju trgovine kartice zadano prikazuju iste ponude kao njezin redak. Usporedni iznos po jedinici ostaje kao sporedan redak s oznakom „usporedba, nije iznos na blagajni”. Poredak proizvoda po jediničnoj cijeni nije promijenjen. Nepotpune košarice i dalje su „Nepotpuno”, uz iznos za prikazane proizvode.
+Ovo ne objašnjava nužno svaku prijavljenu razliku; korisnikova točna košarica nije poznata.

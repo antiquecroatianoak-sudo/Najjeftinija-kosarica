@@ -234,8 +234,10 @@ function najboljePoLancu(grupa, lanci, trazenaJedinica = null) {
 // Pregled jedne trgovine zadržava referentni odabir; promjena dopuštenih trgovina ga briše.
 function promijeniPostavke(zadrziReferencu = false) {
   ponudeCache.clear();
-  stanje.odabir = zadrziReferencu && !stanje.jedna ? { ...stanje.odabirSvi } : {};
+  stanje.odabir = {};
   if (!zadrziReferencu) stanje.odabirSvi = {};
+  else if (!stanje.jedna) stanje.odabir = { ...stanje.odabirSvi };
+  else if (podaci) stanje.odabir = odabirJedneTrgovine();
   spremi();
   prikazi();
 }
@@ -423,8 +425,8 @@ function prikaziPopis() {
 // Broj komada unutar pakiranja koristi se samo za jediničnu cijenu.
 // Broj pakiranja prikazane ponude. U pregledu jedne trgovine to su cijela pakiranja za barem
 // referentnu količinu iz pregleda svih trgovina, kako bi iznos odgovarao usporedbi trgovina.
-function brojPakiranja(stavka, p) {
-  if (!stanje.jedna || !imaJedinicnu(p)) return stavka.kom;
+function brojPakiranja(stavka, p, jednaTrgovina = !!stanje.jedna) {
+  if (!jednaTrgovina || !imaJedinicnu(p)) return stavka.kom;
   const ref = referentnaPonuda(stavka.naziv);
   if (!ref || !imaJedinicnu(ref) || ref.jedinica !== p.jedinica) return stavka.kom;
   return Math.ceil(podaci.proizvodi[ref.i][2] * stavka.kom / podaci.proizvodi[p.i][2] - 1e-9);
@@ -438,11 +440,40 @@ function referentnaPonuda(grupa) {
   return sve[(rb || 0) % sve.length];
 }
 
+// Ponuda koju kartica prikazuje kad se otvori trgovina l: odabrana alternativa u otvorenoj
+// trgovini, inače najpovoljnija po jedinici za referentnu količinu, inače prva ponuda te trgovine.
+function ponudaZaLanac(stavka, l, najbolje) {
+  const lista = ponudeZaGrupu(stavka.naziv, new Set([l]));
+  if (!lista.length) return null;
+  if (stanje.jedna === podaci.lanci[l] && stanje.odabir[stavka.naziv] !== undefined) {
+    return lista[stanje.odabir[stavka.naziv] % lista.length];
+  }
+  const p = najbolje.get(l);
+  return (p && lista.find((x) => x.i === p.i)) || lista[0];
+}
+
+// Zadani odabir kartica pri otvaranju jedne trgovine: iste ponude kao u njezinom retku usporedbe.
+function odabirJedneTrgovine() {
+  const l = podaci.lanci.indexOf(stanje.jedna);
+  const { najboljePoStavci } = usporedbaKosarice();
+  const odabir = {};
+  for (const stavka of stanje.popis) {
+    const lista = ponudeZaGrupu(stavka.naziv, new Set([l]));
+    const p = najboljePoStavci.get(stavka.naziv)?.get(l);
+    const rb = p ? lista.findIndex((x) => x.i === p.i) : -1;
+    if (rb > 0) odabir[stavka.naziv] = rb;
+  }
+  return odabir;
+}
+
 // Sve trgovine uspoređuju istu fizičku količinu referentnih artikala.
 // Količina = broj odabranih pakiranja × sadržaj pakiranja; ne zaokružuje se za usporedbu.
 function usporedbaKosarice() {
   const lanci = sviLanci();
-  const zbroj = new Map([...lanci].map((l) => [l, { usporedno: 0, ukupno: 0, nema: [] }]));
+  // usporedno: jedinične cijene × referentna količina (samo usporedba, nije iznos na blagajni).
+  // ukupno: zbroj kartica kad se ta trgovina otvori (cijela pakiranja); nema: bez usporedive ponude.
+  const zbroj = new Map([...lanci].map((l) => [l, { usporedno: 0, ukupno: 0, nema: [], neusporedivo: [] }]));
+  const najboljePoStavci = new Map();
   let najboljeMijesano = 0;
   let sveMijesanoIma = true;
   const jedinice = [];
@@ -453,6 +484,7 @@ function usporedbaKosarice() {
     const { najbolje, usporedi } = kolicina > 0
       ? najboljePoLancu(stavka.naziv, lanci, odabrana.jedinica)
       : { najbolje: new Map(), usporedi: () => 0 };
+    najboljePoStavci.set(stavka.naziv, najbolje);
     const prva = [...najbolje.values()].sort(usporedi)[0];
     if (prva) {
       najboljeMijesano += prva.poJedinici * kolicina;
@@ -460,15 +492,17 @@ function usporedbaKosarice() {
     } else sveMijesanoIma = false;
     for (const [l, z] of zbroj) {
       const p = najbolje.get(l);
-      if (p) {
-        z.usporedno += p.poJedinici * kolicina;
-        // Za blagajnu su potrebna cijela pakiranja, barem tražena količina.
-        const pakiranja = Math.ceil(kolicina / podaci.proizvodi[p.i][2] - 1e-9);
-        z.ukupno += p.cijena * pakiranja;
-      } else z.nema.push(stavka.naziv);
+      if (p) z.usporedno += p.poJedinici * kolicina;
+      else z.nema.push(stavka.naziv);
+      // Isti izračun kao kartica u otvorenoj trgovini, uključujući ponude bez usporedive količine.
+      const kartica = ponudaZaLanac(stavka, l, najbolje);
+      if (kartica) {
+        z.ukupno += kartica.cijena * brojPakiranja(stavka, kartica, true);
+        if (!p || kartica.i !== p.i) z.neusporedivo.push(stavka.naziv);
+      }
     }
   }
-  return { zbroj, najboljeMijesano, sveMijesanoIma, jedinice };
+  return { zbroj, najboljeMijesano, sveMijesanoIma, jedinice, najboljePoStavci };
 }
 
 function opisJedinicne(p) {
@@ -620,13 +654,14 @@ function prikaziJednuTrgovinu() {
   const napomena = document.createElement("li");
   napomena.className = "savjet";
   napomena.textContent = `Usporedne količine: ${jedinice.join(" · ") || "nema usporedivih ponuda"}. `
-    + (sveMijesanoIma ? `Najpovoljnije po svim trgovinama za odabrane količine: ${euro(najboljeMijesano)} za te količine.`
+    + (sveMijesanoIma ? `Najniže po jediničnim cijenama svih trgovina: ${euro(najboljeMijesano)} (usporedba, nije iznos na blagajni).`
       : "Nije moguće usporediti cijeli popis.");
   ul.appendChild(napomena);
 
   const redovi = [...zbroj].filter(([, z]) => z.nema.length < stanje.popis.length)
-    .sort(([, a], [, b]) => a.nema.length - b.nema.length || a.usporedno - b.usporedno)
+    .sort(([, a], [, b]) => a.nema.length - b.nema.length || a.ukupno - b.ukupno || a.usporedno - b.usporedno)
     .slice(0, 8);
+  const najjeftinijaCijela = Math.min(...redovi.filter(([, z]) => !z.nema.length).map(([, z]) => z.ukupno));
   if (!redovi.length) { $("jedna-trgovina").hidden = true; return; }
 
   for (const [l, z] of redovi) {
@@ -644,17 +679,19 @@ function prikaziJednuTrgovinu() {
     naziv.textContent = ime;
     const opis = document.createElement("small");
     opis.textContent = z.nema.length
-      ? `Nedostaje: ${z.nema.join(", ")}. Djelomična usporedba; nije cijeli popis.`
-      : sveMijesanoIma && z.usporedno - najboljeMijesano >= 0.005
-        ? `Ima sve · ${euro(z.usporedno - najboljeMijesano)} više za usporedne količine`
-        : "Ima sve · najpovoljnije po jedinici";
+      ? `Nedostaje usporediva ponuda: ${z.nema.join(", ")}. Nije cijeli popis.`
+      : z.ukupno - najjeftinijaCijela >= 0.005
+        ? `Ima sve · ${euro(z.ukupno - najjeftinijaCijela)} više od najjeftinije trgovine`
+        : "Ima sve · najjeftinija cijela košarica";
     const placanje = document.createElement("small");
-    placanje.textContent = `${z.nema.length ? "Za pronađena pakiranja" : "Cijela pakiranja za barem istu količinu"}: ${euro(z.ukupno)}`;
+    placanje.textContent = z.nema.length
+      ? `Za prikazane proizvode u trgovini: ${euro(z.ukupno)}`
+      : `Po jedinici za iste količine: ${euro(z.usporedno)} (usporedba, nije iznos na blagajni)`;
     lijevo.append(naziv, opis, placanje);
     const iznos = document.createElement("span");
     iznos.className = "iznos";
-    iznos.textContent = z.nema.length ? "Nepotpuno" : `${euro(z.usporedno)}`;
-    iznos.setAttribute("aria-label", z.nema.length ? "Nema usporednog iznosa za cijeli popis" : `${euro(z.usporedno)} za iste jedinične količine kao najpovoljnija kombinacija`);
+    iznos.textContent = z.nema.length ? "Nepotpuno" : `${euro(z.ukupno)}`;
+    iznos.setAttribute("aria-label", z.nema.length ? "Nema iznosa za cijeli popis" : `${euro(z.ukupno)} za cijela pakiranja, isto kao zbroj kartica u toj trgovini`);
     b.append(lijevo, iznos);
     li.appendChild(b);
     ul.appendChild(li);
