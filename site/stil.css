@@ -54,3 +54,13 @@ input::placeholder{color:#4e5760}
 .prazno{background:linear-gradient(125deg,#edbe71,#ffdfa2);border-color:#b98c42}
 .stanje-podataka button{background:linear-gradient(125deg,#e9ae78,#ffd0a1);color:#623518;border-color:#af7e4d}
 .glasovni-nacrt{margin:0 0 20px;padding:14px 18px;border:2px solid #b58a3d;border-radius:16px;background:linear-gradient(125deg,#eac16d,#ffe0a1);color:#483318;overflow-wrap:anywhere}
+
+/* Žute plohe: rub počinje crveno i uskim mekim prijelazom odmah prelazi u postojeću žutu.
+   Samo unutarnja sjena; raspored, veličine i plave plohe ostaju isti. */
+:root{--rub:inset 0 0 0 1px #d42b1e,inset 0 0 10px 2px #e2362acc;--rub-malo:inset 0 0 0 1px #d42b1e,inset 0 0 5px 1px #e2362acc}
+.popis-panel{box-shadow:var(--rub),0 7px 0 #af784b30}
+.glasovni-gumb:not(.slusa){box-shadow:var(--rub),0 4px 0 #b98526}
+.brend-ikona{box-shadow:var(--rub-malo),3px 3px 0 #c38d39}
+.kartica:nth-child(4n+1):not(.kupljeno),.prazno,.glasovni-nacrt,.upozorenje,input[type=text]{box-shadow:var(--rub)}
+.preskoci,.oznaka,.mikrofon-krug,.kvacica,.lanci-gumbi button,.savjet button,.lanci label:not(:has(input:checked)),.sljedeci,.natrag,.samo-trgovina button{box-shadow:var(--rub-malo)}
+.kupljeno .kvacica{box-shadow:none}
