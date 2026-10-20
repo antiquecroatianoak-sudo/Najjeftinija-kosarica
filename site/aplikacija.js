@@ -305,7 +305,6 @@ function promijeniKolicinu(i, za) {
 // ---------- Prepoznavanje govora ----------
 const Prepoznavanje = window.SpeechRecognition || window.webkitSpeechRecognition;
 let slusac = null;
-let glasovniUnos = null;
 
 // Granice artikala prepoznaj iz poznatih naziva, a višerječne nazive zadrži.
 // Neprepoznati dijelovi ostaju u tekstu; korisnik ih može urediti na popisu.
@@ -333,181 +332,65 @@ function razdvojiGlasovniPopis(tekst) {
   });
 }
 
-// Natpis prati potvrđene događaje, a svaki pokušaj ima vremensko ograničenje.
-let glasovnaPoruka = "";
-function prikaziGlasovniUnos() {
-  const sesija = glasovniUnos;
-  const aktivan = !!sesija;
-  $("mikrofon").classList.toggle("slusa", !!sesija?.snima);
-  $("mikrofon").setAttribute("aria-pressed", String(aktivan));
-  $("mikrofon-tekst").textContent = !aktivan ? "Dodaj na popis"
-    : !sesija.aktivan ? "Dovršavam popis…"
-    : sesija.snima ? "Završi narudžbu" : "Pokrećem mikrofon… dodirni za odustajanje";
-  const nacrt = $("glasovni-nacrt");
-  nacrt.hidden = !aktivan && !glasovnaPoruka;
-  nacrt.textContent = aktivan
-    ? [sesija.tekst, sesija.trenutni].filter(Boolean).join(" ")
-      || (sesija.snima ? "Mikrofon je uključen. Nabroji proizvode."
-        : "Čekam pokretanje mikrofona. Ako se pojavi zahtjev, dopusti pristup.")
-    : glasovnaPoruka;
-}
-
-function pocistiGlasovneTimere(sesija) {
-  for (const kljuc of ["timer", "pokretanje", "bezRezultata", "zavrsetak"]) {
-    clearTimeout(sesija[kljuc]);
-    sesija[kljuc] = null;
-  }
-}
-
-function dovrsiGlasovniUnos(sesija) {
-  if (glasovniUnos !== sesija) return;
-  pocistiGlasovneTimere(sesija);
-  const tekst = [sesija.tekst, sesija.trenutni].filter(Boolean).join(" ").trim();
-  const prethodni = slusac;
-  glasovniUnos = null;
-  slusac = null;
-  // Kasni događaji više ne mogu promijeniti popis niti pokrenuti novi mikrofon.
-  try { prethodni?.abort(); } catch (e) {}
-  if (!tekst && !glasovnaPoruka) glasovnaPoruka = "Nije prepoznat govor. Pokušaj ponovno ili koristi unos ispod.";
-  prikaziGlasovniUnos();
-  if (tekst) dodajIzTeksta(razdvojiGlasovniPopis(tekst).join(", "));
-}
-
-function glasovniNeuspjeh(sesija, poruka) {
-  if (glasovniUnos !== sesija) return;
-  sesija.aktivan = false;
-  glasovnaPoruka = poruka + " Prepoznate stavke ostaju na popisu. Možeš pokušati ponovno ili upotrijebiti unos ispod.";
-  dovrsiGlasovniUnos(sesija);
-}
-
-function alternativniUnos() {
-  // Standardno tekstno polje radi i bez Web Speech API-ja. Diktiranje tipkovnice
-  // pripada uređaju; web stranica ga ne može uključiti niti jamčiti dostupnost.
-  $("unos").focus();
-}
-
-function noviSlusac(sesija) {
-  if (glasovniUnos !== sesija || !sesija.aktivan) return;
-  sesija.snima = false;
-  prikaziGlasovniUnos();
-  let novi;
-  try { novi = new Prepoznavanje(); }
-  catch (e) { glasovniNeuspjeh(sesija, "Preglednik nije uspio otvoriti prepoznavanje govora."); return; }
-  slusac = novi;
-  novi.lang = "hr-HR";
-  // Zadrži prethodni način prepoznavanja koji je korisniku radio.
-  // Aplikacija povezuje više kratkih prepoznavanja u jednu sesiju nabrajanja.
-  novi.continuous = false;
-  novi.interimResults = false;
-  novi.maxAlternatives = 1;
-  const vrijedi = () => glasovniUnos === sesija && slusac === novi;
-  const prije = sesija.tekst;
-  let snimljenZvuk = false;
-  sesija.pokretanje = setTimeout(() => {
-    if (vrijedi()) glasovniNeuspjeh(sesija, "Mikrofon se nije pokrenuo. Provjeri dozvolu mikrofona za ovu stranicu i preglednik.");
-  }, 15000);
-  const pratiRezultate = () => {
-    clearTimeout(sesija.bezRezultata);
-    sesija.bezRezultata = setTimeout(() => {
-      if (vrijedi()) glasovniNeuspjeh(sesija, "Prepoznavanje nije vratilo tekst. Provjeri internetsku vezu i mikrofon.");
-    }, 20000);
-  };
-  novi.onstart = () => {
-    if (!vrijedi()) return;
-    clearTimeout(sesija.pokretanje);
-    pratiRezultate();
-  };
-  novi.onaudiostart = () => {
-    if (!vrijedi()) return;
-    clearTimeout(sesija.pokretanje);
-    sesija.snima = true;
-    snimljenZvuk = true;
-    clearTimeout(sesija.bezRezultata);
-    prikaziGlasovniUnos();
-  };
-  novi.onspeechstart = () => { if (vrijedi()) pratiRezultate(); };
-  novi.onresult = (e) => {
-    if (!vrijedi()) return;
-    clearTimeout(sesija.pokretanje);
-    sesija.prazniPokusaji = 0;
-    clearTimeout(sesija.bezRezultata);
-    const zavrseni = [], privremeni = [];
-    for (let i = 0; i < e.results.length; i++) {
-      const r = e.results[i];
-      (r.isFinal ? zavrseni : privremeni).push(r[0].transcript);
-    }
-    sesija.tekst = [prije, ...zavrseni].filter(Boolean).join(" ");
-    sesija.trenutni = privremeni.join(" ");
-    prikaziGlasovniUnos();
-  };
-  novi.onerror = (e) => {
-    if (!vrijedi()) return;
-    if (e.error === "no-speech") return; // onend ograničava broj praznih pokušaja.
-    const poruke = {
-      "not-allowed": "Pristup mikrofonu nije dopušten. Provjeri dozvolu u pregledniku i postavkama uređaja.",
-      "service-not-allowed": "Preglednik ne dopušta uslugu prepoznavanja govora.",
-      "audio-capture": "Zvuk mikrofona nije dostupan. Provjeri mikrofon i koristi li ga druga aplikacija.",
-      "network": "Usluga prepoznavanja govora nije dostupna preko mreže.",
-      "language-not-supported": "Usluga ovog preglednika ne podržava hrvatski govor.",
-      "no-speech": "Nije prepoznat govor.",
-      "aborted": "Prepoznavanje govora je prekinuto.",
-    };
-    glasovniNeuspjeh(sesija, poruke[e.error] || "Prepoznavanje govora nije uspjelo.");
-  };
-  novi.onend = () => {
-    if (!vrijedi()) return;
-    clearTimeout(sesija.pokretanje);
-    clearTimeout(sesija.bezRezultata);
-    slusac = null;
-    sesija.snima = false;
-    if (!sesija.aktivan) { dovrsiGlasovniUnos(sesija); return; }
-    if (sesija.trenutni) {
-      sesija.tekst = [sesija.tekst, sesija.trenutni].filter(Boolean).join(" ");
-      sesija.trenutni = "";
-    }
-    // Prekini petlju ako servis stalno završava bez ijednog novog rezultata.
-    // Potvrđena snimka bez govora znači običnu pauzu, ne kvar servisa.
-    sesija.prazniPokusaji = !snimljenZvuk && sesija.tekst === prije ? sesija.prazniPokusaji + 1 : 0;
-    if (sesija.prazniPokusaji >= 2) {
-      glasovniNeuspjeh(sesija, "Preglednik završava slušanje bez prepoznatog govora.");
-      return;
-    }
-    prikaziGlasovniUnos();
-    sesija.timer = setTimeout(() => noviSlusac(sesija), 300);
-  };
-  try { novi.start(); }
-  catch (e) { glasovniNeuspjeh(sesija, "Preglednik nije uspio pokrenuti glasovni unos."); }
-}
+// Jedan pritisak = jedan artikl, kao prije kontinuiranog nabrajanja.
+// Rezultat se odmah dodaje i sprema. Završetak nikad ne pokreće novi mikrofon.
+function alternativniUnos() { $("unos").focus(); }
 
 function pokreniSlusanje() {
-  if (glasovniUnos) {
-    const sesija = glasovniUnos;
-    sesija.aktivan = false;
-    pocistiGlasovneTimere(sesija);
-    prikaziGlasovniUnos();
-    // Neki preglednici ne šalju onend nakon stop(). Ne ostavljaj zaključan gumb.
-    sesija.zavrsetak = setTimeout(() => dovrsiGlasovniUnos(sesija), 2000);
-    if (slusac) {
-      try { slusac.stop(); } catch (e) { dovrsiGlasovniUnos(sesija); }
-    } else dovrsiGlasovniUnos(sesija);
-    return;
-  }
-  glasovnaPoruka = "";
+  const poruka = $("glasovni-nacrt");
+  const javi = (tekst) => { poruka.hidden = !tekst; poruka.textContent = tekst; };
   if (!Prepoznavanje) {
-    glasovnaPoruka = "Ovaj preglednik nema ugrađeno prepoznavanje govora. U polju ispod možeš upisati popis ili koristiti mikrofon tipkovnice ako je dostupan na uređaju, pa pritisnuti Dodaj.";
-    prikaziGlasovniUnos();
+    javi("Ovaj preglednik ne podržava glasovni unos. Proizvod možeš upisati u polje ispod.");
     alternativniUnos();
     return;
   }
-  glasovniUnos = { aktivan: true, snima: false, tekst: "", trenutni: "", prazniPokusaji: 0 };
-  prikaziGlasovniUnos();
-  noviSlusac(glasovniUnos);
+  if (slusac) { try { slusac.stop(); } catch (e) { slusac.onend(); } return; }
+  let novi;
+  try { novi = new Prepoznavanje(); }
+  catch (e) { javi("Glasovni unos nije dostupan. Pokušaj ponovno ili upiši proizvod."); return; }
+  slusac = novi;
+  novi.lang = "hr-HR";
+  novi.continuous = false;
+  novi.interimResults = false;
+  novi.maxAlternatives = 1;
+  let dodano = false;
+  let greska = false;
+  const vrijedi = () => slusac === novi;
+  novi.onresult = (e) => {
+    if (!vrijedi() || dodano) return;
+    const tekst = e.results[0][0].transcript.trim();
+    if (!tekst) return;
+    dodano = true;
+    dodajIzTeksta(tekst);
+    javi("Dodano: " + tekst + ". Za sljedeći artikl ponovno dodirni mikrofon.");
+  };
+  novi.onerror = (e) => {
+    if (!vrijedi()) return;
+    greska = true;
+    const poruke = {
+      "not-allowed": "Dopusti pristup mikrofonu u postavkama preglednika.",
+      "audio-capture": "Mikrofon nije dostupan. Provjeri koristi li ga druga aplikacija.",
+      "network": "Usluga prepoznavanja govora trenutačno nije dostupna preko mreže.",
+      "no-speech": "Nije prepoznat govor. Ponovno dodirni mikrofon i reci jedan artikl.",
+      "service-not-allowed": "Preglednik ne dopušta prepoznavanje govora.",
+    };
+    javi(poruke[e.error] || "Glasovni unos je prekinut. Pokušaj ponovno ili upiši proizvod.");
+  };
+  novi.onend = () => {
+    if (!vrijedi()) return;
+    slusac = null;
+    $("mikrofon").classList.remove("slusa");
+    $("mikrofon").setAttribute("aria-pressed", "false");
+    $("mikrofon-tekst").textContent = "Reci jedan artikl";
+    if (!dodano && !greska) javi("Nije prepoznat artikl. Ponovno dodirni mikrofon i pokušaj.");
+  };
+  javi("Reci jedan artikl, primjerice mlijeko. Nakon upisa ponovno dodirni mikrofon za sljedeći.");
+  $("mikrofon").classList.add("slusa");
+  $("mikrofon").setAttribute("aria-pressed", "true");
+  $("mikrofon-tekst").textContent = "Slušam… (dodirni za kraj)";
+  try { novi.start(); }
+  catch (e) { greska = true; javi("Glasovni unos nije dostupan. Pokušaj ponovno ili upiši proizvod."); novi.onend(); }
 }
-
-// Ne pokreći dodatno slušanje kad aplikacija nije vidljiva.
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && glasovniUnos?.aktivan) pokreniSlusanje();
-});
 
 // ---------- Prikaz ----------
 function gumb(tekst, klasa, naKlik, oznaka) {

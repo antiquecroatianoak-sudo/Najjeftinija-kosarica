@@ -1,7 +1,11 @@
-# Glasovno nabrajanje — 20.10.2026.
+# Glasovni unos — jedan artikl po pritisku
 
-Prvi pritisak mikrofona otvara sesiju nabrajanja. Drugi završava i dodaje prepoznate artikle. Nova sesija dopunjava postojeći popis. Kratke pauze ne dovršavaju unos: ako mobilni preglednik završi prepoznavanje, aplikacija ga ponovno pokreće samo dok je sesija aktivna. Napuštanje stranice završava sesiju.
+Od 20.10.2026. na izričit zahtjev korisnika vraćen je prethodni način rada:
+pritisak na mikrofon, jedan artikl, automatsko dodavanje i spremanje;
+novi pritisak dodaje sljedeći artikl. Nema kontinuirane sesije, automatskih
+ponovnih pokretanja ni zahtjeva za završetkom cijele narudžbe.
 
-Prepoznati tekst prikazuje se tijekom govora. Rezultati se ne dupliciraju pri ponovljenim događajima. Poznati nazivi služe za razdvajanje nabrajanja bez zareza; višerječni nazivi poput sok od naranče i crno vino ostaju zajedno. Nepoznato nabrajanje može trebati ručnu doradu. Pristup mikrofonu ovisi o pregledniku i korisničkoj dozvoli.
-
-Provjere: node tests/glasovni-unos.cjs (simulirano prepoznavanje: četiri artikla, drugi i treći unos bez gubitka popisa, pauze i automatski nastavak, završetak tijekom pauze, ponovljeni rezultati, odbijena dozvola); node tests/kosarica.cjs; node tests/skupine.cjs; Playwright postojeći unos, količine, trgovine i prikaz na više širina. Stvarni korisnikov mikrofon nije ispitan.
+Zadržani su izgled, boje, usporedbe cijena, trgovine i postojeći spremljeni popis.
+Ne koristi se novi vanjski servis. Podrška govoru ovisi o Web Speech API-ju
+preglednika; povratak starog toka nije potvrda podrške svim preglednicima.
+Automatski testovi koriste simulirane događaje, stvarni mikrofon treba potvrditi na uređaju.
