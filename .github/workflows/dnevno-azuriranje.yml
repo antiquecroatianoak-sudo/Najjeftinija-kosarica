@@ -39,7 +39,9 @@ jobs:
           node-version: "22"
 
       - name: Provjeri zajednička pravila skupina
-        run: node tests/skupine.cjs
+        run: |
+          node tests/skupine.cjs
+          node tests/kosarica.cjs
 
       - name: Pripremi skupine za novi cjenik
         run: node scripts/razvrstaj.cjs

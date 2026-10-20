@@ -6,3 +6,5 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
 .brend-ikona svg{width:28px;height:28px}.prazno-crtez{width:210px;height:66px;max-width:100%}.trgovine-uputa{font-size:13px;color:var(--muted);margin-top:3px}.lanci{scroll-snap-type:x proximity}.lanci label{scroll-snap-align:start}
+
+.trgovine-usporedba>.savjet{grid-column:1/-1}.trgovina-red .lijevo{min-width:0;overflow-wrap:anywhere}

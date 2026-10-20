@@ -196,9 +196,13 @@ function ponudeZaGrupu(grupa) {
   const ponude = [];
   for (const i of pogoci(grupa)) {
     const cijene = podaci.proizvodi[i][5];
+    let najjeftinija = null;
     for (let k = 0; k < cijene.length; k += 2) {
-      if (lanci.has(cijene[k])) { ponude.push(ponuda(i, cijene[k], cijene[k + 1])); break; }
+      if (lanci.has(cijene[k]) && (!najjeftinija || cijene[k + 1] < najjeftinija.cijena)) {
+        najjeftinija = ponuda(i, cijene[k], cijene[k + 1]);
+      }
     }
+    if (najjeftinija) ponude.push(najjeftinija);
   }
   ponude.sort(usporedba(jediniceGrupe(grupa)));
   ponudeCache.set(grupa, ponude);
@@ -214,10 +218,8 @@ function najboljePoLancu(grupa, lanci) {
       if (lanci.has(cijene[k])) sve.push(ponuda(i, cijene[k], cijene[k + 1]));
     }
   }
-  // Usporedba trgovina koristi jedinicu trenutno prikazanog proizvoda.
-  const prikazane = ponudeZaGrupu(grupa);
-  const odabrana = prikazane[(stanje.odabir[grupa] || 0) % prikazane.length];
-  const jedinica = odabrana && imaJedinicnu(odabrana) ? odabrana.jedinica : null;
+  // Osnovna jedinica ne ovisi o odabranoj trgovini ni broju pakiranja.
+  const jedinica = jediniceGrupe(grupa)[0] || null;
   const usporedi = usporedba(jediniceGrupe(grupa));
   const najbolje = new Map();
   for (const p of sve.filter((p) => imaJedinicnu(p) && p.jedinica === jedinica)) {
@@ -355,13 +357,36 @@ function prikaziPopis() {
   prikaziRezultate();
 }
 
-// "10 jaja" znači 10 komada, a ne 10 pakiranja po 10 jaja. Kad netko traži
-// 5 ili više komada proizvoda koji dolazi u pakiranju od više komada,
-// računamo koliko pakiranja treba.
+// Količina na popisu uvijek označava broj cijelih pakiranja.
+// Broj komada unutar pakiranja koristi se samo za jediničnu cijenu.
 function brojPakiranja(stavka, p) {
-  const iznos = podaci.proizvodi[p.i][2];
-  if (stavka.kom >= 5 && p.jedinica === "kom" && iznos > 1) return Math.ceil(stavka.kom / iznos);
   return stavka.kom;
+}
+
+// Usporedni popis sadrži jednu osnovnu jedinicu svake stavke (kg/l/kom).
+// To je usporedba povoljnosti; stvarni iznos cijelih pakiranja je odvojen.
+function usporedbaKosarice() {
+  const lanci = sviLanci();
+  const zbroj = new Map([...lanci].map((l) => [l, { usporedno: 0, ukupno: 0, nema: [] }]));
+  let najboljeMijesano = 0;
+  let sveMijesanoIma = true;
+  const jedinice = [];
+  for (const stavka of stanje.popis) {
+    const { najbolje, usporedi } = najboljePoLancu(stavka.naziv, lanci);
+    const prva = [...najbolje.values()].sort(usporedi)[0];
+    if (prva) {
+      najboljeMijesano += prva.poJedinici;
+      jedinice.push(`${stavka.naziv}: 1 ${prva.jedinica}`);
+    } else sveMijesanoIma = false;
+    for (const [l, z] of zbroj) {
+      const p = najbolje.get(l);
+      if (p) {
+        z.usporedno += p.poJedinici;
+        z.ukupno += p.cijena * brojPakiranja(stavka, p);
+      } else z.nema.push(stavka.naziv);
+    }
+  }
+  return { zbroj, najboljeMijesano, sveMijesanoIma, jedinice };
 }
 
 function opisJedinicne(p) {
@@ -487,7 +512,7 @@ function prikaziRezultate() {
 
   $("napredak").textContent = stanje.popis.length ? `U košarici: ${kupljeno} od ${stanje.popis.length}` : "";
   $("ukupno").textContent = euro(ukupno);
-  $("ukupno-oznaka").textContent = nedostaje ? "Iznos pronađenih proizvoda" : zaProvjeru ? "Iznos prikazanih ponuda" : "Ukupno za popis";
+  $("ukupno-oznaka").textContent = nedostaje ? "Iznos pronađenih proizvoda" : zaProvjeru ? "Iznos prikazanih ponuda" : "Za plaćanje · odabrana pakiranja";
   $("nedostaje").hidden = nedostaje === 0 && zaProvjeru === 0;
   $("nedostaje").textContent = [
     nedostaje ? `Za ${nedostaje} od ${stanje.popis.length} stavki nema cijene. Iznos ne obuhvaća cijeli popis.` : "",
@@ -509,22 +534,16 @@ function prikaziJednuTrgovinu() {
   $("jedna-trgovina").hidden = !podaci || !stanje.popis.length;
   if (!podaci || !stanje.popis.length) return;
 
-  const lanci = sviLanci();
-  const zbroj = new Map([...lanci].map((l) => [l, { ukupno: 0, nema: [] }]));
-  let najboljeMijesano = 0;
-  let sveMijesanoIma = true;
-  for (const stavka of stanje.popis) {
-    const { najbolje, usporedi } = najboljePoLancu(stavka.naziv, lanci);
-    const prva = [...najbolje.values()].sort(usporedi)[0];
-    if (prva) najboljeMijesano += prva.cijena * brojPakiranja(stavka, prva); else sveMijesanoIma = false;
-    for (const [l, z] of zbroj) {
-      const p = najbolje.get(l);
-      if (p) z.ukupno += p.cijena * brojPakiranja(stavka, p); else z.nema.push(stavka.naziv);
-    }
-  }
+  const { zbroj, najboljeMijesano, sveMijesanoIma, jedinice } = usporedbaKosarice();
+  const napomena = document.createElement("li");
+  napomena.className = "savjet";
+  napomena.textContent = `Usporedne količine: ${jedinice.join(" · ") || "nema usporedivih ponuda"}. `
+    + (sveMijesanoIma ? `Najpovoljnije po svim trgovinama: ${euro(najboljeMijesano)} za te količine.`
+      : "Nije moguće usporediti cijeli popis.");
+  ul.appendChild(napomena);
 
   const redovi = [...zbroj].filter(([, z]) => z.nema.length < stanje.popis.length)
-    .sort(([, a], [, b]) => a.nema.length - b.nema.length || a.ukupno - b.ukupno)
+    .sort(([, a], [, b]) => a.nema.length - b.nema.length || a.usporedno - b.usporedno)
     .slice(0, 8);
   if (!redovi.length) { $("jedna-trgovina").hidden = true; return; }
 
@@ -542,14 +561,17 @@ function prikaziJednuTrgovinu() {
     naziv.textContent = ime;
     const opis = document.createElement("small");
     opis.textContent = z.nema.length
-      ? `nema usporedive ponude: ${z.nema.join(", ")}`
-      : sveMijesanoIma && z.ukupno - najboljeMijesano >= 0.005
-        ? `ima sve · ${euro(z.ukupno - najboljeMijesano)} više nego po svim trgovinama`
-        : "ima sve";
-    lijevo.append(naziv, opis);
+      ? `Nedostaje: ${z.nema.join(", ")}. Djelomična usporedba; nije cijeli popis.`
+      : sveMijesanoIma && z.usporedno - najboljeMijesano >= 0.005
+        ? `Ima sve · ${euro(z.usporedno - najboljeMijesano)} više za usporedne količine`
+        : "Ima sve · najpovoljnije po jedinici";
+    const placanje = document.createElement("small");
+    placanje.textContent = `${z.nema.length ? "Za pronađena pakiranja" : "Za odabrani broj pakiranja"}: ${euro(z.ukupno)}`;
+    lijevo.append(naziv, opis, placanje);
     const iznos = document.createElement("span");
     iznos.className = "iznos";
-    iznos.textContent = (z.nema.length ? "od " : "") + euro(z.ukupno);
+    iznos.textContent = euro(z.usporedno);
+    iznos.setAttribute("aria-label", `${euro(z.usporedno)} za ${z.nema.length ? "dio usporednog popisa" : "usporedne količine"}`);
     b.append(lijevo, iznos);
     li.appendChild(b);
     ul.appendChild(li);
