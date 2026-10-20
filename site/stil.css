@@ -40,3 +40,5 @@ input[type=text]{background:#fffcf4;border-color:#d4dfd5}
 .trgovine-usporedba>li:nth-child(2n+1) .trgovina-red{background:#eef5ff;border-color:#cddff2}
 .trgovina-red.odabrana{border-color:var(--green);background:#def0df}
 .prazno{background:#fff4d6;border-color:#e7c87d}
+
+.trgovina-red .iznos{white-space:normal;text-align:right;font-size:20px;min-width:80px;max-width:45%}
