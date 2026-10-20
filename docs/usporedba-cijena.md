@@ -22,3 +22,8 @@ Namjeravano ponašanje (nepromijenjeno značenje količine: broj pakiranja × sa
 - Promjena dopuštenih trgovina (uključivanje/isključivanje) vraća referencu na najpovoljniju ponudu.
 
 Provjere: node tests/kosarica.cjs (novi regresijski slučaj za različita pakiranja po trgovinama pada na starom kodu), node tests/skupine.cjs, node tests/glasovni-unos.cjs, Playwright sa sintetičkim cjenikom na 320/390/1280 px bez JS grešaka i vodoravnog prelijevanja.
+
+## Uvoz količina: pakiranje iza količine — 20.10.2026.
+Nazivi poput „Jogurt 125 g x 4” ili „Voda 0,5 L x 6” prije su se čitali kao jedno pakiranje (125 g), pa je cijena po kg bila četiri puta previsoka. Sada se prepoznaju kao 500 g odnosno 3 l, kao i postojeći oblik „6x0,5 l”. Provjera: python3 tests/kolicine.py.
+
+Nije provjereno na produkcijskom cjeniku: iz ovog okruženja nisu dostupni github.io ni cijene.dev, pa broj zahvaćenih proizvoda, svježina, duplikati i greške uvoza nisu izmjereni. Poznati 310 g -> 31 kg nije reproduciran na samom parseru; vjerojatno dolazi iz izvornog zapisa količine ili dopune.
