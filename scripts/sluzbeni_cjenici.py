@@ -34,7 +34,7 @@ NAJVISE_BAJTOVA = 200_000_000
 
 # Stupci službenih cjenika (normalizirani naziv zaglavlja ili XML oznake) -> polje.
 STUPCI = {
-    "naziv": ["naziv proizvoda", "naziv", "naziv artikla", "naziv art", "proizvod", "artikl"],
+    "naziv": ["naziv proizvoda", "naziv", "naziv artikla", "naziv art", "proizvod", "artikl", "naziv sifra"],
     "sifra": ["sifra proizvoda", "sifra", "sif art", "sifra artikla", "kod proizvoda", "sifra art"],
     "marka": ["marka proizvoda", "marka", "brand"],
     "kolicina": ["neto kolicina", "net kol", "nettokolicina", "neto kol", "gramaza", "neto kolicina proizvoda", "kolicina",
@@ -212,6 +212,8 @@ def citaj_xlsx(sadrzaj: bytes):
     """Prvi list XLSX-a: prvi redak je zaglavlje (Djelo Vodice, dm). Treba paket openpyxl."""
     import openpyxl
     wb = openpyxl.load_workbook(io.BytesIO(sadrzaj), read_only=True, data_only=True)
+    # Neki listovi (Djelo Vodice) imaju pogrešno zapisane dimenzije, pa bi se čitao samo prvi stupac.
+    wb.worksheets[0].reset_dimensions()
     redovi = wb.worksheets[0].iter_rows(values_only=True)
     zaglavlje = [str(x or "").strip() for x in next(redovi, [])]
     # Neki listovi imaju naslov iznad zaglavlja: zaglavlje je prvi redak s prepoznatim nazivom i cijenom.
@@ -223,7 +225,7 @@ def citaj_xlsx(sadrzaj: bytes):
     nepoznati = [z for z, k in zip(zaglavlje, kljucevi) if not k and z]
     zapisi = []
     if not ("naziv" in kljucevi and "cijena" in kljucevi):
-        prvi = [[str(x) for x in r[:12] if x is not None] for r in wb.worksheets[0].iter_rows(max_row=8, values_only=True)]
+        prvi = [[str(x) for x in r[:16] if x is not None] for r in wb.worksheets[0].iter_rows(max_row=6, values_only=True)]
         return [f"XLSX listovi {wb.sheetnames[:3]}, prvi retci {prvi}"], nepoznati, []
     if "naziv" in kljucevi and "cijena" in kljucevi:
         for n, red in enumerate(redovi, start=preskoceno + 1):
