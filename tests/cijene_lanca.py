@@ -44,7 +44,7 @@ krk = [cijena("g1", "set._sv._bernardina_6c_krk", "0.10")] + [
 # Stvarni redak: NTL "KRUMPIR 2,5 kg SNIŽENJE", količina "2,5", jedinica kom. Prije: 2,5 komada, sad 2,5 kg.
 ntl = [cijena("n1", "ntl_1", "1.49")]
 # Stvarni redak: Plodine "KRUMPIR 2,5 KG GIRO" 1,11 € uz objavljenu jediničnu cijenu 0,56 €/kg (1,11 / 2,5 = 0,44):
-# cijena i jedinična cijena trgovca si proturječe, redak se ne rangira.
+# cijena i jedinična cijena trgovca si proturječe, količina nije potvrđena: ponuda je vidljiva, ali bez poretka.
 plodine = [cijena("p1", "plodine_1", "1.11", unit="0.56"), cijena("p2", "plodine_1", "2.20", unit="0.88")]
 with tempfile.TemporaryDirectory() as tmp:
     statistika, primjeri = {}, []
@@ -52,13 +52,21 @@ with tempfile.TemporaryDirectory() as tmp:
         "trgovina-krk": ([proizvod("g1", "KRUMPIR ZA GASTRO 1 kg", "1", "kg")], krk),
         "ntl": ([proizvod("n1", "KRUMPIR 2,5 kg SNIŽENJE", "2,5", "kom")], ntl),
         "plodine": ([proizvod("p1", "KRUMPIR 2,5 KG GIRO", "1", "KOM"), proizvod("p2", "KRUMPIR MLADI 2,5 KG", "1", "KOM")], plodine),
-    }), statistika=statistika, primjeri=primjeri)
+        # Stvarni redak Boso: "PIVO OŽUJ. 2 L Q-PACK" 4,29 € i 2,15 €/l; dopuna za taj barkod kaže 0,4 kg.
+        "boso": ([proizvod("b1", "PIVO OŽUJ. 2 L Q-PACK", "1", "KOM", "3850000000000")],
+                 [cijena("b1", "DISK.BOROVO", "4.29", unit="2.15")]),
+        "konzum": ([proizvod("k1", "Pivo Ožujsko 2 l", "1", "KOM", "3850000000000")], [cijena("k1", "k_1", "4.49")]),
+    }), {"3850000000000": (0.4, "kg")}, statistika=statistika, primjeri=primjeri)
 po = {p[0]: p for p in proizvodi}
 assert po["KRUMPIR ZA GASTRO 1 kg"][5] == [lanci.index("Trgovina Krk"), 0.89], po["KRUMPIR ZA GASTRO 1 kg"]
 assert po["KRUMPIR 2,5 kg SNIŽENJE"][2:4] == [2.5, "kg"], "fractional piece count is not a quantity; the name decides"
-assert "KRUMPIR 2,5 KG GIRO" not in po, "row contradicting the chain's own unit price is not ranked"
+assert po["KRUMPIR 2,5 KG GIRO"][2:4] == [0, ""] and po["KRUMPIR 2,5 KG GIRO"][5][1] == 1.11, \
+    "quantity contradicting the chain's own unit price: offer shown without unit price, so not ranked"
+pivo = [p for p in proizvodi if p[0].lower().startswith("pivo")]
+assert len(pivo) == 1 and pivo[0][2:4] == [2.0, "l"] and len(pivo[0][5]) == 4, "chain-confirmed 2 l replaces wrong enrichment 0,4 kg"
 assert po["KRUMPIR MLADI 2,5 KG"][5][1] == 2.2, "consistent unit price (2,20 / 2,5 = 0,88) is kept"
-assert statistika["Plodine"]["redak s proturječnom jediničnom cijenom (ne rangira se)"] == 1
+assert statistika["Plodine"]["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"] == 1
+assert statistika["Boso"]["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] == 1
 assert statistika["Trgovina Krk"]["najniža poslovnica ispod cijene lanca"] == 1
 krk_primjer = next(p for p in primjeri if p["lanac"] == "Trgovina Krk")
 assert (krk_primjer["prije"], krk_primjer["poslije"]) == (0.10, 0.89), krk_primjer
@@ -75,4 +83,4 @@ assert not ok(price="1.99", unit_price="2.50")
 assert a.jedinicna_se_slaze({"price": "1.99", "unit_price": "9"}, (1, "kom")), "piece goods are not checked"
 assert a.mjera("0,5", "kom", "Lubenica") is None, "fractional piece without a quantity in the name is unknown, not 0,5 kom"
 print("CHAIN PRICE PASS: lower median of stores (Krk 0,10 → 0,89), fractional kom → name quantity (NTL 2,5 kg), "
-      "contradicting unit price not ranked (Plodine 1,11 vs 0,56 €/kg), rounding and per-piece unit prices accepted")
+      "unconfirmed quantity shown unranked (Plodine 1,11 vs 0,56 €/kg), chain-confirmed quantity over wrong enrichment (Boso beer 2 l), rounding and per-piece unit prices accepted")

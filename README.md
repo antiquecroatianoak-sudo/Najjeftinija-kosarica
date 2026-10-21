@@ -78,7 +78,7 @@ Savjet: koristi jednostavne nazive kakvi pišu na proizvodima (npr. „mlijeko�
 | `.github/workflows/dnevno-azuriranje.yml` | Svaki dan u ~7 h pokrene preuzimanje i objavi aplikaciju |
 
 Napomene:
-- Cijena lanca je donji medijan cijena po poslovnicama: barem pola poslovnica prodaje po njoj ili jeftinije, pa jedna poslovnica s krajnjom vrijednošću ne određuje poredak; redak čija cijena proturječi jediničnoj cijeni koju je objavio trgovac ne rangira se (`python scripts/revizija_cijena.py` broji takve retke po lancu)
+- Cijena lanca je donji medijan cijena po poslovnicama: barem pola poslovnica prodaje po njoj ili jeftinije, pa jedna poslovnica s krajnjom vrijednošću ne određuje poredak; vrijedi količina koju potvrđuje jedinična cijena koju je lanac objavio, a ponuda bez takve potvrde prikazuje se bez poretka (`python scripts/revizija_cijena.py` broji takve retke po lancu)
   (uključujući akcijske cijene). U tvojoj poslovnici cijena može biti malo drukčija.
 - Cijena po kg/l računa se iz količine koju objavljuju trgovine. Kad je ona
   pogrešno upisana, takav proizvod se slaže iza onih s poznatom količinom.

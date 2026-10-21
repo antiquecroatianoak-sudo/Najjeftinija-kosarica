@@ -199,6 +199,11 @@ def jedinicna_se_slaze(red: dict, mjera_proizvoda: tuple[float, str] | None) -> 
     return False
 
 
+def provjerljiv(red: dict, mjera_proizvoda: tuple[float, str] | None) -> bool:
+    """Ima li redak jediničnu cijenu po kg ili l s kojom se količina može provjeriti."""
+    return bool(u_broj(red.get("unit_price") or "")) and bool(mjera_proizvoda) and mjera_proizvoda[1] in ("kg", "l")
+
+
 def cijena_lanca(cijene_poslovnica: list[float]) -> float:
     """
     Cijena lanca = donji medijan cijena po poslovnicama: stvarno objavljena cijena koju ima barem pola poslovnica
@@ -266,34 +271,51 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
                 if not p or not (p.get("name") or "").strip():
                     continue
                 barkod = (p.get("barcode") or "").strip()
-                mjera_lanca = dopuna.get(barkod) or mjera(p.get("quantity", ""), p.get("unit", ""), p["name"])
-                potvrdene = [c for c, red in redovi if jedinicna_se_slaze(red, mjera_lanca)]
+                # Količina iz dopune ili iz podataka lanca: vrijedi ona koju potvrđuje jedinična cijena koju je lanac
+                # sam objavio (dopuna zna biti pogrešna, npr. pivo 2 l upisano kao 0,4 kg). Bez potvrde nema poretka.
+                kandidati = [m for m in (dopuna.get(barkod), mjera(p.get("quantity", ""), p.get("unit", ""), p["name"])) if m]
+                mjera_lanca, potvrdene = None, []
+                for m in kandidati:
+                    pot = [c for c, red in redovi if jedinicna_se_slaze(red, m)]
+                    if len(pot) > len(potvrdene):
+                        mjera_lanca, potvrdene = m, pot
+                provjerena = bool(mjera_lanca) and any(provjerljiv(red, mjera_lanca) for _, red in redovi)
+                nepotvrdeno = bool(kandidati) and not potvrdene
                 if statistika is not None:
                     st = statistika.setdefault(lanci[-1], Counter())
                     st["proizvoda"] += 1
                     st["redaka"] += len(redovi)
-                    st["redak s proturječnom jediničnom cijenom (ne rangira se)"] += len(redovi) - len(potvrdene)
-                    if not potvrdene:
-                        st["proizvod bez potvrđene cijene (ne rangira se)"] += 1
-                    elif min(c for c, _ in redovi) < cijena_lanca(potvrdene):
+                    if potvrdene:
+                        st["redak s proturječnom jediničnom cijenom (ne ulazi u cijenu lanca)"] += len(redovi) - len(potvrdene)
+                    if nepotvrdeno:
+                        st["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"] += 1
+                    if kandidati and mjera_lanca != kandidati[0]:
+                        st["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] += 1
+                    if potvrdene and min(c for c, _ in redovi) < cijena_lanca(potvrdene):
                         st["najniža poslovnica ispod cijene lanca"] += 1
                     if primjeri is not None:
                         primjeri.append({"lanac": lanci[-1], "product_id": pid, "naziv": p["name"].strip(),
-                                         "kolicina": p.get("quantity"), "jedinica": p.get("unit"), "mjera": mjera_lanca,
-                                         "poslovnica": len(redovi), "potvrdeno": len(potvrdene),
+                                         "kolicina": p.get("quantity"), "jedinica": p.get("unit"), "kandidati": kandidati,
+                                         "mjera": mjera_lanca, "poslovnica": len(redovi), "potvrdeno": len(potvrdene),
                                          "prije": min(c for c, _ in redovi),
-                                         "poslije": cijena_lanca(potvrdene) if potvrdene else None,
-                                         "proturjecni": [{k: red.get(k) for k in ("store_id", "price", "special_price", "unit_price")}
-                                                         for c, red in redovi if not jedinicna_se_slaze(red, mjera_lanca)][:3]})
-                if not potvrdene:
-                    continue
-                cijena = cijena_lanca(potvrdene)
+                                         "poslije": cijena_lanca(potvrdene or [c for c, _ in redovi]),
+                                         "raspon": sorted({(red.get("price"), red.get("special_price"), red.get("unit_price"))
+                                                           for _, red in redovi}, key=lambda t: u_broj(t[0] or "") or 0)[:8]})
+                cijena = cijena_lanca(potvrdene or [c for c, _ in redovi])
                 uvezeno += 1
                 # Isti barkod = isti proizvod, bez obzira na lanac.
                 kljuc = barkod or f"{lanac}:{pid}"
                 zapis = svi.get(kljuc)
+                # Nepotvrđena količina ili druga potvrđena količina istog barkoda: zasebna ponuda (bez poretka ako
+                # je nepotvrđena), da ne preuzme ni ne pokvari količinu proizvoda u drugim lancima.
+                if nepotvrdeno:
+                    kljuc = f"{kljuc}|nepotvrdeno|{lanac}"
+                    zapis = svi.get(kljuc)
+                elif zapis is not None and provjerena and zapis["provjerena"] and zapis["mjera"] != mjera_lanca:
+                    kljuc = f"{kljuc}|{mjera_lanca}"
+                    zapis = svi.get(kljuc)
                 if zapis is None:
-                    zapis = svi[kljuc] = {"cijene": {}, "mjera": None, "najniza": None}
+                    zapis = svi[kljuc] = {"cijene": {}, "mjera": None, "provjerena": False, "najniza": None}
                 stara = zapis["cijene"].get(lanac_idx)
                 if stara is None or cijena < stara:
                     zapis["cijene"][lanac_idx] = cijena
@@ -302,8 +324,8 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
                     zapis["najniza"] = cijena
                     zapis["naziv"] = p["name"].strip()
                     zapis["marka"] = (p.get("brand") or "").strip()
-                if zapis["mjera"] is None:
-                    zapis["mjera"] = mjera_lanca
+                if not nepotvrdeno and (zapis["mjera"] is None or (provjerena and not zapis["provjerena"])):
+                    zapis["mjera"], zapis["provjerena"] = mjera_lanca, provjerena
             print(f"  {lanci[-1]}: {uvezeno} proizvoda")
 
     proizvodi = []

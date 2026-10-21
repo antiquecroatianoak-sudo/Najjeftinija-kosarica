@@ -18,29 +18,38 @@ import azuriraj_cijene as a  # noqa: E402
 IZLAZ = Path(__file__).resolve().parent.parent / "site" / "data" / "revizija-cijena.json"
 
 
+def djelomican(p: dict) -> bool:
+    k = (p["kolicina"] or "").replace(",", ".")
+    try:
+        return (p["jedinica"] or "").strip().lower() in ("kom", "komad") and float(k) != int(float(k))
+    except ValueError:
+        return False
+
+
 def sazetak(statistika: dict, primjeri: list, rijec: str) -> dict:
     trazeno = a.normaliziraj(rijec)
-    po_lancu = {}
+    po_lancu, uzorci = {}, {}
     for lanac, st in statistika.items():
         st = Counter(st)
+        u = uzorci[lanac] = {"djelomičan komad": [], "nepotvrđena količina": [], "količina lanca umjesto dopune": []}
         for p in primjeri:
             if p["lanac"] != lanac:
                 continue
-            k = (p["kolicina"] or "").replace(",", ".")
-            try:
-                djelomican = (p["jedinica"] or "").strip().lower() in ("kom", "komad") and float(k) != int(float(k))
-            except ValueError:
-                djelomican = False
-            st["djelomičan komad u izvoru (odlučuje naziv)"] += djelomican
+            st["djelomičan komad u izvoru (odlučuje naziv)"] += djelomican(p)
             st["nepoznata količina (bez cijene po jedinici)"] += p["mjera"] is None
+            for vrsta, uvjet in (("djelomičan komad", djelomican(p)), ("nepotvrđena količina", p["kandidati"] and not p["potvrdeno"]),
+                                 ("količina lanca umjesto dopune", p["kandidati"] and p["mjera"] and p["mjera"] != p["kandidati"][0])):
+                if uvjet and len(u[vrsta]) < 3:
+                    u[vrsta].append({k: p[k] for k in ("naziv", "kolicina", "jedinica", "kandidati", "mjera", "raspon")})
         po_lancu[lanac] = dict(st)
-    odstupanja = sorted((p for p in primjeri if p["poslije"] and p["prije"] < p["poslije"]),
-                        key=lambda p: p["prije"] / p["poslije"])
+    s_cijenom = [p for p in primjeri if p["poslije"]]
     return {
         "po_lancu": po_lancu,
         "ukupno": dict(sum((Counter(s) for s in po_lancu.values()), Counter())),
-        "najveca_odstupanja_najnize_poslovnice": odstupanja[:40],
-        "proturjecne_jedinicne": [p for p in primjeri if p["proturjecni"]][:40],
+        # Obje strane: najniža poslovnica daleko ispod cijene lanca, i cijena lanca daleko iznad najniže (sirovi retci).
+        "najveca_odstupanja_najnize_poslovnice": sorted((p for p in s_cijenom if p["prije"] < p["poslije"]),
+                                                        key=lambda p: p["prije"] / p["poslije"])[:40],
+        "uzorci_po_lancu": uzorci,
         "rijec": rijec,
         "prije_poslije": sorted(
             ({k: p[k] for k in ("lanac", "naziv", "kolicina", "jedinica", "mjera", "poslovnica", "potvrdeno", "prije", "poslije")}
@@ -67,12 +76,14 @@ def main():
     print(f"Prije/poslije za '{rijec}' (od najniže cijene po jedinici prije):")
     for p in rezultat["prije_poslije"][:25]:
         print("  " + json.dumps(p, ensure_ascii=False))
-    print("Najveća odstupanja najniže poslovnice od cijene lanca:")
-    for p in rezultat["najveca_odstupanja_najnize_poslovnice"][:20]:
-        print("  " + json.dumps({k: p[k] for k in ("lanac", "naziv", "poslovnica", "prije", "poslije")}, ensure_ascii=False))
-    print("Primjeri proturječnih jediničnih cijena:")
-    for p in rezultat["proturjecne_jedinicne"][:20]:
-        print("  " + json.dumps({k: p[k] for k in ("lanac", "naziv", "mjera", "proturjecni")}, ensure_ascii=False))
+    print("Najveća odstupanja najniže poslovnice od cijene lanca (sirovi retci: price, special_price, unit_price):")
+    for p in rezultat["najveca_odstupanja_najnize_poslovnice"][:25]:
+        print("  " + json.dumps({k: p[k] for k in ("lanac", "naziv", "poslovnica", "potvrdeno", "prije", "poslije", "raspon")}, ensure_ascii=False))
+    print("Uzorci po lancu:")
+    for lanac, u in rezultat["uzorci_po_lancu"].items():
+        for vrsta, lista in u.items():
+            for p in lista[:2]:
+                print(f"  {lanac} · {vrsta}: " + json.dumps(p, ensure_ascii=False))
     return 0
 
 
