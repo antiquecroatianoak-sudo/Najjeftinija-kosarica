@@ -50,6 +50,8 @@ STUPCI = {
     "akcija": ["naziv posebnog oblika prodaje", "poseban oblik prodaje"],
     "barkod": ["barkod", "ean kod", "barcode", "ean", "bar kod", "barkod artikla"],
     "dostupnost": ["dostupnost", "raspolozivost", "dostupno nedostupno", "dostupno", "dostupan nedostupan"],
+    # dm: "dostupno samo online" = da znači da artikla nema u prodavaonici.
+    "samo_online": ["dostupno samo online"],
 }
 INDEKS_STUPACA = {n: k for k, nazivi in STUPCI.items() for n in nazivi}
 
@@ -70,6 +72,10 @@ def kljuc_stupca(ime: str) -> str | None:
     n = re.sub(r"\s+eur$", "", n)
     if n in INDEKS_STUPACA:
         return INDEKS_STUPACA[n]
+    # Pojašnjenje u zagradi (dm: "MPC za vrijeme posebnog oblika prodaje (Rasprodaja proizvoda ...)").
+    bez_zagrade = normaliziraj(re.sub(r"\(.*?\)", "", ime))
+    if bez_zagrade in INDEKS_STUPACA and bez_zagrade != n:
+        return INDEKS_STUPACA[bez_zagrade]
     # "SIDRENA CIJENA NA 2.5.2025", "NAJNIŽA CIJENA U POSLJEDNIH 30 DANA" i sl. nisu cijena ponude.
     return None
 
@@ -506,6 +512,8 @@ def u_arhivu_lanca(rez: dict, d: date) -> tuple[str, str, str, list]:
         for z in dat["zapisi"]:
             if normaliziraj(z.get("dostupnost", "")) in ("nedostupno", "nedostupan", "ne"):
                 continue
+            if normaliziraj(z.get("samo_online", "")) in ("da", "1", "true"):
+                continue  # nije ponuda u prodavaonici
             pid = z.get("sifra") or z.get("barkod") or normaliziraj(z["naziv"])
             if pid not in proizvodi:
                 proizvodi[pid] = [pid, (z.get("barkod") or "").strip(), z["naziv"], z.get("marka", ""),
