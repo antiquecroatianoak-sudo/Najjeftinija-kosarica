@@ -43,6 +43,7 @@ jobs:
           node tests/skupine.cjs
           node tests/kosarica.cjs
           node tests/glasovni-unos.cjs
+          node tests/sve-u-jednom.cjs
 
       - name: Pripremi skupine za novi cjenik
         run: node scripts/razvrstaj.cjs

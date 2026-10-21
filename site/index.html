@@ -48,8 +48,17 @@
         <div id="preostalo" class="preostalo" hidden>Još za kupiti: <strong id="preostalo-iznos"></strong></div>
         <div id="po-trgovinama" class="po-trgovinama"></div>
       </div>
+      <section id="jedna-trgovina" class="jedna-trgovina" aria-labelledby="jedna-naslov" hidden>
+        <h2 id="jedna-naslov">Sve u jednom dućanu</h2>
+        <p id="kombinacija" class="kombinacija"></p>
+        <p id="usporedne-kolicine" class="savjet"></p>
+        <p id="nema-potpune" class="upozorenje" hidden>Nijedan lanac nema sve stavke s usporedivom ponudom: cijeli popis nije moguće kupiti u jednom dućanu.</p>
+        <ul id="trgovine-usporedba" class="trgovine-usporedba" aria-label="Lanci sa svim stavkama, od najjeftinijeg"></ul>
+        <h3 id="nepotpune-naslov" class="nepotpune-naslov" hidden>Nepotpuno: lanci bez svih stavki</h3>
+        <ul id="trgovine-nepotpune" class="trgovine-usporedba" aria-label="Lanci bez svih stavki"></ul>
+        <p class="savjet">Iznos lanca zbraja najniže objavljene cijene u njegovim poslovnicama; u pojedinoj poslovnici može biti veći.</p>
+      </section>
     </section>
-    <section id="jedna-trgovina" class="jedna-trgovina" hidden><details><summary>Sve u jednom dućanu <span aria-hidden="true">⌄</span></summary><ul id="trgovine-usporedba" class="trgovine-usporedba"></ul></details></section>
     <footer>
       <div class="stanje-podataka"><p id="status" role="status">Učitavam cijene…</p><button id="ponovi" type="button" hidden>Pokušaj ponovno</button></div>
       <details class="pomoc"><summary>Kako uspoređujemo cijene?</summary><p>Poredak je po jediničnoj cijeni (kg, l ili kom). Prikazana je najniža cijena unutar lanca; u tvojoj poslovnici može biti drukčija.</p></details>
