@@ -90,7 +90,10 @@ jobs:
       - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
         run: |
           pip install --quiet openpyxl==3.1.5
-          python -u scripts/azuriraj_cijene.py
+          # Lanci objavljuju do 8:00; provjera na radnoj grani prije 8:00 koristi jučerašnje (potpune) cjenike.
+          if [ "$(TZ=Europe/Zagreb date +%H)" -lt 8 ]; then D=$(TZ=Europe/Zagreb date -d yesterday +%F); else D=$(TZ=Europe/Zagreb date +%F); fi
+          echo "SLUZBENI_DATUM=$D" >> "$GITHUB_ENV"
+          SLUZBENI_DATUM=$D python -u scripts/azuriraj_cijene.py
           python - <<'EOF'
           import json
           from pathlib import Path
@@ -140,11 +143,13 @@ jobs:
           from zoneinfo import ZoneInfo
           sys.path.insert(0, "scripts")
           import sluzbeni_cjenici as sl
-          d = datetime.now(ZoneInfo("Europe/Zagreb")).date()
+          import os
+          d = datetime.fromisoformat(os.environ["SLUZBENI_DATUM"]).date() if os.environ.get("SLUZBENI_DATUM") else datetime.now(ZoneInfo("Europe/Zagreb")).date()
           rez = sl.preuzmi_lanac("trgovina-krk", d)
+          print(f"Krk {d}: {len(rez.get('koristene', []))} datoteka; {rez.get('razlog', '')}")
           for dat in rez.get("koristene", []):
               for z in dat["zapisi"]:
-                  if "GASTRO" in z["naziv"].upper() and "KRUMPIR" in z["naziv"].upper():
+                  if "GASTRO" in z["naziv"].upper() and "KRUMPIR" in z["naziv"].upper():  # i nedostupni retci
                       print(json.dumps({"datoteka": sl.siguran_url(dat["url"]), "redak": z["_redak"], **{k: v for k, v in z.items() if k != "_redak"}}, ensure_ascii=False))
           EOF
       - uses: actions/setup-node@v4

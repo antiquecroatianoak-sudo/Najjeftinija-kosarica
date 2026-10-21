@@ -530,7 +530,9 @@ def main():
             datum = preuzmi_najnoviju_arhivu(arhiva)
             # Službeni cjenici imaju prednost; SLUZBENI=0 isključuje, SLUZBENI_LANCI=konzum,lidl ograničava.
             if os.environ.get("SLUZBENI", "1") != "0":
-                danas = datetime.now(ZoneInfo("Europe/Zagreb")).date()
+                # Jedan datum za cijelo pokretanje (SLUZBENI_DATUM), da prijelaz ponoći ne promijeni traženi dan.
+                danas = (datetime.fromisoformat(os.environ["SLUZBENI_DATUM"]).date() if os.environ.get("SLUZBENI_DATUM")
+                         else datetime.now(ZoneInfo("Europe/Zagreb")).date())
                 sastavljena = Path(tmp) / "sastavljeno.zip"
                 odabrani = [x for x in os.environ.get("SLUZBENI_LANCI", "").split(",") if x] or None
                 izvjestaj = sastavi_arhivu(arhiva, danas, sastavljena, float(os.environ.get("SLUZBENI_ROK", "2400")), odabrani)

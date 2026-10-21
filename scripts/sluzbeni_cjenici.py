@@ -37,17 +37,19 @@ STUPCI = {
     "naziv": ["naziv proizvoda", "naziv", "naziv artikla", "naziv art", "proizvod", "artikl"],
     "sifra": ["sifra proizvoda", "sifra", "sif art", "sifra artikla", "kod proizvoda", "sifra art"],
     "marka": ["marka proizvoda", "marka", "brand"],
-    "kolicina": ["neto kolicina", "net kol", "nettokolicina", "neto kol", "gramaza", "neto kolicina proizvoda", "kolicina"],
+    "kolicina": ["neto kolicina", "net kol", "nettokolicina", "neto kol", "gramaza", "neto kolicina proizvoda", "kolicina",
+                 "neto kolicina kg"],
     # (stvarna zaglavlja iz pokretanja 21.10.2026: Spar "(EUR)", Plodine "Cijena po JM", Tommy, Stridon, Eurospin)
-    "jedinica": ["jedinica mjere", "jmj", "mjera", "jmjere", "jedinica", "jm"],
+    "jedinica": ["jedinica mjere", "jmj", "mjera", "jmjere", "j mjere", "jedinica", "jm", "jed mj 1 kom l kg"],
     "cijena": ["maloprodajna cijena", "mpc", "mpcijena", "maloprod cijena", "cijena"],
     "jedinicna": ["cijena za jedinicu mjere", "c jmj", "mpcijenamjera", "mpcjmj", "cijena jedinice mjere",
-                  "jedinicna cijena", "cijena po jedinici mjere", "mpc jmj", "cijena po jm", "cijena po jmj"],
+                  "jedinicna cijena", "cijena po jedinici mjere", "mpc jmj", "cijena po jm", "cijena po jmj", "cijena jed mj"],
     "posebna": ["mpc za vrijeme posebnog oblika prodaje", "mpc pop", "akcijska cijena", "posebna cijena",
-                "mpc posebnog oblika prodaje", "mpc posebni oblik prodaje", "mpc posebna prodaja", "mpc poseb oblik prod"],
+                "mpc posebnog oblika prodaje", "mpc posebni oblik prodaje", "mpc posebna prodaja", "mpc poseb oblik prod",
+                "maloprodajna cijena akcija", "akc cijena a akcija"],
     "akcija": ["naziv posebnog oblika prodaje", "poseban oblik prodaje"],
     "barkod": ["barkod", "ean kod", "barcode", "ean", "bar kod", "barkod artikla"],
-    "dostupnost": ["dostupnost", "raspolozivost", "dostupno nedostupno", "dostupno"],
+    "dostupnost": ["dostupnost", "raspolozivost", "dostupno nedostupno", "dostupno", "dostupan nedostupan"],
 }
 INDEKS_STUPACA = {n: k for k, nazivi in STUPCI.items() for n in nazivi}
 
@@ -60,7 +62,10 @@ def normaliziraj(tekst: str) -> str:
 
 def kljuc_stupca(ime: str) -> str | None:
     # XML oznake u CamelCase (Studenac, Ribola: "NazivProizvoda", "MaloprodajnaCijena") razdvajaju se u riječi.
-    n = normaliziraj(re.sub(r"(?<=[a-zčćšžđ])(?=[A-ZČĆŠŽĐ])|(?<=[A-ZČĆŠŽĐ])(?=[A-ZČĆŠŽĐ][a-zčćšžđ])", " ", ime))
+    # Samo prava CamelCase oznaka (jedna riječ, mješovita slova); "NETO KOLIčINA" (Dukat) ostaje kakva jest.
+    if re.fullmatch(r"[A-Za-zČĆŠŽĐčćšžđ]+", ime) and not ime.isupper() and not ime.islower():
+        ime = re.sub(r"(?<=[a-zčćšžđ])(?=[A-ZČĆŠŽĐ])|(?<=[A-ZČĆŠŽĐ])(?=[A-ZČĆŠŽĐ][a-zčćšžđ])", " ", ime)
+    n = normaliziraj(ime)
     # Valuta u zaglavlju ("MPC (EUR)", "MALOPROD.CIJENA(EUR)") ne mijenja značenje stupca.
     n = re.sub(r"\s+eur$", "", n)
     if n in INDEKS_STUPACA:
@@ -211,15 +216,15 @@ def citaj_xlsx(sadrzaj: bytes):
     zaglavlje = [str(x or "").strip() for x in next(redovi, [])]
     # Neki listovi imaju naslov iznad zaglavlja: zaglavlje je prvi redak s prepoznatim nazivom i cijenom.
     preskoceno = 1
-    while not {"naziv", "cijena"} <= {kljuc_stupca(z) for z in zaglavlje} and preskoceno < 15:
+    while not {"naziv", "cijena"} <= {kljuc_stupca(z) for z in zaglavlje} and preskoceno < 60:
         zaglavlje = [str(x or "").strip() for x in next(redovi, [])]
         preskoceno += 1
     kljucevi = [kljuc_stupca(z) for z in zaglavlje]
     nepoznati = [z for z, k in zip(zaglavlje, kljucevi) if not k and z]
     zapisi = []
     if not ("naziv" in kljucevi and "cijena" in kljucevi):
-        prvi = [str(x) for x in next(wb.worksheets[0].iter_rows(values_only=True), [])]
-        return [f"XLSX listovi {wb.sheetnames[:3]}, prvi redak {prvi[:14]}"], nepoznati, []
+        prvi = [[str(x) for x in r[:12] if x is not None] for r in wb.worksheets[0].iter_rows(max_row=8, values_only=True)]
+        return [f"XLSX listovi {wb.sheetnames[:3]}, prvi retci {prvi}"], nepoznati, []
     if "naziv" in kljucevi and "cijena" in kljucevi:
         for n, red in enumerate(redovi, start=preskoceno + 1):
             zapis = {k: ("" if v is None else str(v)).strip() for k, v in zip(kljucevi, red) if k}
@@ -351,7 +356,7 @@ def poveznice_s_tekstom(tekst: str, osnova: str, uzorak: str) -> list[tuple[str,
     rez = []
     for m in re.finditer(r"""<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>(.*?)</a>""", tekst, re.I | re.S):
         if re.search(uzorak, m.group(1), re.I):
-            okolina = re.sub(r"<[^>]+>", " ", tekst[max(0, m.start() - 400):m.end()])
+            okolina = re.sub(r"<[^>]+>", " ", tekst[max(0, m.start() - 1500):m.end()])
             rez.append((urllib.parse.urljoin(osnova, html.unescape(m.group(1))), html.unescape(okolina)))
     return rez
 
@@ -362,7 +367,8 @@ def zabac(d):
     rez = {}
     for st in dict.fromkeys(stranice):
         for u, okolina in poveznice_s_tekstom(dekodiraj(dohvati(st)), st, r"\.(csv|xlsx)(?:$|[?#&])"):
-            if ima_datum(okolina[-300:], d) and u not in rez:
+            datumi = re.findall(r"\d{1,2}\.\s*\d{1,2}\.\s*\d{4}", okolina)
+            if datumi and ima_datum(re.sub(r"\s+", "", datumi[-1]), d) and u not in rez:
                 trgovina = urllib.parse.parse_qs(urllib.parse.urlsplit(st).query).get("store", ["Žabac"])[0]
                 rez[u] = trgovina
     if not rez:
