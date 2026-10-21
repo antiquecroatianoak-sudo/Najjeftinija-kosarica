@@ -59,7 +59,8 @@ def normaliziraj(tekst: str) -> str:
 
 
 def kljuc_stupca(ime: str) -> str | None:
-    n = normaliziraj(ime)
+    # XML oznake u CamelCase (Studenac, Ribola: "NazivProizvoda", "MaloprodajnaCijena") razdvajaju se u riječi.
+    n = normaliziraj(re.sub(r"(?<=[a-zčćšžđ])(?=[A-ZČĆŠŽĐ])|(?<=[A-ZČĆŠŽĐ])(?=[A-ZČĆŠŽĐ][a-zčćšžđ])", " ", ime))
     # Valuta u zaglavlju ("MPC (EUR)", "MALOPROD.CIJENA(EUR)") ne mijenja značenje stupca.
     n = re.sub(r"\s+eur$", "", n)
     if n in INDEKS_STUPACA:
@@ -123,9 +124,9 @@ def dohvati(url: str) -> bytes:
                 raise
             except Exception as e:  # noqa: BLE001
                 msg = str(e)
-                if "403" in msg or "404" in msg or pokusaj == 2:
+                if "403" in msg or pokusaj == 2 or ("404" in msg and pokusaj == 1):
                     raise
-                time.sleep(2 * (pokusaj + 1))
+                time.sleep(3 * (pokusaj + 1))
     pocetak = sadrzaj[:600].lower()
     if b"just a moment" in pocetak or b"cf-challenge" in pocetak or b"captcha" in pocetak:
         raise PermissionError("JS izazov / zaštita od botova (ne zaobilazi se)")
@@ -216,6 +217,9 @@ def citaj_xlsx(sadrzaj: bytes):
     kljucevi = [kljuc_stupca(z) for z in zaglavlje]
     nepoznati = [z for z, k in zip(zaglavlje, kljucevi) if not k and z]
     zapisi = []
+    if not ("naziv" in kljucevi and "cijena" in kljucevi):
+        prvi = [str(x) for x in next(wb.worksheets[0].iter_rows(values_only=True), [])]
+        return [f"XLSX listovi {wb.sheetnames[:3]}, prvi redak {prvi[:14]}"], nepoznati, []
     if "naziv" in kljucevi and "cijena" in kljucevi:
         for n, red in enumerate(redovi, start=preskoceno + 1):
             zapis = {k: ("" if v is None else str(v)).strip() for k, v in zip(kljucevi, red) if k}
@@ -315,12 +319,18 @@ def kaufland(d):
         put = (props.get("settings") or {}).get("dataUrlAssets")
         if not put:
             continue
-        for stavka in json.loads(dekodiraj(dohvati(urllib.parse.urljoin("https://www.kaufland.hr/", put)))):
+        json_url = urllib.parse.urljoin("https://www.kaufland.hr/", put)
+        stavke = json.loads(dekodiraj(dohvati(json_url)))
+        if stavke:
+            print(f"    kaufland: popis {json_url}, prva stavka {json.dumps(stavke[0], ensure_ascii=False)[:300]}", flush=True)
+        for stavka in stavke:
             vrijednosti = [str(v) for v in stavka.values()] if isinstance(stavka, dict) else [str(stavka)]
-            u = next((v for v in vrijednosti if re.search(r"\.csv", v, re.I)), None)
+            u = next((v for v in vrijednosti if re.search(r"^(https?:|/).*\.csv", v, re.I)), None) or \
+                next((v for v in vrijednosti if re.search(r"\.csv", v, re.I)), None)
             naslov = " ".join(vrijednosti)
             if u and ima_datum(naslov, d):
-                rez.append((urllib.parse.urljoin("https://www.kaufland.hr/", u), kljuc_poslovnice(u, d)))
+                # Samo naziv datoteke: nalazi se uz popis (isti direktorij kao JSON).
+                rez.append((urllib.parse.urljoin(json_url, u), kljuc_poslovnice(u, d)))
     if not rez:
         raise ValueError("popis datoteka (data-props → dataUrlAssets) nije pronađen ili nema današnjih")
     return rez
@@ -356,7 +366,9 @@ def zabac(d):
                 trgovina = urllib.parse.parse_qs(urllib.parse.urlsplit(st).query).get("store", ["Žabac"])[0]
                 rez[u] = trgovina
     if not rez:
-        raise ValueError(f"na stranicama nema datoteke s datumom {d:%d.%m.%Y} u naslovu")
+        uzorak = next((o for st in stranice[:1] for _, o in poveznice_s_tekstom(dekodiraj(dohvati(st)), st, r"\.(csv|xlsx)")), "")
+        raise ValueError(f"na stranicama nema datoteke s datumom {d:%d.%m.%Y} u naslovu; tekst uz poveznicu: "
+                         f"{re.sub(r'\s+', ' ', uzorak)[-200:]!r}")
     return list(rez.items())
 
 
@@ -447,7 +459,7 @@ def preuzmi_lanac(lanac: str, d: date) -> dict:
                 try:
                     zaglavlje, nepoznati, zapisi = citaj_datoteku(sadrzaj, ime)
                     izlaz.append({"url": u, "poslovnica": k, "zapisi": zapisi, "nepoznati": nepoznati,
-                                  "greska": "" if zapisi else f"nema prepoznatih stupaca naziv/cijena: {zaglavlje[:14]}"})
+                                  "greska": "" if zapisi else f"nema prepoznatih stupaca naziv/cijena: {str(zaglavlje[:20])[:420]}"})
                 except Exception as e:  # noqa: BLE001
                     izlaz.append({"url": u, "poslovnica": k, "zapisi": [], "nepoznati": [], "greska": f"{str(e)[:200]} ({u[:160]})"})
             return izlaz

@@ -131,6 +131,22 @@ jobs:
                 f"najveća {datoteke[-1].stat().st_size // 1000} kB, medijan {datoteke[len(datoteke) // 2].stat().st_size // 1000} kB; "
                 f"proizvodi.json {(d / 'proizvodi.json').stat().st_size // 1000} kB")
           EOF
+      - name: Službeni zapis prijavljenog krumpira (Trgovina Krk, sirovi retci s datotekom i retkom)
+        continue-on-error: true
+        run: |
+          python - <<'EOF'
+          import json, sys
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          sys.path.insert(0, "scripts")
+          import sluzbeni_cjenici as sl
+          d = datetime.now(ZoneInfo("Europe/Zagreb")).date()
+          rez = sl.preuzmi_lanac("trgovina-krk", d)
+          for dat in rez.get("koristene", []):
+              for z in dat["zapisi"]:
+                  if "GASTRO" in z["naziv"].upper() and "KRUMPIR" in z["naziv"].upper():
+                      print(json.dumps({"datoteka": sl.siguran_url(dat["url"]), "redak": z["_redak"], **{k: v for k, v in z.items() if k != "_redak"}}, ensure_ascii=False))
+          EOF
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
