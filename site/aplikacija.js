@@ -188,8 +188,9 @@ function ponuda(i, lanac, cijena, poslovnica = null) {
   const posl = poslovnica !== null ? poslovnica : meta ? meta[0] : null;
   return { i, lanac, cijena, jedinica, poJedinici: iznos ? cijena / iznos : null,
     poslovnica: posl,
-    // Bez traga izvora u cjeniku (stari oblik podataka) nema razlike; s tragom vrijedi samo službena datoteka.
-    sluzbena: !Array.isArray(podaci.izvori) || (posl !== null && izvorPoslovnice(posl) !== null),
+    // Potvrđena je samo cijena poslovnice s valjanim tragom službene datoteke. Stari ili offline oblik bez traga
+    // (ili s neispravnim tragom) ostaje vidljiv, ali nije potvrđen i ne sudjeluje u poretku ni zbrojevima.
+    sluzbena: posl !== null && izvorPoslovnice(posl) !== null,
     brojPoslovnica: meta ? meta[1] : null, najvisa: meta ? meta[2] : null, akcija: !!(meta && meta[3]),
     redak: meta && Number.isInteger(meta[4]) ? meta[4] : null, nazivAkcije: meta && meta[5] ? meta[5] : "",
     vrstaNejasna: !!klasifikacija && !klasifikacija.vrstaProizvoda(i) };
@@ -197,9 +198,12 @@ function ponuda(i, lanac, cijena, poslovnica = null) {
 
 // [URL službene datoteke, datum] iz koje su cijene poslovnice, ili null (arhiva cijene.dev).
 function izvorPoslovnice(idx) {
-  const p = podaci && (podaci.poslovnice || [])[idx];
-  const i = p && Number.isInteger(p[4]) ? p[4] : -1;
-  return i >= 0 && Array.isArray(podaci.izvori) ? podaci.izvori[i] || null : null;
+  const p = podaci && Array.isArray(podaci.poslovnice) ? podaci.poslovnice[idx] : null;
+  const i = Array.isArray(p) && Number.isInteger(p[4]) ? p[4] : -1;
+  const izvor = i >= 0 && Array.isArray(podaci.izvori) ? podaci.izvori[i] : null;
+  // Valjan trag: [https URL službene datoteke, datum GGGG-MM-DD].
+  return Array.isArray(izvor) && /^https?:\/\/\S+$/.test(String(izvor[0] || "")) && /^\d{4}-\d{2}-\d{2}$/.test(String(izvor[1] || ""))
+    ? izvor : null;
 }
 
 function opisPoslovnice(idx) {

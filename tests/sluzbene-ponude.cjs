@@ -62,5 +62,21 @@ assert.equal(r.poslovnice.potpune.length, 0);
 assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, false);
 assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
   "Poslovnica: Ilica 1, Zagreb · arhiva cijene.dev, nije provjereno sa službenim cjenikom");
+// Stari / offline oblik (verzija 2 bez traga "izvori") i neispravan trag: ništa nije implicitno potvrđeno.
+for (const [opis, postavi] of [["no sources at all", "delete podaci.izvori; delete podaci.poslovnice;"],
+  ["sources not a list", "podaci.izvori = 'x';"],
+  ["source without https URL", "podaci.izvori = [['ftp://x', '2026-10-21']];"],
+  ["source without a date", "podaci.izvori = [['https://lanac.hr/c.csv', '']];"]]) {
+  app = scenarij([["Mlijeko 1 l", "1 l", 1, "l", 0, [1, 1.2], [[1, 1, 1.2, 0, 7, ""]]]], POSL, popis);
+  vm.runInContext(postavi + " ponudeCache.clear();", app);
+  p = vm.runInContext(`ponudeZaGrupu("Mlijeko")[0]`, app);
+  assert.equal(p.cijena, 1.2, `${opis}: offer stays visible`);
+  assert.equal(p.sluzbena, false, `${opis}: not confirmed`);
+  assert.equal(vm.runInContext(`imaJedinicnu(ponudeZaGrupu("Mlijeko")[0])`, app), false, `${opis}: not ranked`);
+  r = vm.runInContext("prikaziJednuTrgovinu()", app);
+  assert.equal(r.potpune.length, 0, `${opis}: no confirmed complete basket`);
+  assert.equal(r.kombinacija, null, `${opis}: no confirmed combination`);
+}
+
 console.log("CONFIRMED-ONLY PASS: secondary 1,09 vs official 1,20 → official wins and is shown; secondary never ranks, "
-  + "adds nothing to chain, combination or store totals; only-secondary → no confirmed cheapest and no complete basket; labelled");
+  + "adds nothing to chain, combination or store totals; only-secondary → no confirmed cheapest and no complete basket; labelled; old/offline data without (or with an invalid) source trace is never implicitly confirmed");

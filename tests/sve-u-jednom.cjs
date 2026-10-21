@@ -12,7 +12,7 @@ function scenarij(proizvodi, popis) {
   izvor = izvor.slice(0, izvor.lastIndexOf("\nfor (const r of document.querySelectorAll"));
   const ctx = vm.createContext({ Skupine, window: { scrollTo() {} }, localStorage: { getItem: () => null, setItem() {} },
     document: { addEventListener() {} } });
-  vm.runInContext(izvor + `
+  vm.runInContext(izvor + require("./sluzbeno-pomoc.cjs") + `
     const cvor = () => ({ children: [], hidden: false, textContent: "", className: "", set innerHTML(v) { this.children = []; },
       appendChild(c) { this.children.push(c); }, append(...c) { this.children.push(...c); }, setAttribute() {} });
     globalThis.__cvorovi = {};
@@ -20,6 +20,7 @@ function scenarij(proizvodi, popis) {
     document.createElement = () => cvor();
     prikaziRezultate = () => {}; spremi = () => {};
     podaci = { datum: "2026-10-21", lanci: ["Konzum", "Lidl", "Plodine"], proizvodi: ${JSON.stringify(proizvodi)} };
+    uSluzbeno(podaci);
     rijeci = podaci.proizvodi.map((x) => normaliziraj(x[0]).split(" "));
     klasifikacija = Skupine.pripremi(podaci.proizvodi, null, rijeci);
     stanje.popis = ${JSON.stringify(popis)};
@@ -110,7 +111,7 @@ assert.equal(app.__cvorovi["trgovine-nepotpune"].children[0].children[0].childre
 app = scenarij([P("Mlijeko 1 l", 1, "l", [0, 1.0, 1, 1.2]), P("Kruh 500 g", 0.5, "kg", [0, 0.9, 1, 1.1])],
   [{ naziv: "Mlijeko", kom: 1 }, { naziv: "Kruh", kom: 1 }]);
 vm.runInContext(`
-  podaci.poslovnice = [[0, "K1", "Ilica 1", "Zagreb"], [0, "K2", "Vukovarska 2", "Zagreb"], [1, "L1", "Savska 3", "Zagreb"]];
+  podaci.poslovnice = [[0, "K1", "Ilica 1", "Zagreb", 0], [0, "K2", "Vukovarska 2", "Zagreb", 0], [1, "L1", "Savska 3", "Zagreb", 1]];
   for (const p of podaci.proizvodi) p[6] = [];
   podaci.proizvodi[0][6] = [[0, 1, 1.0, 0], [2, 1, 1.2, 0]];
   podaci.proizvodi[1][6] = [[1, 1, 0.9, 0], [2, 1, 1.1, 0]];
@@ -130,11 +131,10 @@ vm.runInContext(`stanje.poslovnice = ["Konzum|K1", "Konzum|K2"];`, app);
 r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.equal(r.poslovnice.potpune.length, 0);
 assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, false, "no common store: no complete one-store basket");
-assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
-  "Poslovnica: Ilica 1, Zagreb · arhiva cijene.dev, nije provjereno sa službenim cjenikom");
+assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app), "Poslovnica: Ilica 1, Zagreb · službeni cjenik");
 vm.runInContext(`podaci.proizvodi[0][6][0] = [0, 3, 1.5, 1]; ponudeCache.clear();`, app);
 assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
-  "Poslovnica: Ilica 1, Zagreb · arhiva cijene.dev, nije provjereno sa službenim cjenikom · akcijska cijena · u drugim poslovnicama lanca do 1,50 € (provjeri)");
+  "Poslovnica: Ilica 1, Zagreb · službeni cjenik · akcijska cijena · u drugim poslovnicama lanca do 1,50 € (provjeri)");
 // Službeni cjenik: poslovnica nosi indeks datoteke, ponuda redak i naziv akcije.
 vm.runInContext(`podaci.izvori = [["https://k.hr/c.csv", "2026-10-21"]]; podaci.poslovnice[0][4] = 0;
   podaci.proizvodi[0][6][0] = [0, 3, 1.5, 1, 17, "TNC"]; ponudeCache.clear();`, app);
