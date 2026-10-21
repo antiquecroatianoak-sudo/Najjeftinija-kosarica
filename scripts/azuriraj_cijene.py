@@ -24,6 +24,7 @@ import tempfile
 import unicodedata
 import urllib.request
 import zipfile
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -168,12 +169,44 @@ def mjera(kolicina: str, jedinica: str, naziv: str = "") -> tuple[float, str] | 
         elif not kolicina and jedinica in ("kg", "l"):
             rezultat = (1.0, JEDINICE[jedinica][0])  # vaga se, cijena je po kg/l
 
+    # Djelomičan komad ("2,5" kom) nije količina: pogrešno upisana jedinica, pa odlučuje naziv ("KRUMPIR 2,5 kg").
+    if rezultat and rezultat[1] == "kom" and rezultat[0] != int(rezultat[0]):
+        rezultat = None
     # "kom" često znači samo "jedno pakiranje" - u nazivu piše prava količina.
     if naziv and (not rezultat or rezultat[1] == "kom"):
         iz_naziva = iz_teksta(naziv)
         if iz_naziva and (not rezultat or rezultat[0] == 1):
             rezultat = iz_naziva
+    if rezultat and rezultat[1] == "kom" and rezultat[0] != int(rezultat[0]):
+        return None
     return rezultat
+
+
+def jedinicna_se_slaze(red: dict, mjera_proizvoda: tuple[float, str] | None) -> bool:
+    """
+    Slaže li se jedinična cijena koju je trgovac sam objavio (unit_price, po kg ili l) s cijenom i količinom.
+    Dopuštena razlika je samo zaokruživanje (cijene na 2 decimale). Bez objavljene jedinične cijene ili bez poznate
+    količine u kg/l nema se s čim usporediti, pa redak ostaje. Prihvaća se i jedinična cijena po komadu (= cijena).
+    """
+    jedinicna = u_broj(red.get("unit_price") or "")
+    if not jedinicna or not mjera_proizvoda or mjera_proizvoda[1] not in ("kg", "l"):
+        return True
+    kolicina = mjera_proizvoda[0]
+    for stupac in ("price", "special_price"):
+        c = cijena_za_uvoz(red.get(stupac) or "")
+        if c and (abs(jedinicna - c / kolicina) <= 0.01 + 0.005 / kolicina + 1e-9 or abs(jedinicna - c) <= 0.01 + 1e-9):
+            return True
+    return False
+
+
+def cijena_lanca(cijene_poslovnica: list[float]) -> float:
+    """
+    Cijena lanca = donji medijan cijena po poslovnicama: stvarno objavljena cijena koju ima barem pola poslovnica
+    (po ili ispod nje). Jedna poslovnica s krajnjom vrijednošću (npr. 0,10 € za 1 kg krumpira u jednoj od 20) ne
+    određuje cijenu lanca; lanac s jednom poslovnicom zadržava njezinu cijenu.
+    """
+    s = sorted(cijene_poslovnica)
+    return s[(len(s) - 1) // 2]
 
 
 def opis_mjere(iznos: float, jedinica: str) -> str:
@@ -194,12 +227,14 @@ def broj_rijeci_marke(naziv: str, marka: str) -> int:
     return 0
 
 
-def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
+def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = None,
+           primjeri: list | None = None) -> tuple[list, list]:
     """
     Vraća (lanci, proizvodi).
     Proizvod = [naziv, količina (tekst), iznos, jedinica, riječi marke, [lanac, cijena, lanac, cijena, ...]]
     gdje su iznos i jedinica količina svedena na kg/l/kom (0 i "" ako se ne zna),
     a cijene po lancima idu od najjeftinije.
+    statistika (lanac -> Counter) i primjeri (popis) se pune samo za reviziju cijena.
     """
     dopuna = dopuna or {}
     lanci: list[str] = []
@@ -216,24 +251,45 @@ def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
 
             proizvodi = {p["product_id"]: p for p in citaj_csv(zf, f"{lanac}/products.csv")}
 
-            # Najniža cijena svakog proizvoda u bilo kojoj poslovnici lanca
-            # (uzimamo i akcijsku cijenu ako postoji).
-            min_cijena: dict[str, float] = {}
+            # Cijena svakog proizvoda po poslovnici (niža od redovne i akcijske), samo potvrđeni retci.
+            po_poslovnicama: dict[str, list] = {}
             for red in citaj_csv(zf, f"{lanac}/prices.csv"):
                 cijene = [c for c in (cijena_za_uvoz(red["price"]), cijena_za_uvoz(red.get("special_price", ""))) if c]
-                if not cijene:
-                    continue
-                c = min(cijene)
-                pid = red["product_id"]
-                if pid not in min_cijena or c < min_cijena[pid]:
-                    min_cijena[pid] = c
+                if cijene:
+                    po_poslovnicama.setdefault(red["product_id"], []).append((min(cijene), red))
+                elif statistika is not None:
+                    statistika.setdefault(lanci[-1], Counter())["redak bez valjane cijene"] += 1
 
-            for pid, cijena in min_cijena.items():
+            uvezeno = 0
+            for pid, redovi in po_poslovnicama.items():
                 p = proizvodi.get(pid)
                 if not p or not (p.get("name") or "").strip():
                     continue
-                # Isti barkod = isti proizvod, bez obzira na lanac.
                 barkod = (p.get("barcode") or "").strip()
+                mjera_lanca = dopuna.get(barkod) or mjera(p.get("quantity", ""), p.get("unit", ""), p["name"])
+                potvrdene = [c for c, red in redovi if jedinicna_se_slaze(red, mjera_lanca)]
+                if statistika is not None:
+                    st = statistika.setdefault(lanci[-1], Counter())
+                    st["proizvoda"] += 1
+                    st["redaka"] += len(redovi)
+                    st["redak s proturječnom jediničnom cijenom (ne rangira se)"] += len(redovi) - len(potvrdene)
+                    if not potvrdene:
+                        st["proizvod bez potvrđene cijene (ne rangira se)"] += 1
+                    elif min(c for c, _ in redovi) < cijena_lanca(potvrdene):
+                        st["najniža poslovnica ispod cijene lanca"] += 1
+                    if primjeri is not None:
+                        primjeri.append({"lanac": lanci[-1], "product_id": pid, "naziv": p["name"].strip(),
+                                         "kolicina": p.get("quantity"), "jedinica": p.get("unit"), "mjera": mjera_lanca,
+                                         "poslovnica": len(redovi), "potvrdeno": len(potvrdene),
+                                         "prije": min(c for c, _ in redovi),
+                                         "poslije": cijena_lanca(potvrdene) if potvrdene else None,
+                                         "proturjecni": [{k: red.get(k) for k in ("store_id", "price", "special_price", "unit_price")}
+                                                         for c, red in redovi if not jedinicna_se_slaze(red, mjera_lanca)][:3]})
+                if not potvrdene:
+                    continue
+                cijena = cijena_lanca(potvrdene)
+                uvezeno += 1
+                # Isti barkod = isti proizvod, bez obzira na lanac.
                 kljuc = barkod or f"{lanac}:{pid}"
                 zapis = svi.get(kljuc)
                 if zapis is None:
@@ -247,10 +303,8 @@ def obradi(arhiva: Path, dopuna: dict | None = None) -> tuple[list, list]:
                     zapis["naziv"] = p["name"].strip()
                     zapis["marka"] = (p.get("brand") or "").strip()
                 if zapis["mjera"] is None:
-                    zapis["mjera"] = dopuna.get(barkod) or mjera(
-                        p.get("quantity", ""), p.get("unit", ""), p["name"]
-                    )
-            print(f"  {lanci[-1]}: {len(min_cijena)} proizvoda")
+                    zapis["mjera"] = mjera_lanca
+            print(f"  {lanci[-1]}: {uvezeno} proizvoda")
 
     proizvodi = []
     for z in svi.values():

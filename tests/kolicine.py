@@ -19,6 +19,9 @@ slucajevi = [
     (("100", "ml", "Šampon 2x100 ml"), (0.1, "l")),
     (("1", "kg", "Banane"), (1.0, "kg")),
     (("", "kom", "Brašno 1 kg x 100"), None),  # 100 kg premašuje razumnu granicu
+    # Stvarni redak NTL (2026-10-21): "2,5" kom nije količina, u nazivu piše 2,5 kg.
+    (("2,5", "kom", "KRUMPIR 2,5 kg SNIŽENJE"), (2.5, "kg")),
+    (("0,5", "kom", "Lubenica"), None),
 ]
 for ulaz, ocekivano in slucajevi:
     assert a.mjera(*ulaz) == ocekivano, (ulaz, a.mjera(*ulaz), ocekivano)
