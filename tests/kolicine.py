@@ -22,6 +22,7 @@ slucajevi = [
     # Stvarni redak NTL (2026-10-21): "2,5" kom nije količina, u nazivu piše 2,5 kg.
     (("2,5", "kom", "KRUMPIR 2,5 kg SNIŽENJE"), (2.5, "kg")),
     (("0,5", "kom", "Lubenica"), None),
+    (("", "kom", "KUPINA 125 grama"), (0.125, "kg")),
 ]
 for ulaz, ocekivano in slucajevi:
     assert a.mjera(*ulaz) == ocekivano, (ulaz, a.mjera(*ulaz), ocekivano)

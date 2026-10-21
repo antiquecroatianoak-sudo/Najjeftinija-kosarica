@@ -59,6 +59,7 @@ with tempfile.TemporaryDirectory() as tmp:
     }), {"3850000000000": (0.4, "kg")}, statistika=statistika, primjeri=primjeri)
 po = {p[0]: p for p in proizvodi}
 assert po["KRUMPIR ZA GASTRO 1 kg"][5] == [lanci.index("Trgovina Krk"), 0.89], po["KRUMPIR ZA GASTRO 1 kg"]
+assert po["KRUMPIR ZA GASTRO 1 kg"][2:4] == [0, ""], "0,10-1,09 EUR in one chain (10.9x): shown at the chain price, not ranked"
 assert po["KRUMPIR 2,5 kg SNIŽENJE"][2:4] == [2.5, "kg"], "fractional piece count is not a quantity; the name decides"
 assert po["KRUMPIR 2,5 KG GIRO"][2:4] == [0, ""] and po["KRUMPIR 2,5 KG GIRO"][5][1] == 1.11, \
     "quantity contradicting the chain's own unit price: offer shown without unit price, so not ranked"
@@ -72,6 +73,19 @@ assert statistika["Trgovina Krk"]["najniža poslovnica ispod cijene lanca"] == 1
 krk_primjer = next(p for p in primjeri if p["lanac"] == "Trgovina Krk")
 assert (krk_primjer["prije"], krk_primjer["poslije"]) == (0.10, 0.89), krk_primjer
 
+# Stvarni retci Trgocentar: isti deterdžent 12,66 / 7047,06 / 8223,53 € u tri poslovnice: nijedna cijena nije potvrđena.
+# Konzum "KUPINA 125 grama", količina 0.13 kg, jedinična 22,32 €/kg = 2,79 / 0,125: potvrđuje količina iz naziva.
+with tempfile.TemporaryDirectory() as tmp:
+    _, proizvodi2 = a.obradi(arhiva(tmp, {
+        "trgocentar": ([proizvod("t1", "ARIEL TEK.DET.SENS 0,850ML /17 PRANJA", "0.850 L", "L")],
+                       [cijena("t1", "1", "12.66", unit="14894.12"), cijena("t1", "2", "7047.06", unit="7047.06"),
+                        cijena("t1", "3", "8223.53", unit="8223.53")]),
+        "konzum": ([proizvod("k2", "KUPINA 125 grama", "0.13 kg", "ko")], [cijena("k2", "k_1", "2.79", unit="22.32")]),
+    }))
+po2 = {p[0]: p for p in proizvodi2}
+assert po2["ARIEL TEK.DET.SENS 0,850ML /17 PRANJA"][2:4] == [0, ""], "stores disagree beyond 5x: shown, not ranked"
+assert po2["KUPINA 125 grama"][2:4] == [0.125, "kg"], "name quantity confirmed by the chain's unit price"
+
 # Pravila jedno po jedno.
 assert a.cijena_lanca([0.5]) == 0.5 and a.cijena_lanca([1.0, 0.1]) == 0.1 and a.cijena_lanca([0.1, 1.0, 1.0]) == 1.0
 assert a.cijena_lanca([0.1, 0.9, 1.0, 1.0]) == 0.9, "lower median: a price at or below which half the stores sell"
@@ -84,4 +98,4 @@ assert not ok(price="1.99", unit_price="2.50")
 assert a.jedinicna_se_slaze({"price": "1.99", "unit_price": "9"}, (1, "kom")), "piece goods are not checked"
 assert a.mjera("0,5", "kom", "Lubenica") is None, "fractional piece without a quantity in the name is unknown, not 0,5 kom"
 print("CHAIN PRICE PASS: lower median of stores (Krk 0,10 → 0,89), fractional kom → name quantity (NTL 2,5 kg), "
-      "unconfirmed quantity shown unranked (Plodine 1,11 vs 0,56 €/kg), chain-confirmed quantity over wrong enrichment (Boso beer 2 l), rounding and per-piece unit prices accepted")
+      "unconfirmed quantity shown unranked (Plodine 1,11 vs 0,56 €/kg), chain-confirmed quantity over wrong enrichment (Boso beer 2 l), Trgocentar 12,66/7047/8223 not ranked, name quantity confirmed (Konzum 125 g), rounding and per-piece unit prices accepted")

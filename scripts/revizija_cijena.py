@@ -70,9 +70,6 @@ def main():
     IZLAZ.parent.mkdir(parents=True, exist_ok=True)
     IZLAZ.write_text(json.dumps(rezultat, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"Arhiva {datum}")
-    print("Ukupno: " + json.dumps(rezultat["ukupno"], ensure_ascii=False))
-    for lanac, st in rezultat["po_lancu"].items():
-        print(f"{lanac}: " + json.dumps(st, ensure_ascii=False))
     print(f"Prije/poslije za '{rijec}' (od najniže cijene po jedinici prije):")
     for p in rezultat["prije_poslije"][:25]:
         print("  " + json.dumps(p, ensure_ascii=False))
@@ -84,6 +81,9 @@ def main():
         for vrsta, lista in u.items():
             for p in lista[:2]:
                 print(f"  {lanac} · {vrsta}: " + json.dumps(p, ensure_ascii=False))
+    print("Ukupno: " + json.dumps(rezultat["ukupno"], ensure_ascii=False))
+    for lanac, st in rezultat["po_lancu"].items():
+        print(f"{lanac}: " + json.dumps(st, ensure_ascii=False))
     return 0
 
 

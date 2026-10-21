@@ -50,18 +50,21 @@ LIJEPA_IMENA = {
 
 # Jedinica -> (osnovna jedinica, faktor). Sve se svodi na kg, l ili kom.
 JEDINICE = {
-    "mg": ("kg", 0.000001), "g": ("kg", 0.001), "gr": ("kg", 0.001), "dag": ("kg", 0.01),
+    "mg": ("kg", 0.000001), "g": ("kg", 0.001), "grama": ("kg", 0.001), "gram": ("kg", 0.001), "gr": ("kg", 0.001), "dag": ("kg", 0.01),
     "kg": ("kg", 1),
     "ml": ("l", 0.001), "cl": ("l", 0.01), "dl": ("l", 0.1),
     "l": ("l", 1), "lit": ("l", 1), "litra": ("l", 1), "ltr": ("l", 1),
     "kom": ("kom", 1), "komad": ("kom", 1), "kos": ("kom", 1), "par": ("kom", 1),
     "pak": ("kom", 1), "kut": ("kom", 1),
 }
+# Najveći omjer najskuplje i najjeftinije poslovnice istog lanca koji se još smatra stvarnom razlikom (akcija,
+# regija); veći raspon znači grešku u podacima lanca i proizvod tog lanca se ne rangira.
+NAJVECI_RASPON_POSLOVNICA = 5
 # Razumne granice da pogrešno upisana količina ne pokvari cijenu po kg/l.
 NAJVISE = {"kg": 50, "l": 50, "kom": 500}
 
 BROJ = r"(\d+(?:[.,]\d+)?)"
-JED = r"(mg|g|gr|dag|kg|ml|cl|dl|l|lit|litra|ltr|kom|komad|kos|par|pak|kut)\b\.?"
+JED = r"(mg|grama|gram|g|gr|dag|kg|ml|cl|dl|l|lit|litra|ltr|kom|komad|kos|par|pak|kut)\b\.?"
 # "6x0,5 l", "4 x 125 g"
 RE_VISE = re.compile(rf"(\d+)\s*[x×*]\s*{BROJ}\s*{JED}", re.I)
 # "125 g x 4", "0,5 l x 6"
@@ -273,7 +276,10 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
                 barkod = (p.get("barcode") or "").strip()
                 # Količina iz dopune ili iz podataka lanca: vrijedi ona koju potvrđuje jedinična cijena koju je lanac
                 # sam objavio (dopuna zna biti pogrešna, npr. pivo 2 l upisano kao 0,4 kg). Bez potvrde nema poretka.
-                kandidati = [m for m in (dopuna.get(barkod), mjera(p.get("quantity", ""), p.get("unit", ""), p["name"])) if m]
+                kandidati = []
+                for m in (dopuna.get(barkod), mjera(p.get("quantity", ""), p.get("unit", ""), p["name"]), iz_teksta(p["name"])):
+                    if m and m not in kandidati:
+                        kandidati.append(m)
                 mjera_lanca, potvrdene = None, []
                 for m in kandidati:
                     pot = [c for c, red in redovi if jedinicna_se_slaze(red, m)]
@@ -281,14 +287,20 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
                         mjera_lanca, potvrdene = m, pot
                 provjerena = bool(mjera_lanca) and any(provjerljiv(red, mjera_lanca) for _, red in redovi)
                 nepotvrdeno = bool(kandidati) and not potvrdene
+                # Poslovnice istog lanca toliko se razilaze da nijedna cijena nije potvrđena (npr. 12,66 / 7047,06 /
+                # 8223,53 € za isti deterdžent): prikaz bez poretka umjesto da bilo koja od njih odredi poredak.
+                raspon = [c for c, _ in redovi]
+                nepotvrdeno = nepotvrdeno or max(raspon) > NAJVECI_RASPON_POSLOVNICA * min(raspon)
                 if statistika is not None:
                     st = statistika.setdefault(lanci[-1], Counter())
                     st["proizvoda"] += 1
                     st["redaka"] += len(redovi)
                     if potvrdene:
                         st["redak s proturječnom jediničnom cijenom (ne ulazi u cijenu lanca)"] += len(redovi) - len(potvrdene)
-                    if nepotvrdeno:
+                    if bool(kandidati) and not potvrdene:
                         st["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"] += 1
+                    if max(raspon) > NAJVECI_RASPON_POSLOVNICA * min(raspon):
+                        st[f"cijene poslovnica razilaze se više od {NAJVECI_RASPON_POSLOVNICA}× (prikaz bez poretka)"] += 1
                     if mjera_lanca and mjera_lanca != kandidati[0]:
                         st["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] += 1
                     if potvrdene and min(c for c, _ in redovi) < cijena_lanca(potvrdene):
