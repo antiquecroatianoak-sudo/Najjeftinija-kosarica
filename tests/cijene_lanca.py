@@ -90,7 +90,8 @@ assert pok["ukupno_ponuda"] == sum(len(p[5]) // 2 for p in proizvodi)
 
 # Stvarni retci Trgocentar: isti deterdžent 12,66 / 7047,06 / 8223,53 € u tri poslovnice, jedinične 14894,12 i jednake
 # cijeni. Jedinična 14894,12 €/l odgovara nazivu "0,850ML" (12,66 / 0,00085 l), pa je to količina koju lanac sam
-# objavljuje; jedinične jednake cijeni pakiranja ne potvrđuju ništa i ti retci ne ulaze ni u cijenu ni u poslovnicu.
+# objavljuje; jedinične jednake cijeni pakiranja nisu provjerljive (ni potvrda ni proturječje). Cijena je stvarna
+# najniža (12,66 €), a raspon do 8223,53 € ostaje oznaka za provjeru.
 # Konzum "KUPINA 125 grama", količina 0.13 kg, jedinična 22,32 €/kg = 2,79 / 0,125: potvrđuje količina iz naziva.
 with tempfile.TemporaryDirectory() as tmp:
     _, proizvodi2 = a.obradi(arhiva(tmp, {
@@ -101,14 +102,15 @@ with tempfile.TemporaryDirectory() as tmp:
     }))
 po2 = {p[0]: p for p in proizvodi2}
 ariel = po2["ARIEL TEK.DET.SENS 0,850ML /17 PRANJA"]
-assert ariel[5][1] == 12.66 and ariel[6][0][1:3] == [1, 12.66], ariel
+assert ariel[5][1] == 12.66 and ariel[6][0][1:3] == [3, 8223.53], ariel
 assert po2["KUPINA 125 grama"][2:4] == [0.125, "kg"], "name quantity confirmed by the chain's unit price"
 
 # Pravila jedno po jedno.
 ok = lambda **r: a.jedinicna_se_slaze(r, (0.5, "kg"))  # noqa: E731
 assert ok(price="1.99", unit_price="3.98") and ok(price="1.99", unit_price="3.99"), "rounding tolerated"
 assert ok(price="2.49", special_price="1.99", unit_price="4.98"), "unit price of the regular price is consistent"
-assert not ok(price="1.99", unit_price="1.99"), "unit price equal to a 0,5 kg pack price is not a confirmation"
+assert a.polje_jedinicne({"price": "1.99", "unit_price": "1.99"}, (0.5, "kg")) == "", \
+    "unit price equal to a 0,5 kg pack price: neither confirmation nor contradiction (not checkable)"
 assert a.polje_jedinicne({"price": "2.49", "special_price": "1.99", "unit_price": "3.98"}, (0.5, "kg")) == "special_price"
 assert a.polje_jedinicne({"price": "2.49", "special_price": "1.99", "unit_price": "4.98"}, (0.5, "kg")) == "price"
 assert a.polje_jedinicne({"price": "2.49", "unit_price": ""}, (0.5, "kg")) == ""
@@ -118,5 +120,5 @@ assert a.jedinicna_se_slaze({"price": "1.99", "unit_price": "9"}, (1, "kom")), "
 assert a.mjera("0,5", "kom", "Lubenica") is None, "fractional piece without a quantity in the name is unknown, not 0,5 kom"
 print("CHAIN PRICE PASS: real store price with its store (Krk 0,10 € at set._sv._bernardina_6c_krk, range 1,09 € as "
       "indicator), fractional kom → name quantity (NTL 2,5 kg), unconfirmed quantity unranked (Plodine 1,11 vs 0,56 €/kg), "
-      "unit price tied to regular/special field, unit = pack price not a confirmation, per-store valid prices only, "
+      "unit price tied to regular/special field, unit = pack price not checkable (no confirmation), per-store valid prices only, "
       "coverage 0 verified against official source, Boso beer 2 l, Trgocentar contradicting rows left out, Konzum 125 g")

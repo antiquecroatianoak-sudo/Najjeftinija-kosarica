@@ -189,7 +189,9 @@ def polje_jedinicne(red: dict, mjera_proizvoda: tuple[float, str] | None) -> str
     Kojem polju retka pripada jedinična cijena koju je trgovac objavio (unit_price, po kg ili l): "price" (redovna) ili
     "special_price" (akcijska), uz količinu proizvoda i dopušteno samo zaokruživanje na 2 decimale.
     "" = nema se s čim usporediti (bez jedinične cijene ili bez količine u kg/l); None = ne odgovara ni jednom polju,
-    tj. redak proturječi sam sebi. Jedinična cijena jednaka cijeni pakiranja koje nije 1 kg/l nije potvrda.
+    tj. redak proturječi sam sebi. Jedinična cijena jednaka cijeni pakiranja koje nije 1 kg/l nije potvrda ni
+    proturječje: lanac tada nije objavio stvarnu jediničnu cijenu (npr. Žabac, Branka, Stanić za gotovo sve
+    artikle), pa je to "" (nije provjerljivo), kao redak bez jedinične cijene.
     """
     jedinicna = u_broj(red.get("unit_price") or "")
     if not jedinicna or not mjera_proizvoda or mjera_proizvoda[1] not in ("kg", "l"):
@@ -199,6 +201,8 @@ def polje_jedinicne(red: dict, mjera_proizvoda: tuple[float, str] | None) -> str
         c = cijena_za_uvoz(red.get(stupac) or "")
         if c and abs(jedinicna - c / kolicina) <= 0.01 + 0.005 / kolicina + 1e-9:
             return stupac
+    if any(c and abs(jedinicna - c) <= 0.005 for c in (cijena_za_uvoz(red.get(st) or "") for st in ("price", "special_price"))):
+        return ""
     return None
 
 
@@ -313,6 +317,9 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
                 ponuda = [poslovnica(najbolja[2].get("store_id") or ""), len(valjani), max(r[0] for r in valjani), najbolja[1]]
                 st["proizvoda"] += 1
                 st["redaka"] += len(redovi)
+                if mjera_lanca and mjera_lanca[1] in ("kg", "l") and mjera_lanca[0] != 1:
+                    st["jedinična jednaka cijeni pakiranja (nije provjerljivo)"] += sum(
+                        1 for r in redovi if u_broj(r[2].get("unit_price") or "") and polje_jedinicne(r[2], mjera_lanca) == "")
                 if not nepotvrdeno:
                     st["redak proturječan jediničnoj cijeni (ne rangira se, nije u zbroju poslovnice)"] += len(redovi) - len(valjani)
                 if nepotvrdeno:
