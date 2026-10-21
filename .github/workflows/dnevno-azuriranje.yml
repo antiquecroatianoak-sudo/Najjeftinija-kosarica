@@ -82,6 +82,8 @@ jobs:
           python tests/cijene_lanca.py
       - name: Dijagnoza cijena (krumpir)
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
+      - name: Veličina podataka po stvarnoj poslovnici (mjerenje)
+        run: python -u scripts/mjera_poslovnica.py
       - name: Revizija cijena svih lanaca (prije/poslije)
         run: python -u scripts/revizija_cijena.py krumpir
       - uses: actions/upload-artifact@v4
