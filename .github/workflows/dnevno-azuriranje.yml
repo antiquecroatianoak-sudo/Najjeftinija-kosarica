@@ -80,6 +80,10 @@ jobs:
         run: |
           python tests/kolicine.py
           python tests/cijene_lanca.py
+      - name: Izvidnica službenih cjenika lanaca (samo čitanje)
+        continue-on-error: true
+        timeout-minutes: 15
+        run: python -u scripts/izvidnica_cjenika.py
       - name: Dijagnoza cijena (krumpir)
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
       - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
