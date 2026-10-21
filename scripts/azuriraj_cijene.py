@@ -6,10 +6,11 @@ projekt cijene.dev svaki dan skuplja u jednu ZIP arhivu.
 
 Skripta:
   1. preuzme najnoviju arhivu,
-  2. za svaki proizvod nađe najnižu cijenu u svakom lancu,
+  2. za svaki proizvod nađe najnižu valjanu cijenu jedne stvarne poslovnice svakog lanca (uz tu poslovnicu),
   3. spoji iste proizvode iz različitih lanaca (po barkodu) - bez duplikata,
   4. prepozna količinu (g, kg, ml, l, kom) da se može računati cijena po kg/l,
-  5. zapiše mali JSON koji koristi web aplikacija.
+  5. zapiše JSON koji koristi web aplikacija, datoteku po poslovnici (za zbroj popisa u jednoj stvarnoj
+     poslovnici) i pokrivenost po lancu (pokrivenost.json).
 
 Pokretanje:  python scripts/azuriraj_cijene.py [put/do/arhive.zip]
 """
@@ -24,6 +25,7 @@ import tempfile
 import unicodedata
 import urllib.request
 import zipfile
+from array import array
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -57,9 +59,6 @@ JEDINICE = {
     "kom": ("kom", 1), "komad": ("kom", 1), "kos": ("kom", 1), "par": ("kom", 1),
     "pak": ("kom", 1), "kut": ("kom", 1),
 }
-# Najveći omjer najskuplje i najjeftinije poslovnice istog lanca koji se još smatra stvarnom razlikom (akcija,
-# regija); veći raspon znači grešku u podacima lanca i proizvod tog lanca se ne rangira.
-NAJVECI_RASPON_POSLOVNICA = 5
 # Razumne granice da pogrešno upisana količina ne pokvari cijenu po kg/l.
 NAJVISE = {"kg": 50, "l": 50, "kom": 500}
 
@@ -185,36 +184,26 @@ def mjera(kolicina: str, jedinica: str, naziv: str = "") -> tuple[float, str] | 
     return rezultat
 
 
-def jedinicna_se_slaze(red: dict, mjera_proizvoda: tuple[float, str] | None) -> bool:
+def polje_jedinicne(red: dict, mjera_proizvoda: tuple[float, str] | None) -> str | None:
     """
-    Slaže li se jedinična cijena koju je trgovac sam objavio (unit_price, po kg ili l) s cijenom i količinom.
-    Dopuštena razlika je samo zaokruživanje (cijene na 2 decimale). Bez objavljene jedinične cijene ili bez poznate
-    količine u kg/l nema se s čim usporediti, pa redak ostaje. Prihvaća se i jedinična cijena po komadu (= cijena).
+    Kojem polju retka pripada jedinična cijena koju je trgovac objavio (unit_price, po kg ili l): "price" (redovna) ili
+    "special_price" (akcijska), uz količinu proizvoda i dopušteno samo zaokruživanje na 2 decimale.
+    "" = nema se s čim usporediti (bez jedinične cijene ili bez količine u kg/l); None = ne odgovara ni jednom polju,
+    tj. redak proturječi sam sebi. Jedinična cijena jednaka cijeni pakiranja koje nije 1 kg/l nije potvrda.
     """
     jedinicna = u_broj(red.get("unit_price") or "")
     if not jedinicna or not mjera_proizvoda or mjera_proizvoda[1] not in ("kg", "l"):
-        return True
+        return ""
     kolicina = mjera_proizvoda[0]
     for stupac in ("price", "special_price"):
         c = cijena_za_uvoz(red.get(stupac) or "")
-        if c and (abs(jedinicna - c / kolicina) <= 0.01 + 0.005 / kolicina + 1e-9 or abs(jedinicna - c) <= 0.01 + 1e-9):
-            return True
-    return False
+        if c and abs(jedinicna - c / kolicina) <= 0.01 + 0.005 / kolicina + 1e-9:
+            return stupac
+    return None
 
 
-def provjerljiv(red: dict, mjera_proizvoda: tuple[float, str] | None) -> bool:
-    """Ima li redak jediničnu cijenu po kg ili l s kojom se količina može provjeriti."""
-    return bool(u_broj(red.get("unit_price") or "")) and bool(mjera_proizvoda) and mjera_proizvoda[1] in ("kg", "l")
-
-
-def cijena_lanca(cijene_poslovnica: list[float]) -> float:
-    """
-    Cijena lanca = donji medijan cijena po poslovnicama: stvarno objavljena cijena koju ima barem pola poslovnica
-    (po ili ispod nje). Jedna poslovnica s krajnjom vrijednošću (npr. 0,10 € za 1 kg krumpira u jednoj od 20) ne
-    određuje cijenu lanca; lanac s jednom poslovnicom zadržava njezinu cijenu.
-    """
-    s = sorted(cijene_poslovnica)
-    return s[(len(s) - 1) // 2]
+def jedinicna_se_slaze(red: dict, mjera_proizvoda: tuple[float, str] | None) -> bool:
+    return polje_jedinicne(red, mjera_proizvoda) is not None
 
 
 def opis_mjere(iznos: float, jedinica: str) -> str:
@@ -237,89 +226,115 @@ def broj_rijeci_marke(naziv: str, marka: str) -> int:
 
 def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = None,
            primjeri: list | None = None) -> tuple[list, list]:
+    """(lanci, proizvodi) - vidi obradi_sve."""
+    r = obradi_sve(arhiva, dopuna, statistika, primjeri)
+    return r["lanci"], r["proizvodi"]
+
+
+def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = None,
+               primjeri: list | None = None) -> dict:
     """
-    Vraća (lanci, proizvodi).
-    Proizvod = [naziv, količina (tekst), iznos, jedinica, riječi marke, [lanac, cijena, lanac, cijena, ...]]
-    gdje su iznos i jedinica količina svedena na kg/l/kom (0 i "" ako se ne zna),
-    a cijene po lancima idu od najjeftinije.
+    Vraća {"lanci", "proizvodi", "poslovnice", "po_poslovnici"}.
+    Proizvod = [naziv, količina (tekst), iznos, jedinica, riječi marke, [lanac, cijena, ...], [ponuda, ...]]
+    gdje su iznos i jedinica količina svedena na kg/l/kom (0 i "" ako se ne zna), cijene po lancima idu od
+    najjeftinije, a ponuda (isti redoslijed) = [poslovnica, poslovnica s proizvodom, najviša cijena, akcija]:
+    cijena lanca je najniža valjana cijena jedne stvarne poslovnice (indeks u "poslovnice"), uz broj poslovnica
+    lanca s valjanom cijenom, najvišu od njih (samo oznaka raspona za provjeru) i 1 ako je to akcijska cijena.
+    poslovnice = [[lanac, store_id, adresa, grad], ...]; po_poslovnici = {poslovnica: [proizvod, cijena u centima, ...]}
+    s valjanim cijenama te poslovnice (za zbroj cijelog popisa u jednoj stvarnoj poslovnici).
     statistika (lanac -> Counter) i primjeri (popis) se pune samo za reviziju cijena.
     """
     dopuna = dopuna or {}
     lanci: list[str] = []
-    # barkod -> {"naziv", "marka", "kolicina", "jedinica", "mjera", "cijene": {lanac: cijena}}
+    poslovnice: list[list] = []
+    # ključ proizvoda -> {"naziv", "marka", "mjera", "provjerena", "cijene": {lanac: (cijena, ponuda)}, "redovi": {lanac: array}}
     svi: dict[str, dict] = {}
 
     with zipfile.ZipFile(arhiva) as zf:
-        mape = sorted({n.split("/")[0] for n in zf.namelist() if n.endswith("/prices.csv")})
+        imena = set(zf.namelist())
+        mape = sorted({n.split("/")[0] for n in imena if n.endswith("/prices.csv")})
         for lanac in mape:
             if lanac in PRESKOCI_LANCE:
                 continue
             lanac_idx = len(lanci)
             lanci.append(LIJEPA_IMENA.get(lanac, lanac.capitalize()))
+            st = statistika.setdefault(lanci[-1], Counter()) if statistika is not None else Counter()
 
             proizvodi = {p["product_id"]: p for p in citaj_csv(zf, f"{lanac}/products.csv")}
+            podaci_trgovina = ({t.get("store_id"): t for t in citaj_csv(zf, f"{lanac}/stores.csv")}
+                               if f"{lanac}/stores.csv" in imena else {})
+            indeks_poslovnice: dict[str, int] = {}
 
-            # Cijena svakog proizvoda po poslovnici (niža od redovne i akcijske), samo potvrđeni retci.
-            po_poslovnicama: dict[str, list] = {}
+            def poslovnica(store_id: str) -> int:
+                if store_id not in indeks_poslovnice:
+                    t = podaci_trgovina.get(store_id) or {}
+                    indeks_poslovnice[store_id] = len(poslovnice)
+                    poslovnice.append([lanac_idx, store_id, (t.get("address") or "").strip(), (t.get("city") or "").strip()])
+                return indeks_poslovnice[store_id]
+
+            # Ponuda svake poslovnice: niža od redovne i akcijske cijene, uz oznaku koje je polje.
+            po_proizvodu: dict[str, list] = {}
             for red in citaj_csv(zf, f"{lanac}/prices.csv"):
-                cijene = [c for c in (cijena_za_uvoz(red["price"]), cijena_za_uvoz(red.get("special_price", ""))) if c]
-                if cijene:
-                    po_poslovnicama.setdefault(red["product_id"], []).append((min(cijene), red))
-                elif statistika is not None:
-                    statistika.setdefault(lanci[-1], Counter())["redak bez valjane cijene"] += 1
+                redovna, akcijska = cijena_za_uvoz(red["price"]), cijena_za_uvoz(red.get("special_price", ""))
+                if akcijska and (not redovna or akcijska < redovna):
+                    po_proizvodu.setdefault(red["product_id"], []).append((akcijska, 1, red))
+                elif redovna:
+                    po_proizvodu.setdefault(red["product_id"], []).append((redovna, 0, red))
+                else:
+                    st["redak bez valjane cijene"] += 1
 
             uvezeno = 0
-            for pid, redovi in po_poslovnicama.items():
+            for pid, redovi in po_proizvodu.items():
                 p = proizvodi.get(pid)
                 if not p or not (p.get("name") or "").strip():
                     continue
                 barkod = (p.get("barcode") or "").strip()
-                # Količina iz dopune ili iz podataka lanca: vrijedi ona koju potvrđuje jedinična cijena koju je lanac
-                # sam objavio (dopuna zna biti pogrešna, npr. pivo 2 l upisano kao 0,4 kg). Bez potvrde nema poretka.
+                # Količina iz dopune, polja lanca ili naziva: vrijedi ona koju potvrđuje jedinična cijena koju je lanac
+                # sam objavio za redovnu ili akcijsku cijenu (dopuna zna biti pogrešna, npr. pivo 2 l kao 0,4 kg).
                 kandidati = []
                 for m in (dopuna.get(barkod), mjera(p.get("quantity", ""), p.get("unit", ""), p["name"]), iz_teksta(p["name"])):
                     if m and m not in kandidati:
                         kandidati.append(m)
-                mjera_lanca, potvrdene = None, []
+                mjera_lanca, valjani = None, []
                 for m in kandidati:
-                    pot = [c for c, red in redovi if jedinicna_se_slaze(red, m)]
-                    if len(pot) > len(potvrdene):
-                        mjera_lanca, potvrdene = m, pot
-                provjerena = bool(mjera_lanca) and any(provjerljiv(red, mjera_lanca) for _, red in redovi)
-                nepotvrdeno = bool(kandidati) and not potvrdene
-                # Poslovnice istog lanca toliko se razilaze da nijedna cijena nije potvrđena (npr. 12,66 / 7047,06 /
-                # 8223,53 € za isti deterdžent): prikaz bez poretka umjesto da bilo koja od njih odredi poredak.
-                raspon = [c for c, _ in redovi]
-                nepotvrdeno = nepotvrdeno or max(raspon) > NAJVECI_RASPON_POSLOVNICA * min(raspon)
-                if statistika is not None:
-                    st = statistika.setdefault(lanci[-1], Counter())
-                    st["proizvoda"] += 1
-                    st["redaka"] += len(redovi)
-                    if potvrdene:
-                        st["redak s proturječnom jediničnom cijenom (ne ulazi u cijenu lanca)"] += len(redovi) - len(potvrdene)
-                    if bool(kandidati) and not potvrdene:
-                        st["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"] += 1
-                    if max(raspon) > NAJVECI_RASPON_POSLOVNICA * min(raspon):
-                        st[f"cijene poslovnica razilaze se više od {NAJVECI_RASPON_POSLOVNICA}× (prikaz bez poretka)"] += 1
-                    if mjera_lanca and mjera_lanca != kandidati[0]:
-                        st["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] += 1
-                    if potvrdene and min(c for c, _ in redovi) < cijena_lanca(potvrdene):
-                        st["najniža poslovnica ispod cijene lanca"] += 1
-                    if primjeri is not None:
-                        primjeri.append({"lanac": lanci[-1], "product_id": pid, "naziv": p["name"].strip(),
-                                         "kolicina": p.get("quantity"), "jedinica": p.get("unit"), "kandidati": kandidati,
-                                         "mjera": mjera_lanca, "poslovnica": len(redovi), "potvrdeno": len(potvrdene),
-                                         "prije": min(c for c, _ in redovi),
-                                         "poslije": cijena_lanca(potvrdene or [c for c, _ in redovi]),
-                                         "raspon": sorted({(red.get("price"), red.get("special_price"), red.get("unit_price"))
-                                                           for _, red in redovi}, key=lambda t: u_broj(t[0] or "") or 0)[:8]})
-                cijena = cijena_lanca(potvrdene or [c for c, _ in redovi])
+                    v = [r for r in redovi if polje_jedinicne(r[2], m) is not None]
+                    if len(v) > len(valjani):
+                        mjera_lanca, valjani = m, v
+                provjerena = bool(mjera_lanca) and any(polje_jedinicne(r[2], mjera_lanca) for r in redovi)
+                # Nijedna količina ne slaže se s jediničnom cijenom lanca: cijene ostaju vidljive (stvarne objavljene
+                # cijene poslovnica), ali bez količine, pa se ne rangiraju i ne miješaju s istim barkodom drugih lanaca.
+                nepotvrdeno = bool(kandidati) and not valjani
+                if not kandidati:
+                    valjani = redovi
+                elif nepotvrdeno:
+                    valjani = redovi
+                najbolja = min(valjani, key=lambda r: (r[0], r[2].get("store_id") or ""))
+                cijena = najbolja[0]
+                ponuda = [poslovnica(najbolja[2].get("store_id") or ""), len(valjani), max(r[0] for r in valjani), najbolja[1]]
+                st["proizvoda"] += 1
+                st["redaka"] += len(redovi)
+                if not nepotvrdeno:
+                    st["redak proturječan jediničnoj cijeni (ne rangira se, nije u zbroju poslovnice)"] += len(redovi) - len(valjani)
+                if nepotvrdeno:
+                    st["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"] += 1
+                if mjera_lanca and mjera_lanca != kandidati[0]:
+                    st["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] += 1
+                if len({r[0] for r in valjani}) > 1:
+                    st["poslovnice lanca imaju različite cijene (oznaka raspona)"] += 1
+                if primjeri is not None:
+                    primjeri.append({"lanac": lanci[-1], "product_id": pid, "naziv": p["name"].strip(),
+                                     "kolicina": p.get("quantity"), "jedinica": p.get("unit"), "kandidati": kandidati,
+                                     "mjera": None if nepotvrdeno else mjera_lanca, "poslovnica": len(redovi),
+                                     "valjano": 0 if nepotvrdeno else len(valjani), "cijena": cijena,
+                                     "prije": min(r[0] for r in redovi),
+                                     "store_id": najbolja[2].get("store_id"), "polje": "special_price" if najbolja[1] else "price",
+                                     "najvisa": ponuda[2],
+                                     "raspon": sorted({(r[2].get("price"), r[2].get("special_price"), r[2].get("unit_price"))
+                                                       for r in redovi}, key=lambda t: u_broj(t[0] or "") or 0)[:8]})
                 uvezeno += 1
                 # Isti barkod = isti proizvod, bez obzira na lanac.
                 kljuc = barkod or f"{lanac}:{pid}"
                 zapis = svi.get(kljuc)
-                # Nepotvrđena količina ili druga potvrđena količina istog barkoda: zasebna ponuda (bez poretka ako
-                # je nepotvrđena), da ne preuzme ni ne pokvari količinu proizvoda u drugim lancima.
                 if nepotvrdeno:
                     kljuc = f"{kljuc}|nepotvrdeno|{lanac}"
                     zapis = svi.get(kljuc)
@@ -327,10 +342,14 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
                     kljuc = f"{kljuc}|{mjera_lanca}"
                     zapis = svi.get(kljuc)
                 if zapis is None:
-                    zapis = svi[kljuc] = {"cijene": {}, "mjera": None, "provjerena": False, "najniza": None}
+                    zapis = svi[kljuc] = {"cijene": {}, "redovi": {}, "mjera": None, "provjerena": False, "najniza": None}
                 stara = zapis["cijene"].get(lanac_idx)
-                if stara is None or cijena < stara:
-                    zapis["cijene"][lanac_idx] = cijena
+                if stara is None or cijena < stara[0]:
+                    zapis["cijene"][lanac_idx] = (cijena, ponuda)
+                # Valjane cijene po poslovnici (poslovnica, centi); isti proizvod lanca pod drugim product_id zadržava nižu.
+                redovi_lanca = zapis["redovi"].setdefault(lanac_idx, array("i"))
+                for r in valjani:
+                    redovi_lanca.extend((poslovnica(r[2].get("store_id") or ""), round(r[0] * 100)))
                 # Naziv uzimamo iz lanca s najnižom cijenom.
                 if zapis["najniza"] is None or cijena < zapis["najniza"]:
                     zapis["najniza"] = cijena
@@ -338,11 +357,12 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
                     zapis["marka"] = (p.get("brand") or "").strip()
                 if not nepotvrdeno and (zapis["mjera"] is None or (provjerena and not zapis["provjerena"])):
                     zapis["mjera"], zapis["provjerena"] = mjera_lanca, provjerena
-            print(f"  {lanci[-1]}: {uvezeno} proizvoda")
+            print(f"  {lanci[-1]}: {uvezeno} proizvoda, {len(indeks_poslovnice)} poslovnica")
 
-    proizvodi = []
-    for z in svi.values():
-        cijene = sorted(z["cijene"].items(), key=lambda lc: lc[1])
+    zapisi = sorted(svi.values(), key=lambda z: min(c for c, _ in z["cijene"].values()))
+    proizvodi, po_poslovnici = [], {}
+    for i, z in enumerate(zapisi):
+        cijene = sorted(z["cijene"].items(), key=lambda lc: lc[1][0])
         iznos, jedinica = z["mjera"] or (0, "")
         proizvodi.append([
             z["naziv"],
@@ -350,38 +370,90 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
             iznos,
             jedinica,
             broj_rijeci_marke(z["naziv"], z["marka"]),
-            [x for lanac, c in cijene for x in (lanac, round(c, 2))],
+            [x for lanac, (c, _) in cijene for x in (lanac, round(c, 2))],
+            [[pon[0], pon[1], round(pon[2], 2), pon[3]] for _, (_, pon) in cijene],
         ])
-    proizvodi.sort(key=lambda p: p[5][1])
-    return lanci, proizvodi
+        # Proizvodi idu redom (i raste), pa je isti proizvod u istoj poslovnici uvijek zadnji upisani.
+        for redovi_lanca in z["redovi"].values():
+            for k in range(0, len(redovi_lanca), 2):
+                cj = po_poslovnici.setdefault(redovi_lanca[k], array("i"))
+                if cj and cj[-2] == i:
+                    cj[-1] = min(cj[-1], redovi_lanca[k + 1])
+                else:
+                    cj.extend((i, redovi_lanca[k + 1]))
+        z["redovi"] = None
+    return {"lanci": lanci, "proizvodi": proizvodi, "poslovnice": poslovnice, "po_poslovnici": po_poslovnici}
+
+
+def zapisi_poslovnice(mapa: Path, rezultat: dict, datum: str) -> int:
+    """Jedna datoteka po stvarnoj poslovnici: [proizvod (razlika od prethodnog), cijena u centima, ...]."""
+    mapa.mkdir(parents=True, exist_ok=True)
+    for stara in mapa.glob("*.json"):
+        stara.unlink()
+    for s, cj in rezultat["po_poslovnici"].items():
+        kompaktno, prije = [], 0
+        for k in range(0, len(cj), 2):
+            kompaktno.extend((cj[k] - prije, cj[k + 1]))
+            prije = cj[k]
+        (mapa / f"{s}.json").write_text(json.dumps({"datum": datum, "proizvoda": len(rezultat["proizvodi"]),
+                                                    "c": kompaktno}, separators=(",", ":")), encoding="utf-8")
+    return len(rezultat["po_poslovnici"])
+
+
+def pokrivenost(rezultat: dict, statistika: dict, datum: str) -> dict:
+    """
+    Pokrivenost po lancu. Sve cijene dolaze iz arhive cijene.dev (sekundarni izvor koji preuzima službene cjenike);
+    arhiva ne sadrži URL, datoteku ni redak službenog cjenika, pa nijedna ponuda nije provjerena prema službenom izvoru.
+    """
+    ponuda = Counter(l for p in rezultat["proizvodi"] for l in p[5][0::2])
+    poslovnica = Counter(p[0] for p in rezultat["poslovnice"])
+    lanci = {}
+    for idx, ime in enumerate(rezultat["lanci"]):
+        st = statistika.get(ime, Counter())
+        lanci[ime] = {"ponuda": ponuda[idx], "poslovnica": poslovnica[idx], "redaka": st["redaka"],
+                      "provjereno_prema_sluzbenom_izvoru": 0, "neprovjereno": ponuda[idx],
+                      "redak_proturjecan_jedinicnoj": st["redak proturječan jediničnoj cijeni (ne rangira se, nije u zbroju poslovnice)"],
+                      "kolicina_nepotvrdena": st["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"],
+                      "redak_bez_valjane_cijene": st["redak bez valjane cijene"]}
+    return {"izvor": f"arhiva cijene.dev {datum} (sekundarni izvor; bez traga do službene datoteke)", "datum": datum,
+            "ukupno_ponuda": sum(ponuda.values()), "provjereno_prema_sluzbenom_izvoru": 0, "lanci": lanci}
 
 
 def main():
     dopuna = preuzmi_dopunu()
+    statistika: dict = {}
     if len(sys.argv) > 1:
         arhiva = Path(sys.argv[1])
         datum = arhiva.stem
-        lanci, proizvodi = obradi(arhiva, dopuna)
+        rezultat = obradi_sve(arhiva, dopuna, statistika)
     else:
         with tempfile.TemporaryDirectory() as tmp:
             arhiva = Path(tmp) / "cijene.zip"
             datum = preuzmi_najnoviju_arhivu(arhiva)
-            lanci, proizvodi = obradi(arhiva, dopuna)
+            rezultat = obradi_sve(arhiva, dopuna, statistika)
+    lanci, proizvodi = rezultat["lanci"], rezultat["proizvodi"]
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    broj_datoteka = zapisi_poslovnice(OUTPUT.parent / "poslovnice", rezultat, datum)
+    pokriveno = pokrivenost(rezultat, statistika, datum)
     podaci = {
         "verzija": 2,
         "datum": datum,
         "azurirano": datetime.now(timezone.utc).isoformat(timespec="minutes"),
+        "izvor": pokriveno["izvor"],
+        "provjereno_prema_sluzbenom_izvoru": 0,
         "lanci": lanci,
+        "poslovnice": rezultat["poslovnice"],
         "proizvodi": proizvodi,
     }
     OUTPUT.write_text(json.dumps(podaci, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (OUTPUT.parent / "pokrivenost.json").write_text(json.dumps(pokriveno, ensure_ascii=False, indent=1), encoding="utf-8")
     s_mjerom = sum(1 for p in proizvodi if p[3])
     print(
         f"Gotovo: {len(proizvodi)} jedinstvenih proizvoda iz {len(lanci)} lanaca "
-        f"({s_mjerom} s poznatom količinom) -> {OUTPUT}"
+        f"({s_mjerom} s poznatom količinom), {broj_datoteka} poslovnica -> {OUTPUT}"
     )
+    print("Pokrivenost: " + json.dumps({k: v for k, v in pokriveno.items() if k != "lanci"}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

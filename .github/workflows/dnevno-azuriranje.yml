@@ -82,8 +82,32 @@ jobs:
           python tests/cijene_lanca.py
       - name: Dijagnoza cijena (krumpir)
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
-      - name: Veličina podataka po stvarnoj poslovnici (mjerenje)
-        run: python -u scripts/mjera_poslovnica.py
+      - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
+        run: |
+          python -u scripts/azuriraj_cijene.py
+          python - <<'EOF'
+          import json
+          from pathlib import Path
+          d = Path("site/data")
+          pok = json.loads((d / "pokrivenost.json").read_text())
+          print("Pokrivenost po lancu (provjereno prema službenom izvoru / ponuda):")
+          for ime, x in pok["lanci"].items():
+              print(f"  {ime}: {x['provjereno_prema_sluzbenom_izvoru']}/{x['ponuda']} · poslovnica {x['poslovnica']} · "
+                    f"proturječnih redaka {x['redak_proturjecan_jedinicnoj']} · nepotvrđena količina {x['kolicina_nepotvrdena']}")
+          datoteke = sorted((d / "poslovnice").glob("*.json"), key=lambda f: f.stat().st_size)
+          print(f"Datoteka poslovnica: {len(datoteke)}, ukupno {sum(f.stat().st_size for f in datoteke) // 1000} kB, "
+                f"najveća {datoteke[-1].stat().st_size // 1000} kB, medijan {datoteke[len(datoteke) // 2].stat().st_size // 1000} kB; "
+                f"proizvodi.json {(d / 'proizvodi.json').stat().st_size // 1000} kB")
+          EOF
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Skupine i testovi aplikacije na uvezenom cjeniku
+        run: |
+          node scripts/razvrstaj.cjs
+          node tests/skupine.cjs
+          node tests/kosarica.cjs
+          node tests/sve-u-jednom.cjs
       - name: Revizija cijena svih lanaca (prije/poslije)
         run: python -u scripts/revizija_cijena.py krumpir
       - uses: actions/upload-artifact@v4
@@ -93,5 +117,6 @@ jobs:
           path: |
             site/data/dijagnoza.json
             site/data/revizija-cijena.json
+            site/data/pokrivenost.json
           if-no-files-found: ignore
 

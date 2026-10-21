@@ -37,24 +37,23 @@ def sazetak(statistika: dict, primjeri: list, rijec: str) -> dict:
                 continue
             st["djelomičan komad u izvoru (odlučuje naziv)"] += djelomican(p)
             st["nepoznata količina (bez cijene po jedinici)"] += p["mjera"] is None
-            for vrsta, uvjet in (("djelomičan komad", djelomican(p)), ("nepotvrđena količina", p["kandidati"] and not p["potvrdeno"]),
+            for vrsta, uvjet in (("djelomičan komad", djelomican(p)), ("nepotvrđena količina", p["kandidati"] and not p["valjano"]),
                                  ("količina lanca umjesto dopune", p["kandidati"] and p["mjera"] and p["mjera"] != p["kandidati"][0])):
                 if uvjet and len(u[vrsta]) < 3:
                     u[vrsta].append({k: p[k] for k in ("naziv", "kolicina", "jedinica", "kandidati", "mjera", "raspon")})
         po_lancu[lanac] = dict(st)
-    s_cijenom = [p for p in primjeri if p["poslije"]]
     return {
         "po_lancu": po_lancu,
         "ukupno": dict(sum((Counter(s) for s in po_lancu.values()), Counter())),
-        # Obje strane: najniža poslovnica daleko ispod cijene lanca, i cijena lanca daleko iznad najniže (sirovi retci).
-        "najveca_odstupanja_najnize_poslovnice": sorted((p for p in s_cijenom if p["prije"] < p["poslije"]),
-                                                        key=lambda p: p["prije"] / p["poslije"])[:40],
+        # Oznaka za provjeru (nije dokaz greške): najveći raspon valjanih cijena među poslovnicama istog lanca.
+        "najveci_rasponi_za_provjeru": sorted(primjeri, key=lambda p: p["cijena"] / p["najvisa"])[:40],
         "uzorci_po_lancu": uzorci,
         "rijec": rijec,
         "prije_poslije": sorted(
-            ({k: p[k] for k in ("lanac", "naziv", "kolicina", "jedinica", "mjera", "poslovnica", "potvrdeno", "prije", "poslije")}
+            ({k: p[k] for k in ("lanac", "naziv", "kolicina", "jedinica", "mjera", "poslovnica", "valjano", "prije", "cijena",
+                                "store_id", "polje", "najvisa")}
              for p in primjeri if trazeno in a.normaliziraj(p["naziv"])),
-            key=lambda p: (p["prije"] / p["mjera"][0]) if p["mjera"] else 1e9)[:60],
+            key=lambda p: (p["cijena"] / p["mjera"][0]) if p["mjera"] else 1e9)[:60],
     }
 
 
@@ -65,7 +64,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         arhiva = Path(tmp) / "cijene.zip"
         datum = a.preuzmi_najnoviju_arhivu(arhiva)
-        a.obradi(arhiva, dopuna, statistika=statistika, primjeri=primjeri)
+        a.obradi_sve(arhiva, dopuna, statistika=statistika, primjeri=primjeri)
     rezultat = {"arhiva": datum, **sazetak(statistika, primjeri, rijec)}
     IZLAZ.parent.mkdir(parents=True, exist_ok=True)
     IZLAZ.write_text(json.dumps(rezultat, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -73,9 +72,9 @@ def main():
     print(f"Prije/poslije za '{rijec}' (od najniže cijene po jedinici prije):")
     for p in rezultat["prije_poslije"][:25]:
         print("  " + json.dumps(p, ensure_ascii=False))
-    print("Najveća odstupanja najniže poslovnice od cijene lanca (sirovi retci: price, special_price, unit_price):")
-    for p in rezultat["najveca_odstupanja_najnize_poslovnice"][:25]:
-        print("  " + json.dumps({k: p[k] for k in ("lanac", "naziv", "poslovnica", "potvrdeno", "prije", "poslije", "raspon")}, ensure_ascii=False))
+    print("Najveći rasponi među poslovnicama lanca, za provjeru (sirovi retci: price, special_price, unit_price):")
+    for p in rezultat["najveci_rasponi_za_provjeru"][:25]:
+        print("  " + json.dumps({k: p[k] for k in ("lanac", "naziv", "poslovnica", "valjano", "cijena", "store_id", "najvisa", "raspon")}, ensure_ascii=False))
     print("Uzorci po lancu:")
     for lanac, u in rezultat["uzorci_po_lancu"].items():
         for vrsta, lista in u.items():
