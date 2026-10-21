@@ -39,7 +39,9 @@ jobs:
           python tests/sluzbeni.py
 
       - name: Preuzmi cijene svih trgovačkih lanaca
-        run: python scripts/azuriraj_cijene.py
+        run: |
+          pip install --quiet openpyxl==3.1.5
+          python scripts/azuriraj_cijene.py
 
       - uses: actions/setup-node@v4
         with:
@@ -86,6 +88,7 @@ jobs:
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
       - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
         run: |
+          pip install --quiet openpyxl==3.1.5
           python -u scripts/azuriraj_cijene.py
           python - <<'EOF'
           import json
@@ -102,6 +105,26 @@ jobs:
                     + (f" · nepoznati stupci {x['nepoznati_stupci']}" if x.get("nepoznati_stupci") else ""))
           for ime, x in pok["bez_podataka"].items():
               print(f"  BEZ PODATAKA {ime}: {x.get('razlog')}")
+          # Provjera prijavljenog krumpira u službenom zapisu: lanac, cijena, poslovnica, datoteka i redak.
+          pod = json.loads((d / "proizvodi.json").read_text())
+          for i, p in enumerate(pod["proizvodi"]):
+              if "KRUMPIR ZA GASTRO" in p[0].upper():
+                  for k in range(0, len(p[5]), 2):
+                      pon = p[6][k // 2]
+                      st = pod["poslovnice"][pon[0]]
+                      izv = pod["izvori"][st[4]] if st[4] >= 0 else None
+                      print("KRUMPIR (službeni zapis): " + json.dumps({"naziv": p[0], "lanac": pod["lanci"][p[5][k]], "cijena": p[5][k + 1],
+                            "poslovnica": st[1], "datoteka": izv, "redak": pon[4] if len(pon) > 4 else None,
+                            "najviša u lancu": pon[2], "poslovnica s cijenom": pon[1]}, ensure_ascii=False))
+                  for s_idx, st in enumerate(pod["poslovnice"]):
+                      if pod["lanci"][st[0]] == "Trgovina Krk":
+                          f = json.loads((d / "poslovnice" / f"{s_idx}.json").read_text())
+                          j, ind = 0, {}
+                          for k in range(0, len(f["c"]), 2):
+                              j += f["c"][k]
+                              ind[j] = (f["c"][k + 1], f.get("r", [None] * len(f["c"]))[k // 2])
+                          if i in ind:
+                              print(f"  Krk poslovnica {st[1]}: {ind[i][0] / 100:.2f} €, redak {ind[i][1]}, {f.get('izvor')}")
           datoteke = sorted((d / "poslovnice").glob("*.json"), key=lambda f: f.stat().st_size)
           print(f"Datoteka poslovnica: {len(datoteke)}, ukupno {sum(f.stat().st_size for f in datoteke) // 1000} kB, "
                 f"najveća {datoteke[-1].stat().st_size // 1000} kB, medijan {datoteke[len(datoteke) // 2].stat().st_size // 1000} kB; "

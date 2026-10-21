@@ -36,17 +36,18 @@ NAJVISE_BAJTOVA = 200_000_000
 STUPCI = {
     "naziv": ["naziv proizvoda", "naziv", "naziv artikla", "naziv art", "proizvod", "artikl"],
     "sifra": ["sifra proizvoda", "sifra", "sif art", "sifra artikla", "kod proizvoda", "sifra art"],
-    "marka": ["marka proizvoda", "marka"],
+    "marka": ["marka proizvoda", "marka", "brand"],
     "kolicina": ["neto kolicina", "net kol", "nettokolicina", "neto kol", "gramaza", "neto kolicina proizvoda", "kolicina"],
+    # (stvarna zaglavlja iz pokretanja 21.10.2026: Spar "(EUR)", Plodine "Cijena po JM", Tommy, Stridon, Eurospin)
     "jedinica": ["jedinica mjere", "jmj", "mjera", "jmjere", "jedinica", "jm"],
-    "cijena": ["maloprodajna cijena", "mpc", "mpcijena", "maloprodajna cijena eur", "mpc eur", "cijena"],
+    "cijena": ["maloprodajna cijena", "mpc", "mpcijena", "maloprod cijena", "cijena"],
     "jedinicna": ["cijena za jedinicu mjere", "c jmj", "mpcijenamjera", "mpcjmj", "cijena jedinice mjere",
-                  "jedinicna cijena", "cijena po jedinici mjere", "mpc jmj"],
+                  "jedinicna cijena", "cijena po jedinici mjere", "mpc jmj", "cijena po jm", "cijena po jmj"],
     "posebna": ["mpc za vrijeme posebnog oblika prodaje", "mpc pop", "akcijska cijena", "posebna cijena",
-                "mpc posebnog oblika prodaje"],
+                "mpc posebnog oblika prodaje", "mpc posebni oblik prodaje", "mpc posebna prodaja", "mpc poseb oblik prod"],
     "akcija": ["naziv posebnog oblika prodaje", "poseban oblik prodaje"],
-    "barkod": ["barkod", "ean kod", "barcode", "ean", "bar kod"],
-    "dostupnost": ["dostupnost", "raspolozivost"],
+    "barkod": ["barkod", "ean kod", "barcode", "ean", "bar kod", "barkod artikla"],
+    "dostupnost": ["dostupnost", "raspolozivost", "dostupno nedostupno", "dostupno"],
 }
 INDEKS_STUPACA = {n: k for k, nazivi in STUPCI.items() for n in nazivi}
 
@@ -59,6 +60,8 @@ def normaliziraj(tekst: str) -> str:
 
 def kljuc_stupca(ime: str) -> str | None:
     n = normaliziraj(ime)
+    # Valuta u zaglavlju ("MPC (EUR)", "MALOPROD.CIJENA(EUR)") ne mijenja značenje stupca.
+    n = re.sub(r"\s+eur$", "", n)
     if n in INDEKS_STUPACA:
         return INDEKS_STUPACA[n]
     # "SIDRENA CIJENA NA 2.5.2025", "NAJNIŽA CIJENA U POSLJEDNIH 30 DANA" i sl. nisu cijena ponude.
@@ -189,11 +192,37 @@ def citaj_xml(tekst: str):
 
 def citaj_datoteku(sadrzaj: bytes, ime: str):
     if sadrzaj[:2] == b"PK" and not ime.lower().endswith(".zip"):
-        raise ValueError("XLSX/ZIP umjesto CSV/XML (XLSX se zasad ne čita)")
+        return citaj_xlsx(sadrzaj)
     tekst = dekodiraj(sadrzaj)
     if tekst.lstrip().startswith("<"):
-        return citaj_xml(tekst)
+        oznake, nepoznati, zapisi = citaj_xml(tekst)
+        if not zapisi:
+            oznake = [f"početak XML-a: {re.sub(r'\s+', ' ', tekst[:260])}"]
+        return oznake, nepoznati, zapisi
     return citaj_csv(tekst)
+
+
+def citaj_xlsx(sadrzaj: bytes):
+    """Prvi list XLSX-a: prvi redak je zaglavlje (Djelo Vodice, dm). Treba paket openpyxl."""
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(sadrzaj), read_only=True, data_only=True)
+    redovi = wb.worksheets[0].iter_rows(values_only=True)
+    zaglavlje = [str(x or "").strip() for x in next(redovi, [])]
+    # Neki listovi imaju naslov iznad zaglavlja: zaglavlje je prvi redak s prepoznatim nazivom i cijenom.
+    preskoceno = 1
+    while not {"naziv", "cijena"} <= {kljuc_stupca(z) for z in zaglavlje} and preskoceno < 15:
+        zaglavlje = [str(x or "").strip() for x in next(redovi, [])]
+        preskoceno += 1
+    kljucevi = [kljuc_stupca(z) for z in zaglavlje]
+    nepoznati = [z for z, k in zip(zaglavlje, kljucevi) if not k and z]
+    zapisi = []
+    if "naziv" in kljucevi and "cijena" in kljucevi:
+        for n, red in enumerate(redovi, start=preskoceno + 1):
+            zapis = {k: ("" if v is None else str(v)).strip() for k, v in zip(kljucevi, red) if k}
+            if zapis.get("naziv"):
+                zapis["_redak"] = n
+                zapisi.append(zapis)
+    return zaglavlje, nepoznati, zapisi
 
 
 # ---------- Datumi i poslovnice iz naziva datoteka ----------
@@ -307,6 +336,46 @@ def ktc(d):
     return rez
 
 
+def poveznice_s_tekstom(tekst: str, osnova: str, uzorak: str) -> list[tuple[str, str]]:
+    """[(url, tekst oko poveznice)]: datum objave ponekad piše samo u naslovu na stranici (Žabac)."""
+    rez = []
+    for m in re.finditer(r"""<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>(.*?)</a>""", tekst, re.I | re.S):
+        if re.search(uzorak, m.group(1), re.I):
+            okolina = re.sub(r"<[^>]+>", " ", tekst[max(0, m.start() - 400):m.end()])
+            rez.append((urllib.parse.urljoin(osnova, html.unescape(m.group(1))), html.unescape(okolina)))
+    return rez
+
+
+def zabac(d):
+    osnova = "https://zabacfoodoutlet.hr/cjenik/"
+    stranice = [osnova] + poveznice(dekodiraj(dohvati(osnova)), osnova, r"\?store=")
+    rez = {}
+    for st in dict.fromkeys(stranice):
+        for u, okolina in poveznice_s_tekstom(dekodiraj(dohvati(st)), st, r"\.(csv|xlsx)(?:$|[?#&])"):
+            if ima_datum(okolina[-300:], d) and u not in rez:
+                trgovina = urllib.parse.parse_qs(urllib.parse.urlsplit(st).query).get("store", ["Žabac"])[0]
+                rez[u] = trgovina
+    if not rez:
+        raise ValueError(f"na stranicama nema datoteke s datumom {d:%d.%m.%Y} u naslovu")
+    return list(rez.items())
+
+
+def dm(d):
+    indeks = json.loads(dekodiraj(dohvati("https://content.services.dmtech.com/rootpage-dm-shop-hr-hr/novo/promocije/"
+                                          "nove-oznake-cijena-i-vazeci-cjenik-u-dm-u-2906632?mrclx=false")))
+    rez = []
+    for stavka in indeks.get("mainData", []):
+        if stavka.get("type") != "CMDownload":
+            continue
+        podatak = stavka.get("data") or {}
+        naslov, cilj = podatak.get("headline", ""), podatak.get("linkTarget", "")
+        if cilj and ima_datum(naslov, d):
+            rez.append((urllib.parse.urljoin("https://content.services.dmtech.com/rootpage-dm-shop-hr-hr", cilj), "dm"))
+    if not rez:
+        raise ValueError(f"nema cjenika s datumom {d:%d.%m.%Y} u naslovu")
+    return rez[:1]
+
+
 def plodine(d):
     return [(u, "ZIP") for u in poveznice(dekodiraj(dohvati("https://www.plodine.hr/info-o-cijenama")),
                                           "https://www.plodine.hr/", r"\.zip") if ima_datum(u, d)]
@@ -341,9 +410,9 @@ LANCI = {
     "jadranka_trgovina": lambda d: s_indeksa("https://jadranka-trgovina.com/cjenici/", d),
     "bure": lambda d: s_indeksa("https://www.bure.hr/cjenici-arhiva", d),
     "brodokomerc": lambda d: s_indeksa("http://www.brodokomerc.hr/cijene", d),
-    "zabac": lambda d: (_ for _ in ()).throw(ValueError("datoteke nemaju datum u nazivu; datum je samo u naslovu na stranici (još nije podržano)")),
-    "djelo_vodice": lambda d: (_ for _ in ()).throw(ValueError("cjenik je XLSX (još nije podržan)")),
-    "dm": lambda d: (_ for _ in ()).throw(ValueError("cjenik je XLSX iz sadržajnog servisa (još nije podržan)")),
+    "zabac": zabac,
+    "djelo_vodice": lambda d: s_indeksa("https://dv10.djelo-vodice.hr/", d, r"\.xlsx(?:$|[?#&])"),
+    "dm": dm,
     "stanic": lambda d: (_ for _ in ()).throw(PermissionError("datoteke na Google Driveu traže API ključ; ne koristi se")),
 }
 
@@ -380,10 +449,10 @@ def preuzmi_lanac(lanac: str, d: date) -> dict:
                     izlaz.append({"url": u, "poslovnica": k, "zapisi": zapisi, "nepoznati": nepoznati,
                                   "greska": "" if zapisi else f"nema prepoznatih stupaca naziv/cijena: {zaglavlje[:14]}"})
                 except Exception as e:  # noqa: BLE001
-                    izlaz.append({"url": u, "poslovnica": k, "zapisi": [], "nepoznati": [], "greska": str(e)[:200]})
+                    izlaz.append({"url": u, "poslovnica": k, "zapisi": [], "nepoznati": [], "greska": f"{str(e)[:200]} ({u[:160]})"})
             return izlaz
         except Exception as e:  # noqa: BLE001
-            return [{"url": url, "poslovnica": kljuc, "zapisi": [], "nepoznati": [], "greska": str(e)[:200]}]
+            return [{"url": url, "poslovnica": kljuc, "zapisi": [], "nepoznati": [], "greska": f"{str(e)[:200]} ({siguran_url(url)[:160]})"}]
 
     with ThreadPoolExecutor(ISTOVREMENO) as ex:
         for izlaz in ex.map(jedna, popis):
