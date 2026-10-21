@@ -212,7 +212,9 @@ function ponudeZaGrupu(grupa, lanci = dozvoljeniLanci()) {
 }
 
 // Za "sve u jednoj trgovini": najbolja ponuda za grupu u svakom lancu.
-function najboljePoLancu(grupa, lanci, trazenaJedinica = null) {
+// Najbolja ponuda svake trgovine za stavku. S navedenom stavkom bira se najmanji stvarni iznos za istu referentnu
+// količinu (cijena × cijela pakiranja), ne najniža jedinična cijena: 1 l za 1,00 € pobjeđuje 2 l za 1,60 €.
+function najboljePoLancu(grupa, lanci, trazenaJedinica = null, stavka = null) {
   const sve = [];
   for (const i of pogoci(grupa)) {
     const cijene = podaci.proizvodi[i][5];
@@ -224,9 +226,10 @@ function najboljePoLancu(grupa, lanci, trazenaJedinica = null) {
   const jedinica = trazenaJedinica || jediniceGrupe(grupa)[0] || null;
   const usporedi = usporedba(jediniceGrupe(grupa));
   const najbolje = new Map();
+  const trosak = (p) => (stavka ? centi(p.cijena * brojPakiranja(stavka, p, true)) : 0);
   for (const p of sve.filter((p) => imaJedinicnu(p) && p.jedinica === jedinica)) {
     const dosad = najbolje.get(p.lanac);
-    if (!dosad || usporedi(p, dosad) < 0) najbolje.set(p.lanac, p);
+    if (!dosad || trosak(p) - trosak(dosad) < 0 || (trosak(p) === trosak(dosad) && usporedi(p, dosad) < 0)) najbolje.set(p.lanac, p);
   }
   return { najbolje, usporedi };
 }
@@ -482,7 +485,7 @@ function usporedbaKosarice() {
     const kolicina = odabrana && imaJedinicnu(odabrana)
       ? podaci.proizvodi[odabrana.i][2] * stavka.kom : 0;
     const { najbolje, usporedi } = kolicina > 0
-      ? najboljePoLancu(stavka.naziv, lanci, odabrana.jedinica)
+      ? najboljePoLancu(stavka.naziv, lanci, odabrana.jedinica, stavka)
       : { najbolje: new Map(), usporedi: () => 0 };
     najboljePoStavci.set(stavka.naziv, najbolje);
     const prva = [...najbolje.values()].sort(usporedi)[0];
@@ -643,59 +646,98 @@ function prikaziRezultate() {
   prikaziJednuTrgovinu();
 }
 
-// Koliko bi koštalo da se sve kupi u istoj trgovini.
+// Sve u jednom dućanu: ukupan iznos cijelog popisa u svakom lancu (cijela pakiranja, iste količine i jedinice
+// kao kartice tog lanca) i najpovoljnija kombinacija više lanaca. Pobijediti može samo lanac s usporedivom ponudom
+// za svaku stavku; nepotpuni se prikazuju zasebno i ne pobjeđuju.
+const centi = (x) => Math.round(x * 100);
+
+function sveUJednomDucanu() {
+  const { zbroj, najboljePoStavci, jedinice } = usporedbaKosarice();
+  const stavki = stanje.popis.length;
+  let kombinacija = 0;
+  let kombinacijaNedostaje = 0;
+  for (const stavka of stanje.popis) {
+    const iznosi = [...(najboljePoStavci.get(stavka.naziv) || new Map()).values()]
+      .map((p) => p.cijena * brojPakiranja(stavka, p, true));
+    if (iznosi.length) kombinacija += Math.min(...iznosi);
+    else kombinacijaNedostaje++;
+  }
+  const potpune = [];
+  const nepotpune = [];
+  for (const [l, z] of zbroj) {
+    const red = { lanac: l, ime: podaci.lanci[l], ukupno: z.ukupno, pokriveno: stavki - z.nema.length, stavki,
+      nedostaje: z.nema, rucniOdabir: z.neusporedivo.filter((n) => !z.nema.includes(n)) };
+    if (!z.nema.length) potpune.push(red);
+    else nepotpune.push(red); // i lanci bez ijedne stavke (0/Y): korisnik vidi sve odabrane lance
+  }
+  potpune.sort((a, b) => centi(a.ukupno) - centi(b.ukupno) || a.ime.localeCompare(b.ime, "hr"));
+  nepotpune.sort((a, b) => b.pokriveno - a.pokriveno || a.ukupno - b.ukupno || a.ime.localeCompare(b.ime, "hr"));
+  const najmanje = potpune.length ? centi(potpune[0].ukupno) : null;
+  for (const r of potpune) {
+    r.najpovoljniji = centi(r.ukupno) === najmanje; // svi izjednačeni najpovoljniji
+    r.razlika = kombinacijaNedostaje ? null : (centi(r.ukupno) - centi(kombinacija)) / 100;
+  }
+  return { potpune, nepotpune, stavki, jedinice, kombinacija: kombinacijaNedostaje ? null : kombinacija, kombinacijaNedostaje };
+}
+
+function redTrgovine(r) {
+  const li = document.createElement("li");
+  const b = gumb("", "trgovina-red" + (r.najpovoljniji ? " najpovoljniji" : "") + (stanje.jedna === r.ime ? " odabrana" : "")
+    + (r.nedostaje.length ? " nepotpun" : ""), () => {
+    if (!stanje.jedna) stanje.odabirSvi = { ...stanje.odabir };
+    stanje.jedna = stanje.jedna === r.ime ? null : r.ime;
+    promijeniPostavke(true);
+    window.scrollTo(0, 0);
+  });
+  const lijevo = document.createElement("span");
+  lijevo.className = "lijevo";
+  if (r.najpovoljniji) {
+    const znacka = document.createElement("span");
+    znacka.className = "znacka";
+    znacka.textContent = "★ Najpovoljniji lanac";
+    lijevo.appendChild(znacka);
+  }
+  const naziv = document.createElement("strong");
+  naziv.textContent = nazivLanca(r.ime);
+  const opis = document.createElement("small");
+  opis.textContent = r.nedostaje.length
+    ? `Pokriva ${r.pokriveno}/${r.stavki} · nedostaje: ${r.nedostaje.join(", ")}`
+    : `Ima sve (${r.stavki}/${r.stavki})` + (r.razlika === null ? ""
+      : r.razlika > 0 ? ` · ${euro(r.razlika)} više od najpovoljnije kombinacije` : " · jednako najpovoljnijoj kombinaciji")
+      + (r.rucniOdabir.length ? ` · uključuje ručno odabrane ponude: ${r.rucniOdabir.join(", ")}` : "");
+  lijevo.append(naziv, opis);
+  const iznos = document.createElement("span");
+  iznos.className = "iznos";
+  iznos.textContent = r.pokriveno ? euro(r.ukupno) : "—";
+  if (r.nedostaje.length && r.pokriveno) {
+    const oznaka = document.createElement("small");
+    oznaka.textContent = "djelomično, nije cijeli popis";
+    iznos.appendChild(oznaka);
+  }
+  iznos.setAttribute("aria-label", r.nedostaje.length ? `Djelomični iznos ${euro(r.ukupno)}, nije cijeli popis`
+    : `${euro(r.ukupno)} za cijela pakiranja, isto kao zbroj kartica u tom lancu`);
+  b.append(lijevo, iznos);
+  li.appendChild(b);
+  return li;
+}
+
 function prikaziJednuTrgovinu() {
   const ul = $("trgovine-usporedba");
+  const ulN = $("trgovine-nepotpune");
   ul.innerHTML = "";
+  ulN.innerHTML = "";
   $("jedna-trgovina").hidden = !podaci || !stanje.popis.length;
-  if (!podaci || !stanje.popis.length) return;
-
-  const { zbroj, najboljeMijesano, sveMijesanoIma, jedinice } = usporedbaKosarice();
-  const napomena = document.createElement("li");
-  napomena.className = "savjet";
-  napomena.textContent = `Usporedne količine: ${jedinice.join(" · ") || "nema usporedivih ponuda"}. `
-    + (sveMijesanoIma ? `Najniže po jediničnim cijenama svih trgovina: ${euro(najboljeMijesano)} (usporedba, nije iznos na blagajni).`
-      : "Nije moguće usporediti cijeli popis.");
-  ul.appendChild(napomena);
-
-  const redovi = [...zbroj].filter(([, z]) => z.nema.length < stanje.popis.length)
-    .sort(([, a], [, b]) => a.nema.length - b.nema.length || a.ukupno - b.ukupno || a.usporedno - b.usporedno)
-    .slice(0, 8);
-  const najjeftinijaCijela = Math.min(...redovi.filter(([, z]) => !z.nema.length).map(([, z]) => z.ukupno));
-  if (!redovi.length) { $("jedna-trgovina").hidden = true; return; }
-
-  for (const [l, z] of redovi) {
-    const ime = podaci.lanci[l];
-    const li = document.createElement("li");
-    const b = gumb("", "trgovina-red" + (stanje.jedna === ime ? " odabrana" : ""), () => {
-      if (!stanje.jedna) stanje.odabirSvi = { ...stanje.odabir };
-      stanje.jedna = stanje.jedna === ime ? null : ime;
-      promijeniPostavke(true);
-      window.scrollTo(0, 0);
-    });
-    const lijevo = document.createElement("span");
-    lijevo.className = "lijevo";
-    const naziv = document.createElement("strong");
-    naziv.textContent = ime;
-    const opis = document.createElement("small");
-    opis.textContent = z.nema.length
-      ? `Nedostaje usporediva ponuda: ${z.nema.join(", ")}. Nije cijeli popis.`
-      : z.ukupno - najjeftinijaCijela >= 0.005
-        ? `Ima sve · ${euro(z.ukupno - najjeftinijaCijela)} više od najjeftinije trgovine`
-        : "Ima sve · najjeftinija cijela košarica";
-    const placanje = document.createElement("small");
-    placanje.textContent = z.nema.length
-      ? `Za prikazane proizvode u trgovini: ${euro(z.ukupno)}`
-      : `Po jedinici za iste količine: ${euro(z.usporedno)} (usporedba, nije iznos na blagajni)`;
-    lijevo.append(naziv, opis, placanje);
-    const iznos = document.createElement("span");
-    iznos.className = "iznos";
-    iznos.textContent = z.nema.length ? "Nepotpuno" : `${euro(z.ukupno)}`;
-    iznos.setAttribute("aria-label", z.nema.length ? "Nema iznosa za cijeli popis" : `${euro(z.ukupno)} za cijela pakiranja, isto kao zbroj kartica u toj trgovini`);
-    b.append(lijevo, iznos);
-    li.appendChild(b);
-    ul.appendChild(li);
-  }
+  if (!podaci || !stanje.popis.length) return null;
+  const rez = sveUJednomDucanu();
+  $("kombinacija").textContent = rez.kombinacija !== null
+    ? `Najpovoljnija kombinacija više trgovina: ${euro(rez.kombinacija)} (svaka stavka u lancu s najnižim iznosom).`
+    : `Kombinacija više trgovina nije potpuna: za ${rez.kombinacijaNedostaje} od ${rez.stavki} stavki nema usporedive ponude.`;
+  $("usporedne-kolicine").textContent = rez.jedinice.length ? `Iste količine u svakom lancu: ${rez.jedinice.join(" · ")}.` : "";
+  $("nema-potpune").hidden = rez.potpune.length > 0;
+  for (const r of rez.potpune) ul.appendChild(redTrgovine(r));
+  $("nepotpune-naslov").hidden = !rez.nepotpune.length;
+  for (const r of rez.nepotpune) ulN.appendChild(redTrgovine(r));
+  return rez;
 }
 
 function promijeni(grupa, smjer) {

@@ -64,3 +64,17 @@ input::placeholder{color:#4e5760}
 .kartica:nth-child(4n+1):not(.kupljeno),.prazno,.glasovni-nacrt,.upozorenje,input[type=text]{box-shadow:var(--rub)}
 .preskoci,.oznaka,.mikrofon-krug,.kvacica,.lanci-gumbi button,.savjet button,.lanci label:not(:has(input:checked)),.sljedeci,.natrag,.samo-trgovina button{box-shadow:var(--rub-malo)}
 .kupljeno .kvacica{box-shadow:none}
+
+/* Sve u jednom dućanu uz glavni rezultat; najpovoljniji potpuni lanac zelenom plohom, oznakom i tekstom. */
+.jedna-trgovina{margin-top:22px;padding:18px 20px}
+.jedna-trgovina h2{margin-bottom:8px}
+.kombinacija{font-weight:800;color:#173552;margin-bottom:6px}
+.nepotpune-naslov{font-size:18px;color:#3e5267;margin:6px 0 0}
+.trgovina-red.najpovoljniji,.trgovine-usporedba>li:nth-child(2n+1) .trgovina-red.najpovoljniji{background:linear-gradient(125deg,#cfeac3,#eaf6e2);border:2px solid #2c6e35}
+.trgovina-red.najpovoljniji .iznos{color:#1f5a28}
+.znacka{display:inline-block;align-self:flex-start;background:#2c6e35;color:#fff;font-size:14px;font-weight:800;padding:3px 10px;border-radius:8px}
+.trgovina-red.nepotpun{border-style:dashed}
+.trgovina-red.nepotpun .iznos{display:flex;flex-direction:column;align-items:flex-end;font-size:18px}
+.trgovina-red .iznos small{font-size:13px;font-weight:600;text-align:right}
+.trgovina-red:not(.nepotpun) .iznos{white-space:nowrap;max-width:none;min-width:0}
+@media(max-width:700px){.jedna-trgovina{padding:14px 12px}}
