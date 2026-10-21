@@ -67,6 +67,7 @@ assert len(pivo) == 1 and pivo[0][2:4] == [2.0, "l"] and len(pivo[0][5]) == 4, "
 assert po["KRUMPIR MLADI 2,5 KG"][5][1] == 2.2, "consistent unit price (2,20 / 2,5 = 0,88) is kept"
 assert statistika["Plodine"]["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"] == 1
 assert statistika["Boso"]["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] == 1
+assert sum(s["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] for s in statistika.values()) == 1
 assert statistika["Trgovina Krk"]["najniža poslovnica ispod cijene lanca"] == 1
 krk_primjer = next(p for p in primjeri if p["lanac"] == "Trgovina Krk")
 assert (krk_primjer["prije"], krk_primjer["poslije"]) == (0.10, 0.89), krk_primjer

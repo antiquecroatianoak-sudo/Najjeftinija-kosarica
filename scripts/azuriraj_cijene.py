@@ -289,7 +289,7 @@ def obradi(arhiva: Path, dopuna: dict | None = None, statistika: dict | None = N
                         st["redak s proturječnom jediničnom cijenom (ne ulazi u cijenu lanca)"] += len(redovi) - len(potvrdene)
                     if nepotvrdeno:
                         st["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"] += 1
-                    if kandidati and mjera_lanca != kandidati[0]:
+                    if mjera_lanca and mjera_lanca != kandidati[0]:
                         st["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] += 1
                     if potvrdene and min(c for c, _ in redovi) < cijena_lanca(potvrdene):
                         st["najniža poslovnica ispod cijene lanca"] += 1
