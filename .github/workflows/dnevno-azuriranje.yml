@@ -53,6 +53,7 @@ jobs:
           node tests/kosarica.cjs
           node tests/glasovni-unos.cjs
           node tests/sve-u-jednom.cjs
+          node tests/sluzbene-ponude.cjs
 
       - name: Pripremi skupine za novi cjenik
         run: node scripts/razvrstaj.cjs
@@ -139,6 +140,7 @@ jobs:
           node tests/skupine.cjs
           node tests/kosarica.cjs
           node tests/sve-u-jednom.cjs
+          node tests/sluzbene-ponude.cjs
       - name: Revizija cijena svih lanaca (prije/poslije)
         run: python -u scripts/revizija_cijena.py krumpir
       - uses: actions/upload-artifact@v4

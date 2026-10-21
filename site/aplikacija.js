@@ -185,8 +185,11 @@ function ponuda(i, lanac, cijena, poslovnica = null) {
   if (poslovnica === null && ponude) {
     for (let k = 0; k < cijene.length; k += 2) if (cijene[k] === lanac) { meta = ponude[k / 2]; break; }
   }
+  const posl = poslovnica !== null ? poslovnica : meta ? meta[0] : null;
   return { i, lanac, cijena, jedinica, poJedinici: iznos ? cijena / iznos : null,
-    poslovnica: poslovnica !== null ? poslovnica : meta ? meta[0] : null,
+    poslovnica: posl,
+    // Bez traga izvora u cjeniku (stari oblik podataka) nema razlike; s tragom vrijedi samo službena datoteka.
+    sluzbena: !Array.isArray(podaci.izvori) || (posl !== null && izvorPoslovnice(posl) !== null),
     brojPoslovnica: meta ? meta[1] : null, najvisa: meta ? meta[2] : null, akcija: !!(meta && meta[3]),
     redak: meta && Number.isInteger(meta[4]) ? meta[4] : null, nazivAkcije: meta && meta[5] ? meta[5] : "",
     vrstaNejasna: !!klasifikacija && !klasifikacija.vrstaProizvoda(i) };
@@ -218,8 +221,10 @@ function opisIzvoraCijene(p) {
   return dijelovi.join(" · ");
 }
 
+// U poretku, najpovoljnijem i zbrojevima sudjeluju samo ponude potvrđene službenim cjenikom (kad cjenik nosi trag
+// izvora). Ponuda iz arhive cijene.dev ostaje vidljiva i označena, ali ne pobjeđuje i ne ulazi u potvrđeni zbroj.
 function imaJedinicnu(p) {
-  return !p.vrstaNejasna && Number.isFinite(p.poJedinici) && p.poJedinici > 0 && ["kg", "l", "kom"].includes(p.jedinica);
+  return !p.vrstaNejasna && p.sluzbena && Number.isFinite(p.poJedinici) && p.poJedinici > 0 && ["kg", "l", "kom"].includes(p.jedinica);
 }
 
 // Različite jedinice ne smiju sakriti cijelu skupinu niti se uspoređivati brojčano.
@@ -249,11 +254,13 @@ function ponudeZaGrupu(grupa, lanci = dozvoljeniLanci()) {
   const ponude = [];
   for (const i of pogoci(grupa)) {
     const cijene = podaci.proizvodi[i][5];
+    // Ponuda proizvoda: najjeftinija potvrđena službenim cjenikom; nepotvrđena samo ako potvrđene nema.
     let najjeftinija = null;
     for (let k = 0; k < cijene.length; k += 2) {
-      if (lanci.has(cijene[k]) && (!najjeftinija || cijene[k + 1] < najjeftinija.cijena)) {
-        najjeftinija = ponuda(i, cijene[k], cijene[k + 1]);
-      }
+      if (!lanci.has(cijene[k])) continue;
+      const p = ponuda(i, cijene[k], cijene[k + 1]);
+      if (!najjeftinija || (p.sluzbena && !najjeftinija.sluzbena)
+          || (p.sluzbena === najjeftinija.sluzbena && p.cijena < najjeftinija.cijena)) najjeftinija = p;
     }
     if (najjeftinija) ponude.push(najjeftinija);
   }
@@ -550,7 +557,9 @@ function usporedbaKosarice() {
       else z.nema.push(stavka.naziv);
       // Isti izračun kao kartica u otvorenoj trgovini, uključujući ponude bez usporedive količine.
       const kartica = ponudaZaLanac(stavka, l, najbolje);
-      if (kartica) {
+      if (kartica && !kartica.sluzbena) {
+        z.neusporedivo.push(stavka.naziv); // nepotvrđena cijena ne ulazi u zbroj lanca
+      } else if (kartica) {
         z.ukupno += kartica.cijena * brojPakiranja(stavka, kartica, true);
         if (!p || kartica.i !== p.i) z.neusporedivo.push(stavka.naziv);
       }
@@ -572,6 +581,7 @@ function prikaziRezultate() {
   let kupljeno = 0;
   let nedostaje = 0;
   let zaProvjeru = 0;
+  let nepotvrdeno = 0;
   const poLancu = {};
   const lanciOk = sviLanci().size > 0;
 
@@ -628,6 +638,7 @@ function prikaziRezultate() {
     const rb = (stanje.odabir[grupa] || 0) % ponude.length;
     const p = ponude[rb];
     if (p.vrstaNejasna) zaProvjeru++;
+    if (!p.sluzbena) nepotvrdeno++;
     const [naziv, kolicina] = podaci.proizvodi[p.i];
     const lanac = podaci.lanci[p.lanac];
     const pakiranja = brojPakiranja(stavka, p);
@@ -648,6 +659,7 @@ function prikaziRezultate() {
       pakiranja > 1 ? `${pakiranja} × ${euro(p.cijena)}` : "",
       kolicina,
       p.vrstaNejasna ? "Moguće podudaranje · vrsta za provjeru"
+        : !p.sluzbena ? "Cijena nije potvrđena službenim cjenikom · bez poretka"
         : imaJedinicnu(p) ? opisJedinicne(p) : "Količina nije poznata · bez poretka po jediničnoj cijeni",
     ].filter(Boolean).join(" · ");
     const izvorCijene = sadrzaj.querySelector(".izvor-cijene");
@@ -679,6 +691,7 @@ function prikaziRezultate() {
     } else {
       poredak.textContent = p.vrstaNejasna
         ? "Provjeri odgovara li proizvod tvojem popisu. Ne proglašavamo ga najpovoljnijim."
+        : !p.sluzbena ? "Cijena je iz arhive cijene.dev, nije potvrđena službenim cjenikom lanca: ne proglašavamo je najpovoljnijom."
         : "Ponuda je dostupna; povoljnost se ne može usporediti bez količine.";
     }
     sadrzaj.appendChild(poredak);
@@ -694,11 +707,13 @@ function prikaziRezultate() {
 
   $("napredak").textContent = stanje.popis.length ? `U košarici: ${kupljeno} od ${stanje.popis.length}` : "";
   $("ukupno").textContent = euro(ukupno);
-  $("ukupno-oznaka").textContent = nedostaje ? "Iznos pronađenih proizvoda" : zaProvjeru ? "Iznos prikazanih ponuda" : "Za plaćanje · odabrana pakiranja";
-  $("nedostaje").hidden = nedostaje === 0 && zaProvjeru === 0;
+  $("ukupno-oznaka").textContent = nedostaje ? "Iznos pronađenih proizvoda"
+    : zaProvjeru || nepotvrdeno ? "Iznos prikazanih ponuda" : "Za plaćanje · odabrana pakiranja";
+  $("nedostaje").hidden = nedostaje === 0 && zaProvjeru === 0 && nepotvrdeno === 0;
   $("nedostaje").textContent = [
     nedostaje ? `Za ${nedostaje} od ${stanje.popis.length} stavki nema cijene. Iznos ne obuhvaća cijeli popis.` : "",
     zaProvjeru ? `Za ${zaProvjeru} stavki provjeri vrstu prikazanog proizvoda prije kupnje.` : "",
+    nepotvrdeno ? `Za ${nepotvrdeno} stavki cijena nije potvrđena službenim cjenikom (arhiva cijene.dev).` : "",
   ].filter(Boolean).join(" ");
   $("preostalo").hidden = kupljeno === 0 || kupljeno === stanje.popis.length;
   $("preostalo-iznos").textContent = euro(preostalo);
