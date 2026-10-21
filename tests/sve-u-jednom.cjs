@@ -130,10 +130,16 @@ vm.runInContext(`stanje.poslovnice = ["Konzum|K1", "Konzum|K2"];`, app);
 r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.equal(r.poslovnice.potpune.length, 0);
 assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, false, "no common store: no complete one-store basket");
-assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app), "Poslovnica: Ilica 1, Zagreb");
+assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
+  "Poslovnica: Ilica 1, Zagreb · arhiva cijene.dev, nije provjereno sa službenim cjenikom");
 vm.runInContext(`podaci.proizvodi[0][6][0] = [0, 3, 1.5, 1]; ponudeCache.clear();`, app);
 assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
-  "Poslovnica: Ilica 1, Zagreb · akcijska cijena · u drugim poslovnicama lanca do 1,50 € (provjeri)");
+  "Poslovnica: Ilica 1, Zagreb · arhiva cijene.dev, nije provjereno sa službenim cjenikom · akcijska cijena · u drugim poslovnicama lanca do 1,50 € (provjeri)");
+// Službeni cjenik: poslovnica nosi indeks datoteke, ponuda redak i naziv akcije.
+vm.runInContext(`podaci.izvori = [["https://k.hr/c.csv", "2026-10-21"]]; podaci.poslovnice[0][4] = 0;
+  podaci.proizvodi[0][6][0] = [0, 3, 1.5, 1, 17, "TNC"]; ponudeCache.clear();`, app);
+assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
+  "Poslovnica: Ilica 1, Zagreb · službeni cjenik, redak 17 · akcija: TNC · u drugim poslovnicama lanca do 1,50 € (provjeri)");
 
 console.log("ONE-STORE PASS: complete vs incomplete, X/Y, ties, cents, whole packs, kept quantity, row = opened cards, "
   + "difference to combination, no complete chain, whole-pack cost over unit price (#11 report), winner change by rounding, "

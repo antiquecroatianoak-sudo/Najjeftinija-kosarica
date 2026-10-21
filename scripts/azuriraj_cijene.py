@@ -251,6 +251,9 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
     dopuna = dopuna or {}
     lanci: list[str] = []
     poslovnice: list[list] = []
+    # Službene datoteke cjenika (URL, datum) za lance preuzete izravno; indeks je trag uz cijenu i poslovnicu.
+    izvori: list[list] = []
+    sluzbeni_lanci: set[int] = set()
     # ključ proizvoda -> {"naziv", "marka", "mjera", "provjerena", "cijene": {lanac: (cijena, ponuda)}, "redovi": {lanac: array}}
     svi: dict[str, dict] = {}
 
@@ -268,22 +271,30 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
             podaci_trgovina = ({t.get("store_id"): t for t in citaj_csv(zf, f"{lanac}/stores.csv")}
                                if f"{lanac}/stores.csv" in imena else {})
             indeks_poslovnice: dict[str, int] = {}
+            pomak_izvora = len(izvori)
+            if f"{lanac}/izvori.json" in imena:
+                izvori.extend(json.loads(zf.read(f"{lanac}/izvori.json")))
+                sluzbeni_lanci.add(lanac_idx)
 
-            def poslovnica(store_id: str) -> int:
+            def poslovnica(store_id: str, izvor: str = "") -> int:
                 if store_id not in indeks_poslovnice:
                     t = podaci_trgovina.get(store_id) or {}
                     indeks_poslovnice[store_id] = len(poslovnice)
-                    poslovnice.append([lanac_idx, store_id, (t.get("address") or "").strip(), (t.get("city") or "").strip()])
+                    poslovnice.append([lanac_idx, store_id, (t.get("address") or "").strip(), (t.get("city") or "").strip(),
+                                       pomak_izvora + int(izvor) if str(izvor).isdigit() else -1])
                 return indeks_poslovnice[store_id]
 
             # Ponuda svake poslovnice: niža od redovne i akcijske cijene, uz oznaku koje je polje.
             po_proizvodu: dict[str, list] = {}
             for red in citaj_csv(zf, f"{lanac}/prices.csv"):
                 redovna, akcijska = cijena_za_uvoz(red["price"]), cijena_za_uvoz(red.get("special_price", ""))
+                # Službeni cjenik može navesti poseban oblik prodaje (npr. NTL "TNC") uz samu MPC: to je akcija.
+                naziv_akcije = (red.get("akcija") or "").strip()
+                oznaka = 1 if naziv_akcije and normaliziraj(naziv_akcije) not in ("ne", "0", "false") else 0
                 if akcijska and (not redovna or akcijska < redovna):
                     po_proizvodu.setdefault(red["product_id"], []).append((akcijska, 1, red))
                 elif redovna:
-                    po_proizvodu.setdefault(red["product_id"], []).append((redovna, 0, red))
+                    po_proizvodu.setdefault(red["product_id"], []).append((redovna, oznaka, red))
                 else:
                     st["redak bez valjane cijene"] += 1
 
@@ -314,7 +325,13 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
                     valjani = redovi
                 najbolja = min(valjani, key=lambda r: (r[0], r[2].get("store_id") or ""))
                 cijena = najbolja[0]
-                ponuda = [poslovnica(najbolja[2].get("store_id") or ""), len(valjani), max(r[0] for r in valjani), najbolja[1]]
+                red_n = najbolja[2]
+                ponuda = [poslovnica(red_n.get("store_id") or "", red_n.get("izvor", "")), len(valjani), max(r[0] for r in valjani),
+                          najbolja[1]]
+                if str(red_n.get("redak", "")).isdigit():
+                    # Trag: redak u službenoj datoteci poslovnice i naziv akcije ako ga cjenik navodi.
+                    naziv_akcije = (red_n.get("akcija") or "").strip()
+                    ponuda += [int(red_n["redak"]), naziv_akcije if normaliziraj(naziv_akcije) not in ("", "da", "ne", "0", "1") else ""]
                 st["proizvoda"] += 1
                 st["redaka"] += len(redovi)
                 if mjera_lanca and mjera_lanca[1] in ("kg", "l") and mjera_lanca[0] != 1:
@@ -356,7 +373,9 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
                 # Valjane cijene po poslovnici (poslovnica, centi); isti proizvod lanca pod drugim product_id zadržava nižu.
                 redovi_lanca = zapis["redovi"].setdefault(lanac_idx, array("i"))
                 for r in valjani:
-                    redovi_lanca.extend((poslovnica(r[2].get("store_id") or ""), round(r[0] * 100)))
+                    redak = r[2].get("redak", "")
+                    redovi_lanca.extend((poslovnica(r[2].get("store_id") or "", r[2].get("izvor", "")), round(r[0] * 100),
+                                         int(redak) if str(redak).isdigit() else 0))
                 # Naziv uzimamo iz lanca s najnižom cijenom.
                 if zapis["najniza"] is None or cijena < zapis["najniza"]:
                     zapis["najniza"] = cijena
@@ -378,18 +397,21 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
             jedinica,
             broj_rijeci_marke(z["naziv"], z["marka"]),
             [x for lanac, (c, _) in cijene for x in (lanac, round(c, 2))],
-            [[pon[0], pon[1], round(pon[2], 2), pon[3]] for _, (_, pon) in cijene],
+            [[pon[0], pon[1], round(pon[2], 2), *pon[3:]] for _, (_, pon) in cijene],
         ])
         # Proizvodi idu redom (i raste), pa je isti proizvod u istoj poslovnici uvijek zadnji upisani.
+        # Trojke (proizvod, centi, redak u službenoj datoteci ili 0).
         for redovi_lanca in z["redovi"].values():
-            for k in range(0, len(redovi_lanca), 2):
+            for k in range(0, len(redovi_lanca), 3):
                 cj = po_poslovnici.setdefault(redovi_lanca[k], array("i"))
-                if cj and cj[-2] == i:
-                    cj[-1] = min(cj[-1], redovi_lanca[k + 1])
+                if cj and cj[-3] == i:
+                    if redovi_lanca[k + 1] < cj[-2]:
+                        cj[-2], cj[-1] = redovi_lanca[k + 1], redovi_lanca[k + 2]
                 else:
-                    cj.extend((i, redovi_lanca[k + 1]))
+                    cj.extend((i, redovi_lanca[k + 1], redovi_lanca[k + 2]))
         z["redovi"] = None
-    return {"lanci": lanci, "proizvodi": proizvodi, "poslovnice": poslovnice, "po_poslovnici": po_poslovnici}
+    return {"lanci": lanci, "proizvodi": proizvodi, "poslovnice": poslovnice, "po_poslovnici": po_poslovnici,
+            "izvori": izvori, "sluzbeni_lanci": sluzbeni_lanci}
 
 
 def zapisi_poslovnice(mapa: Path, rezultat: dict, datum: str) -> int:
@@ -398,37 +420,106 @@ def zapisi_poslovnice(mapa: Path, rezultat: dict, datum: str) -> int:
     for stara in mapa.glob("*.json"):
         stara.unlink()
     for s, cj in rezultat["po_poslovnici"].items():
-        kompaktno, prije = [], 0
-        for k in range(0, len(cj), 2):
+        kompaktno, redci, prije = [], [], 0
+        for k in range(0, len(cj), 3):
             kompaktno.extend((cj[k] - prije, cj[k + 1]))
+            redci.append(cj[k + 2])
             prije = cj[k]
-        (mapa / f"{s}.json").write_text(json.dumps({"datum": datum, "proizvoda": len(rezultat["proizvodi"]),
-                                                    "c": kompaktno}, separators=(",", ":")), encoding="utf-8")
+        zapis = {"datum": datum, "proizvoda": len(rezultat["proizvodi"]), "c": kompaktno}
+        izvor = rezultat["poslovnice"][s][4] if len(rezultat["poslovnice"][s]) > 4 else -1
+        if izvor >= 0 and any(redci):
+            # Službena datoteka poslovnice i redak svake cijene u njoj (isti redoslijed kao "c").
+            zapis["izvor"], zapis["r"] = rezultat["izvori"][izvor], redci
+        (mapa / f"{s}.json").write_text(json.dumps(zapis, separators=(",", ":")), encoding="utf-8")
     return len(rezultat["po_poslovnici"])
 
 
-def pokrivenost(rezultat: dict, statistika: dict, datum: str) -> dict:
+def sastavi_arhivu(arhiva: Path, d, odrediste: Path, rok_sekundi: float = 2400, lanci_sluzbeno=None) -> dict:
     """
-    Pokrivenost po lancu. Sve cijene dolaze iz arhive cijene.dev (sekundarni izvor koji preuzima službene cjenike);
-    arhiva ne sadrži URL, datoteku ni redak službenog cjenika, pa nijedna ponuda nije provjerena prema službenom izvoru.
+    Arhiva u obliku cijene.dev u kojoj je svaki lanac čiji se današnji službeni cjenici mogu preuzeti i pročitati
+    zamijenjen tim službenim podacima (s tragom URL/redak/datum u prices.csv i izvori.json). Ostali lanci ostaju iz
+    arhive cijene.dev (neprovjereno prema službenom izvoru). Vraća izvještaj po lancu.
+    """
+    import time
+    import sluzbeni_cjenici as sl
+    izvjestaj, pocetak = {}, time.time()
+    with zipfile.ZipFile(arhiva) as ulaz, zipfile.ZipFile(odrediste, "w", zipfile.ZIP_DEFLATED) as izlaz:
+        mape = sorted({n.split("/")[0] for n in ulaz.namelist() if n.endswith("/prices.csv")})
+        for lanac in sorted(set(mape) | set(sl.LANCI)):
+            if lanac in PRESKOCI_LANCE:
+                continue
+            zapis = {"izvor": "cijene.dev", "razlog": ""}
+            if lanci_sluzbeno is not None and lanac not in lanci_sluzbeno:
+                zapis["razlog"] = "nije u ovom pokretanju"
+            elif lanac not in sl.LANCI:
+                zapis["razlog"] = "službeni čitač za lanac još ne postoji"
+            elif time.time() - pocetak > rok_sekundi:
+                zapis["razlog"] = "vremensko ograničenje pokretanja"
+            else:
+                t = time.time()
+                rez = sl.preuzmi_lanac(lanac, d)
+                zapis.update({"datoteka": len(rez["datoteke"]), "neuspjelih_datoteka": sum(1 for x in rez["datoteke"] if x["greska"]),
+                              "primjer_greske": next((x["greska"] for x in rez["datoteke"] if x["greska"]), ""),
+                              "sekundi": round(time.time() - t)})
+                if rez["uspjeh"]:
+                    trgovine, proizvodi_csv, cijene_csv, izvori = sl.u_arhivu_lanca(rez, d)
+                    izlaz.writestr(f"{lanac}/stores.csv", trgovine)
+                    izlaz.writestr(f"{lanac}/products.csv", proizvodi_csv)
+                    izlaz.writestr(f"{lanac}/prices.csv", cijene_csv)
+                    izlaz.writestr(f"{lanac}/izvori.json", json.dumps(izvori, ensure_ascii=False))
+                    zapis.update({"izvor": "službeni cjenici", "poslovnica": len(rez["koristene"]),
+                                  "redaka": sum(len(x["zapisi"]) for x in rez["koristene"]),
+                                  "nepoznati_stupci": sorted({n for x in rez["koristene"] for n in x["nepoznati"]})[:15]})
+                    izvjestaj[lanac] = zapis
+                    print(f"  službeno {lanac}: {zapis['poslovnica']} poslovnica, {zapis['redaka']} redaka ({zapis['sekundi']} s)", flush=True)
+                    continue
+                zapis["razlog"] = rez["razlog"]
+            if lanac in mape:
+                for ime in ("stores.csv", "products.csv", "prices.csv"):
+                    if f"{lanac}/{ime}" in ulaz.namelist():
+                        izlaz.writestr(f"{lanac}/{ime}", ulaz.read(f"{lanac}/{ime}"))
+            else:
+                zapis["izvor"] = "nema podataka"
+            izvjestaj[lanac] = zapis
+            print(f"  {zapis['izvor']} {lanac}: {zapis['razlog']}", flush=True)
+    return izvjestaj
+
+
+def pokrivenost(rezultat: dict, statistika: dict, datum: str, izvjestaj: dict | None = None) -> dict:
+    """
+    Pokrivenost po lancu. Ponude lanca preuzetog izravno iz današnjih službenih cjenika imaju trag (URL datoteke,
+    redak, datum) i broje se kao provjerene prema službenom izvoru; ponude lanaca iz arhive cijene.dev (sekundarni
+    izvor bez URL-a, datoteke i retka službenog cjenika) nisu provjerene. Za lanac bez službenih podataka naveden je razlog.
     """
     ponuda = Counter(l for p in rezultat["proizvodi"] for l in p[5][0::2])
     poslovnica = Counter(p[0] for p in rezultat["poslovnice"])
+    sluzbeni = rezultat.get("sluzbeni_lanci", set())
+    obrnuto = {v: k for k, v in LIJEPA_IMENA.items()}
     lanci = {}
     for idx, ime in enumerate(rezultat["lanci"]):
         st = statistika.get(ime, Counter())
+        provjereno = ponuda[idx] if idx in sluzbeni else 0
         lanci[ime] = {"ponuda": ponuda[idx], "poslovnica": poslovnica[idx], "redaka": st["redaka"],
-                      "provjereno_prema_sluzbenom_izvoru": 0, "neprovjereno": ponuda[idx],
+                      "izvor": "službeni cjenici" if idx in sluzbeni else "cijene.dev",
+                      **({k: v for k, v in (izvjestaj or {}).get(obrnuto.get(ime, ime), {}).items() if k != "izvor"}),
+                      "provjereno_prema_sluzbenom_izvoru": provjereno, "neprovjereno": ponuda[idx] - provjereno,
                       "redak_proturjecan_jedinicnoj": st["redak proturječan jediničnoj cijeni (ne rangira se, nije u zbroju poslovnice)"],
                       "kolicina_nepotvrdena": st["količina nepotvrđena jediničnom cijenom (prikaz bez poretka)"],
                       "redak_bez_valjane_cijene": st["redak bez valjane cijene"]}
-    return {"izvor": f"arhiva cijene.dev {datum} (sekundarni izvor; bez traga do službene datoteke)", "datum": datum,
-            "ukupno_ponuda": sum(ponuda.values()), "provjereno_prema_sluzbenom_izvoru": 0, "lanci": lanci}
+    provjereno = sum(x["provjereno_prema_sluzbenom_izvoru"] for x in lanci.values())
+    return {"izvor": (f"službeni cjenici lanaca {datum} (URL/redak uz svaku cijenu) za {len(sluzbeni)} lanaca; ostali iz "
+                      "arhive cijene.dev (sekundarni izvor, bez traga do službene datoteke)") if sluzbeni else
+            f"arhiva cijene.dev {datum} (sekundarni izvor; bez traga do službene datoteke)", "datum": datum,
+            "ukupno_ponuda": sum(ponuda.values()), "provjereno_prema_sluzbenom_izvoru": provjereno, "lanci": lanci,
+            "bez_podataka": {k: v for k, v in (izvjestaj or {}).items() if v.get("izvor") == "nema podataka"}}
 
 
 def main():
+    import os
+    from zoneinfo import ZoneInfo
     dopuna = preuzmi_dopunu()
     statistika: dict = {}
+    izvjestaj = None
     if len(sys.argv) > 1:
         arhiva = Path(sys.argv[1])
         datum = arhiva.stem
@@ -437,19 +528,28 @@ def main():
         with tempfile.TemporaryDirectory() as tmp:
             arhiva = Path(tmp) / "cijene.zip"
             datum = preuzmi_najnoviju_arhivu(arhiva)
+            # Službeni cjenici imaju prednost; SLUZBENI=0 isključuje, SLUZBENI_LANCI=konzum,lidl ograničava.
+            if os.environ.get("SLUZBENI", "1") != "0":
+                danas = datetime.now(ZoneInfo("Europe/Zagreb")).date()
+                sastavljena = Path(tmp) / "sastavljeno.zip"
+                odabrani = [x for x in os.environ.get("SLUZBENI_LANCI", "").split(",") if x] or None
+                izvjestaj = sastavi_arhivu(arhiva, danas, sastavljena, float(os.environ.get("SLUZBENI_ROK", "2400")), odabrani)
+                if any(v["izvor"] == "službeni cjenici" for v in izvjestaj.values()):
+                    arhiva, datum = sastavljena, danas.isoformat()
             rezultat = obradi_sve(arhiva, dopuna, statistika)
     lanci, proizvodi = rezultat["lanci"], rezultat["proizvodi"]
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     broj_datoteka = zapisi_poslovnice(OUTPUT.parent / "poslovnice", rezultat, datum)
-    pokriveno = pokrivenost(rezultat, statistika, datum)
+    pokriveno = pokrivenost(rezultat, statistika, datum, izvjestaj)
     podaci = {
         "verzija": 2,
         "datum": datum,
         "azurirano": datetime.now(timezone.utc).isoformat(timespec="minutes"),
         "izvor": pokriveno["izvor"],
-        "provjereno_prema_sluzbenom_izvoru": 0,
+        "provjereno_prema_sluzbenom_izvoru": pokriveno["provjereno_prema_sluzbenom_izvoru"],
         "lanci": lanci,
+        "izvori": rezultat["izvori"],
         "poslovnice": rezultat["poslovnice"],
         "proizvodi": proizvodi,
     }

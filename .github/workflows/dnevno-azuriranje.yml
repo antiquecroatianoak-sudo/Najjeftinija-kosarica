@@ -36,6 +36,7 @@ jobs:
         run: |
           python tests/kolicine.py
           python tests/cijene_lanca.py
+          python tests/sluzbeni.py
 
       - name: Preuzmi cijene svih trgovačkih lanaca
         run: python scripts/azuriraj_cijene.py
@@ -68,7 +69,7 @@ jobs:
   dijagnoza:
     if: github.ref_name != github.event.repository.default_branch
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 100
     permissions:
       contents: read
     steps:
@@ -80,10 +81,7 @@ jobs:
         run: |
           python tests/kolicine.py
           python tests/cijene_lanca.py
-      - name: Izvidnica službenih cjenika lanaca (samo čitanje)
-        continue-on-error: true
-        timeout-minutes: 15
-        run: python -u scripts/izvidnica_cjenika.py
+          python tests/sluzbeni.py
       - name: Dijagnoza cijena (krumpir)
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
       - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
@@ -94,10 +92,16 @@ jobs:
           from pathlib import Path
           d = Path("site/data")
           pok = json.loads((d / "pokrivenost.json").read_text())
+          print(f"Provjereno prema službenom izvoru: {pok['provjereno_prema_sluzbenom_izvoru']} od {pok['ukupno_ponuda']} ponuda")
           print("Pokrivenost po lancu (provjereno prema službenom izvoru / ponuda):")
           for ime, x in pok["lanci"].items():
-              print(f"  {ime}: {x['provjereno_prema_sluzbenom_izvoru']}/{x['ponuda']} · poslovnica {x['poslovnica']} · "
-                    f"proturječnih redaka {x['redak_proturjecan_jedinicnoj']} · nepotvrđena količina {x['kolicina_nepotvrdena']}")
+              print(f"  {ime}: {x['provjereno_prema_sluzbenom_izvoru']}/{x['ponuda']} · {x['izvor']} · poslovnica {x['poslovnica']} · "
+                    f"proturječnih redaka {x['redak_proturjecan_jedinicnoj']} · nepotvrđena količina {x['kolicina_nepotvrdena']}"
+                    + (f" · razlog: {x['razlog']}" if x.get("razlog") else "")
+                    + (f" · neuspjelih datoteka {x['neuspjelih_datoteka']} ({x.get('primjer_greske', '')[:120]})" if x.get("neuspjelih_datoteka") else "")
+                    + (f" · nepoznati stupci {x['nepoznati_stupci']}" if x.get("nepoznati_stupci") else ""))
+          for ime, x in pok["bez_podataka"].items():
+              print(f"  BEZ PODATAKA {ime}: {x.get('razlog')}")
           datoteke = sorted((d / "poslovnice").glob("*.json"), key=lambda f: f.stat().st_size)
           print(f"Datoteka poslovnica: {len(datoteke)}, ukupno {sum(f.stat().st_size for f in datoteke) // 1000} kB, "
                 f"najveća {datoteke[-1].stat().st_size // 1000} kB, medijan {datoteke[len(datoteke) // 2].stat().st_size // 1000} kB; "

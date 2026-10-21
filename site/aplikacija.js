@@ -111,7 +111,9 @@ async function ucitajPodatke() {
     const [g, m, d] = podaci.datum.split("-");
     $("status").textContent =
       `Cijene od ${d}.${m}.${g}. · ${podaci.proizvodi.length.toLocaleString("hr-HR")} proizvoda · ${podaci.lanci.length} lanaca`
-      + (podaci.izvor ? " · izvor: arhiva cijene.dev, nije izravno provjereno sa službenim cjenikom" : "");
+      + (podaci.provjereno_prema_sluzbenom_izvoru
+        ? ` · iz službenih cjenika lanaca: ${podaci.provjereno_prema_sluzbenom_izvoru.toLocaleString("hr-HR")} ponuda; ostalo iz arhive cijene.dev (neprovjereno)`
+        : podaci.izvor ? " · izvor: arhiva cijene.dev, nije izravno provjereno sa službenim cjenikom" : "");
     ucitajOdabranePoslovnice();
     $("status").parentElement.classList.add("spremno");
   } catch (e) {
@@ -186,7 +188,15 @@ function ponuda(i, lanac, cijena, poslovnica = null) {
   return { i, lanac, cijena, jedinica, poJedinici: iznos ? cijena / iznos : null,
     poslovnica: poslovnica !== null ? poslovnica : meta ? meta[0] : null,
     brojPoslovnica: meta ? meta[1] : null, najvisa: meta ? meta[2] : null, akcija: !!(meta && meta[3]),
+    redak: meta && Number.isInteger(meta[4]) ? meta[4] : null, nazivAkcije: meta && meta[5] ? meta[5] : "",
     vrstaNejasna: !!klasifikacija && !klasifikacija.vrstaProizvoda(i) };
+}
+
+// [URL službene datoteke, datum] iz koje su cijene poslovnice, ili null (arhiva cijene.dev).
+function izvorPoslovnice(idx) {
+  const p = podaci && (podaci.poslovnice || [])[idx];
+  const i = p && Number.isInteger(p[4]) ? p[4] : -1;
+  return i >= 0 && Array.isArray(podaci.izvori) ? podaci.izvori[i] || null : null;
 }
 
 function opisPoslovnice(idx) {
@@ -199,7 +209,9 @@ function opisPoslovnice(idx) {
 function opisIzvoraCijene(p) {
   if (p.poslovnica === null) return "";
   const dijelovi = [`Poslovnica: ${opisPoslovnice(p.poslovnica)}`];
-  if (p.akcija) dijelovi.push("akcijska cijena");
+  const izvor = izvorPoslovnice(p.poslovnica);
+  dijelovi.push(izvor ? `službeni cjenik${p.redak ? `, redak ${p.redak}` : ""}` : "arhiva cijene.dev, nije provjereno sa službenim cjenikom");
+  if (p.akcija) dijelovi.push(p.nazivAkcije ? `akcija: ${p.nazivAkcije}` : "akcijska cijena");
   if (p.najvisa && Math.round(p.najvisa * 100) > Math.round(p.cijena * 100)) {
     dijelovi.push(`u drugim poslovnicama lanca do ${euro(p.najvisa)} (provjeri)`);
   }
@@ -638,7 +650,17 @@ function prikaziRezultate() {
       p.vrstaNejasna ? "Moguće podudaranje · vrsta za provjeru"
         : imaJedinicnu(p) ? opisJedinicne(p) : "Količina nije poznata · bez poretka po jediničnoj cijeni",
     ].filter(Boolean).join(" · ");
-    sadrzaj.querySelector(".izvor-cijene").textContent = opisIzvoraCijene(p);
+    const izvorCijene = sadrzaj.querySelector(".izvor-cijene");
+    izvorCijene.textContent = opisIzvoraCijene(p);
+    const datoteka = p.poslovnica !== null ? izvorPoslovnice(p.poslovnica) : null;
+    if (datoteka && /^https?:\/\//.test(datoteka[0])) {
+      const a = document.createElement("a");
+      a.href = datoteka[0].split("#")[0];
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = " · otvori cjenik";
+      izvorCijene.appendChild(a);
+    }
     const mjesto = sadrzaj.querySelector(".mjesto");
     if (rb > 0) {
       mjesto.appendChild(gumb(`◀ ${rb + 1}. od ${ponude.length}`, "natrag", (e) => {

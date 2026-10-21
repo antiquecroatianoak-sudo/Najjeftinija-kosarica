@@ -80,7 +80,7 @@ assert statistika["Boso"]["količina lanca umjesto dopune (potvrđena jedinično
 assert sum(s["količina lanca umjesto dopune (potvrđena jediničnom cijenom)"] for s in statistika.values()) == 1
 # Cijene po stvarnoj poslovnici: svaka poslovnica ima samo svoje valjane cijene.
 i_mladi = proizvodi.index(mladi)
-po_s = {poslovnice[s][1]: dict(zip(cj[0::2], cj[1::2])) for s, cj in rez["po_poslovnici"].items()}
+po_s = {poslovnice[s][1]: dict(zip(cj[0::3], cj[1::3])) for s, cj in rez["po_poslovnici"].items()}
 assert po_s["plodine_1"][i_mladi] == 220 and i_mladi not in po_s.get("plodine_2", {}), po_s
 assert sorted(po_s["krk_0"].values()) == [22] and po_s["set._sv._bernardina_6c_krk"] == {proizvodi.index(gastro): 10}
 # Pokrivenost: izvor je cijene.dev, nijedna ponuda nije provjerena prema službenom izvoru.
