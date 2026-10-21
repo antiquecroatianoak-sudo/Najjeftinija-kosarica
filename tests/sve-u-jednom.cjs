@@ -74,5 +74,37 @@ r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.equal(r.potpune.length, 0);
 assert.equal(app.__cvorovi["nema-potpune"].hidden, false);
 assert(r.nepotpune.every((x) => !x.najpovoljniji));
+// Prijavljeni slučaj (#11, 6318975930): referenca 1 l. Lidl ima 1 l za 1,00 € i 2 l za 1,60 € (niža jedinična cijena):
+// lanac i kombinacija moraju uzeti 1,00 €, a otvoreni Lidl isto što i redak.
+app = scenarij([P("Mlijeko 1 l", 1, "l", [0, 0.9, 1, 1]), P("Mlijeko 2 l", 2, "l", [1, 1.6])], [{ naziv: "Mlijeko", kom: 1 }]);
+vm.runInContext(`stanje.odabir = { Mlijeko: 1 }; ponudeCache.clear();`, app);
+assert.equal(vm.runInContext(`referentnaPonuda("Mlijeko").i`, app), 0, "reference is the 1 l pack");
+r = vm.runInContext("prikaziJednuTrgovinu()", app);
+const lidl = r.potpune.find((x) => x.ime === "Lidl");
+assert.equal(lidl.ukupno, 1, "Lidl: 1 l for 1,00 €, not 2 l for 1,60 €");
+assert.equal(Math.round(r.kombinacija * 100) / 100, 0.9);
+vm.runInContext(`globalThis.__ref = stanje.odabir;`, app);
+// Zbroj kartica otvorenog Lidla s istom referencom (odabirJedneTrgovine uzima ponudu retka).
+assert.equal(vm.runInContext(`(() => { const svi = { ...stanje.odabir }; stanje.odabirSvi = svi; stanje.jedna = "Lidl"; ponudeCache.clear();
+  stanje.odabir = odabirJedneTrgovine(); const lista = ponudeZaGrupu("Mlijeko"); const p = lista[(stanje.odabir.Mlijeko || 0) % lista.length];
+  const z = p.cijena * brojPakiranja(stanje.popis[0], p); stanje.jedna = null; stanje.odabir = svi; ponudeCache.clear(); return z; })()`, app), 1,
+  "opened Lidl cards equal its row");
+// Pobjednik kombinacije se mijenja zbog zaokruživanja: 3 l; A ima 2 l (0,80 €/l, 2 pakiranja = 3,20 €), B 1 l (0,90 €/l, 3 = 2,70 €).
+app = scenarij([P("Mlijeko 2 l", 2, "l", [0, 1.6]), P("Mlijeko 1 l", 1, "l", [1, 0.9])], [{ naziv: "Mlijeko", kom: 3 }]);
+vm.runInContext(`stanje.odabir = { Mlijeko: 1 }; ponudeCache.clear();`, app);
+r = vm.runInContext("prikaziJednuTrgovinu()", app);
+assert.deepEqual(Array.from(r.potpune, (x) => [x.ime, Math.round(x.ukupno * 100) / 100, x.najpovoljniji]), [["Lidl", 2.7, true], ["Konzum", 3.2, false]],
+  "whole-pack cost decides, not the lower unit price");
+assert.equal(Math.round(r.kombinacija * 100) / 100, 2.7);
+assert.equal(vm.runInContext("stanje.popis[0].kom", app), 3, "requested amount kept");
+// Nedjeljivo pakiranje: za 1 l postoji samo 5 l → jedno cijelo pakiranje, iznos cijelog pakiranja.
+app = scenarij([P("Mlijeko 1 l", 1, "l", [0, 1.0]), P("Mlijeko 5 l", 5, "l", [1, 3.0])], [{ naziv: "Mlijeko", kom: 1 }]);
+r = vm.runInContext("prikaziJednuTrgovinu()", app);
+assert.equal(r.potpune.find((x) => x.ime === "Lidl").ukupno, 3, "a 5 l pack is not split");
+// Lanac bez ijedne stavke (0/Y) također je prikazan, odvojeno i bez iznosa.
+assert.equal(r.nepotpune.length, 1);
+assert.equal(`${r.nepotpune[0].ime} ${r.nepotpune[0].pokriveno}/${r.nepotpune[0].stavki}`, "Plodine 0/1");
+assert.equal(app.__cvorovi["trgovine-nepotpune"].children[0].children[0].children[1].textContent, "—");
 console.log("ONE-STORE PASS: complete vs incomplete, X/Y, ties, cents, whole packs, kept quantity, row = opened cards, "
-  + "difference to combination, no complete chain");
+  + "difference to combination, no complete chain, whole-pack cost over unit price (#11 report), winner change by rounding, "
+  + "indivisible pack, 0/Y chains shown");
