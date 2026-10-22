@@ -34,7 +34,7 @@ function cjenik(idx, parovi, izdanje = "v1") {
   return { datum: "2026-10-21", izdanje, poslovnica: `${LANCI[POSL[idx][0]]}|${POSL[idx][1]}`, proizvoda: PROIZVODI.length, c,
     r: parovi.map((_, k) => k + 2) };
 }
-const MLIJEKO_2L = { naziv: "Mlijeko", kom: 2, kupljeno: false, marka: null, mjera: { jedinica: "l", iznos: 1 } };
+const MLIJEKO_2L = { naziv: "Mlijeko", kom: 2, kupljeno: false, marka: null, mjera: { jedinica: "l", iznos: 1, izvor: "upis" } };
 const KRUH = { naziv: "Kruh", kom: 1, kupljeno: false, marka: null, mjera: null };
 
 function app({ cjenici, popis = [MLIJEKO_2L, KRUH], spremljeno = null }) {
@@ -64,7 +64,7 @@ function app({ cjenici, popis = [MLIJEKO_2L, KRUH], spremljeno = null }) {
     const cvor = () => ({ children: [], hidden: false, open: false, textContent: "", className: "", value: "", dataset: {},
       classList: { add() {}, remove() {} }, set innerHTML(v) { this.children = []; },
       appendChild(c) { this.children.push(c); }, append(...c) { this.children.push(...c); }, setAttribute() {},
-      insertAdjacentHTML() {}, querySelector() { return cvor(); }, focus() {} });
+      insertAdjacentHTML() {}, querySelector(sel) { return (this._q ||= {})[sel] ||= cvor(); }, focus() {} });
     globalThis.__cvorovi = {};
     document.getElementById = (id) => __cvorovi[id] || (__cvorovi[id] = cvor());
     document.createElement = () => cvor();
@@ -192,7 +192,7 @@ function sazetak(a) {
   const spremljeno = a.__spremljeno;
   let b = app({ cjenici: {}, popis: [], spremljeno });
   assert.equal(run(b, "stanje.popis[0].marka"), "M", "filter survives reload");
-  assert.deepEqual(run(b, "stanje.popis[0].mjera"), { jedinica: "l", iznos: 1 }, "requested quantity survives reload");
+  assert.deepEqual(run(b, "stanje.popis[0].mjera"), { jedinica: "l", iznos: 1, izvor: "upis" }, "requested quantity survives reload");
   b = app({ cjenici: {}, popis: [], spremljeno: JSON.stringify({ popis: [{ naziv: "Mlijeko", kom: 2 }] }) });
   assert.deepEqual(run(b, "[stanje.popis[0].marka, stanje.popis[0].mjera]"), [null, null], "old list: any brand");
 
@@ -277,7 +277,53 @@ function sazetak(a) {
   run(a, `lokacije = new Map(${JSON.stringify(LOK)}); stanje.radijus = 5; postaviLokaciju({ lat: ${sjever(100)}, lon: ${S.lon}, naziv: "Daleko", priblizno: false })`);
   assert.match(a.__cvorovi["lokacija-opis"].textContent, /Nema poslovnica s dostupnim podacima unutar odabranog kruga\. Za neke poslovnice lokacija nije potvrđena \(1\)/);
 
-  console.log("SPECIFIKACIJA PASS: 1) 20 km A=B=400, combination 360/2 stores, saving 40; 30 km C 150 alone; 5 km A 400; D never; "
+  // 7. Pregled 6351818847: stavka bez upisane mjere. Tražena fizička količina utvrđuje se jednom (prvi valjani referentni
+  // proizvod u krugu) i ne mijenja se proširenjem/suženjem kruga, pomakom točke ni ponovnim otvaranjem.
+  const BEZ_MJERE = [{ naziv: "Mlijeko", kom: 2, kupljeno: false, marka: null, mjera: null }];
+  const ref7 = { 0: cjenik(0, [[0, 120]]), 1: cjenik(1, [[0, 130]]), 2: cjenik(2, [[3, 90]]) };
+  a = app({ cjenici: ref7, popis: BEZ_MJERE });
+  lociraj(a, 5);
+  await cekaj();
+  assert.deepEqual(run(a, "stanje.popis[0].mjera"), { jedinica: "l", iznos: 1, izvor: "referenca" }, "2 × 1 l fixed from the 5 km reference");
+  assert.deepEqual(sazetak(a).jedna, [["X/Ulica 1", 240, true]]);
+  run(a, "stanje.radijus = 30; prikazi()");
+  await cekaj();
+  assert.equal(run(a, "trazenaKolicina(stanje.popis[0])"), 2, "widening to 30 km keeps 2 l");
+  assert.deepEqual(sazetak(a).jedna, [["Y/Ulica 3", 180, true], ["X/Ulica 1", 240, false], ["X/Ulica 2", 260, false]],
+    "same store A stays 2,40; C buys 2 × 1,5 l = 1,80");
+  run(a, "prikaziRezultate()");
+  assert.equal(run(a, `podaci.proizvodi[ponudeZaGrupu("Mlijeko")[0].i][0]`), "Mlijeko M 1,5 l");
+  assert.match(run(a, `__cvorovi.kartice.children[0].children[1].querySelector(".kolicina").textContent`), /2 pak\. = 3 l za traženih 2 l/,
+    "the extra quantity bought is visible");
+  run(a, "stanje.radijus = 5; prikazi()");
+  await cekaj();
+  assert.deepEqual(sazetak(a).jedna, [["X/Ulica 1", 240, true]], "narrowing back: still 2 l");
+  run(a, `postaviLokaciju({ lat: ${sjever(1)}, lon: ${S.lon}, naziv: "Pomak", priblizno: false })`);
+  await cekaj();
+  assert.equal(run(a, "trazenaKolicina(stanje.popis[0])"), 2, "moved marker keeps 2 l");
+  b = app({ cjenici: ref7, popis: [], spremljeno: a.__spremljeno });
+  assert.deepEqual(run(b, "stanje.popis[0].mjera"), { jedinica: "l", iznos: 1, izvor: "referenca" }, "reload keeps 2 l");
+  // Namjerna promjena referentnog proizvoda ("Sljedeći proizvod") mijenja traženu količinu na taj proizvod.
+  run(a, "stanje.radijus = 30; prikazi()");
+  await cekaj();
+  run(a, `promijeni("Mlijeko", 1)`);
+  assert.deepEqual(run(a, "[podaci.proizvodi[referentnaPonuda('Mlijeko').i][0], trazenaKolicina(stanje.popis[0])]"), ["Mlijeko M 1 l", 2]);
+  run(a, `promijeni("Mlijeko", 1)`);
+  assert.deepEqual(run(a, "[podaci.proizvodi[referentnaPonuda('Mlijeko').i][0], trazenaKolicina(stanje.popis[0])]"), ["Mlijeko M 1,5 l", 3],
+    "deliberate switch to the 1,5 l product: 2 × 1,5 l");
+  // Nova stavka dok se krug učitava: količina se ne zamrzava prije ponuda kruga (ni iz nacionalnog minimuma).
+  a = app({ cjenici: ref7, popis: [] });
+  a.__mreza.kasni.add(0);
+  lociraj(a, 5);
+  run(a, `dodajIzTeksta("2 mlijeka")`);
+  assert.equal(run(a, "stanje.popis[0].mjera"), null, "not fixed while the circle is loading");
+  a.__mreza.cekanja.forEach((f) => f());
+  await cekaj();
+  assert.deepEqual(run(a, "stanje.popis[0].mjera"), { jedinica: "l", iznos: 1, izvor: "referenca" }, "fixed from the circle's own offer");
+
+  console.log("SPECIFIKACIJA PASS: 7) item without a typed quantity: 2 l fixed at first valid reference, 5→30→5 km, marker "
+    + "move and reload keep 2 l (A 2,40; C 2 × 1,5 l = 1,80 with visible extra), deliberate product switch re-fixes it, "
+    + "no fixing while loading;  1) 20 km A=B=400, combination 360/2 stores, saving 40; 30 km C 150 alone; 5 km A 400; D never; "
     + "inclusive boundary (1e-6 km); 2) 440 without single store, no saving; no bread → no total; 3) 2 l: 2×1 l (200) over 2×1,5 l "
     + "(280), unit-price card order kept; 4) only M, unknown ≠ M, other kind excluded, reload/migration; 5) late C ignored after "
     + "30→5 km, chain/marker change, failed B → among loaded + retry only B, other build rejected, ≤6 parallel, costs memoized; 6) statuses");

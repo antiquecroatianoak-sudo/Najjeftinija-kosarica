@@ -3,8 +3,9 @@
 // ---------- Stanje aplikacije (sprema se u mobitel) ----------
 const SPREMISTE = "kosarica-v1";
 let stanje = {
-  // [{ naziv, kom, kupljeno, marka, mjera }] - marka: null = bilo koja, inače samo ta stvarna marka; mjera: upisana
-  // količina ({ jedinica: "kg"|"l", iznos } po jednom "kom", npr. "2 l mlijeka" = 2 × 1 l), inače null.
+  // [{ naziv, kom, kupljeno, marka, mjera }] - marka: null = bilo koja, inače samo ta stvarna marka; mjera: tražena
+  // fizička količina { jedinica, iznos (po jednom "kom"), izvor }: "upis" ("2 l mlijeka" = 2 × 1 l) ili "referenca"
+  // (utvrđena iz prvog valjanog referentnog proizvoda i odonda nepromijenjena), inače null.
   popis: [],
   zakljucano: false,
   odabir: {},         // grupa -> redni broj ponude
@@ -24,8 +25,8 @@ stanje.popis = (Array.isArray(stanje.popis) ? stanje.popis : [])
   .map((s) => ({ naziv: s.naziv, kom: Math.min(99, Math.max(1, Math.floor(Number(s.kom) || 1))), kupljeno: !!s.kupljeno,
     // Stari zapis nema marku: bilo koja marka.
     marka: typeof s.marka === "string" && s.marka.trim() ? s.marka.trim() : null,
-    mjera: s.mjera && ["kg", "l"].includes(s.mjera.jedinica) && s.mjera.iznos > 0 && Number.isFinite(s.mjera.iznos)
-      ? { jedinica: s.mjera.jedinica, iznos: s.mjera.iznos } : null }));
+    mjera: s.mjera && ["kg", "l", "kom"].includes(s.mjera.jedinica) && s.mjera.iznos > 0 && Number.isFinite(s.mjera.iznos)
+      ? { jedinica: s.mjera.jedinica, iznos: s.mjera.iznos, izvor: s.mjera.izvor === "referenca" ? "referenca" : "upis" } : null }));
 stanje.iskljuceni = Array.isArray(stanje.iskljuceni) ? stanje.iskljuceni : [];
 stanje.odabir = stanje.odabir && typeof stanje.odabir === "object" ? stanje.odabir : {};
 stanje.nacin = "jedinica";
@@ -450,8 +451,9 @@ function dodajIzTeksta(tekst) {
     if (!normaliziraj(n)) continue;
     const naziv = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
     const postojeca = stanje.popis.find((p) => kljucStavke(p.naziv) === kljucStavke(naziv));
-    if (postojeca) { if (kom) { postojeca.kom = kom; postojeca.mjera = mjera || null; } }
-    else stanje.popis.push({ naziv, kom: kom || 1, kupljeno: false, marka: null, mjera: mjera || null });
+    const trazena = mjera ? { ...mjera, izvor: "upis" } : null;
+    if (postojeca) { if (kom) { postojeca.kom = kom; if (trazena || postojeca.mjera?.izvor === "upis") postojeca.mjera = trazena; } }
+    else stanje.popis.push({ naziv, kom: kom || 1, kupljeno: false, marka: null, mjera: trazena });
   }
   spremi();
   prikazi();
@@ -602,7 +604,7 @@ function brojPakiranja(stavka, p, jednaTrgovina = !!stanje.jedna) {
 
 const trazenaKolicina = (stavka) => (stavka.mjera ? Math.round(stavka.mjera.iznos * stavka.kom * 1e6) / 1e6 : null);
 function opisKolicine(iznos, jedinica) {
-  const [x, j] = iznos < 1 ? [Math.round(iznos * 1000), jedinica === "kg" ? "g" : "ml"] : [iznos, jedinica];
+  const [x, j] = iznos < 1 && jedinica !== "kom" ? [Math.round(iznos * 1000), jedinica === "kg" ? "g" : "ml"] : [iznos, jedinica];
   return `${Number(x.toFixed(3)).toLocaleString("hr-HR")} ${j}`;
 }
 
@@ -687,6 +689,7 @@ function opisJedinicne(p) {
 }
 
 function prikaziRezultate() {
+  utvrdiKolicine();
   const ul = $("kartice");
   ul.innerHTML = "";
   let ukupno = 0;
@@ -720,7 +723,9 @@ function prikaziRezultate() {
 
     const naslov = document.createElement("div");
     naslov.className = "grupa";
-    naslov.textContent = stavka.mjera ? `${grupa} · ${opisKolicine(trazenaKolicina(stavka), stavka.mjera.jedinica)}`
+    const m = stavka.mjera;
+    naslov.textContent = m && m.izvor === "upis" ? `${grupa} · ${opisKolicine(trazenaKolicina(stavka), m.jedinica)}`
+      : m ? `${grupa} · ${stavka.kom > 1 ? `${stavka.kom} × ` : ""}${opisKolicine(m.iznos, m.jedinica)}`
       : stavka.kom > 1 ? `${grupa} · ${stavka.kom} kom` : grupa;
     sadrzaj.appendChild(naslov);
     const kontrole = document.createElement("div");
@@ -729,7 +734,7 @@ function prikaziRezultate() {
     manje.disabled = stavka.kom <= 1;
     const broj = document.createElement("span");
     broj.className = "broj";
-    broj.textContent = stavka.mjera ? opisKolicine(trazenaKolicina(stavka), stavka.mjera.jedinica) : `${stavka.kom}×`;
+    broj.textContent = m && m.izvor === "upis" ? opisKolicine(trazenaKolicina(stavka), m.jedinica) : `${stavka.kom}×`;
     kontrole.append(manje, broj,
       gumb("+", "kolicina-gumb", () => promijeniKolicinu(stavkaIndex, 1), `Više ${grupa}`),
       gumb("Ukloni", "ukloni", () => ukloni(stavkaIndex), `Ukloni ${grupa}`));
@@ -1296,9 +1301,34 @@ function prikaziJednuTrgovinu() {
 function promijeni(grupa, smjer) {
   const n = ponudeZaGrupu(grupa).length;
   stanje.odabir[grupa] = ((stanje.odabir[grupa] || 0) + smjer + n) % n;
-  if (!stanje.jedna) stanje.odabirSvi[grupa] = stanje.odabir[grupa];
+  if (!stanje.jedna) {
+    stanje.odabirSvi[grupa] = stanje.odabir[grupa];
+    // Namjerna promjena referentnog proizvoda: tražena količina iz reference postaje količina novog proizvoda.
+    const stavka = stanje.popis.find((x) => x.naziv === grupa);
+    if (stavka && stavka.mjera && stavka.mjera.izvor === "referenca") {
+      stavka.mjera = null;
+      utvrdiKolicine();
+    }
+  }
   spremi();
   prikaziRezultate();
+}
+
+// Tražena fizička količina stavke bez upisane mjere utvrđuje se jednom, iz prvog valjanog referentnog proizvoda
+// (s lokacijom tek kad je krug učitan, iz ponuda kruga), i ostaje ista pri promjeni kruga, lokacije, lanaca, marke i
+// nakon ponovnog otvaranja. Mijenja je samo korisnik (količina, "Sljedeći proizvod" ili novi upis).
+function utvrdiKolicine() {
+  if (!podaci || (stanje.lokacija && krug.stanje !== "spremno")) return;
+  let promjena = false;
+  for (const s of stanje.popis) {
+    if (s.mjera) continue;
+    const ref = ponudeZaGrupu(s.naziv, sviLanci()).length ? referentnaPonuda(s.naziv) : null;
+    if (ref && imaJedinicnu(ref)) {
+      s.mjera = { jedinica: ref.jedinica, iznos: podaci.proizvodi[ref.i][2], izvor: "referenca" };
+      promjena = true;
+    }
+  }
+  if (promjena) spremi();
 }
 
 // ---------- Marka ----------
