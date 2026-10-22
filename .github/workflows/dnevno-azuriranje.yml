@@ -38,11 +38,20 @@ jobs:
           python tests/cijene_lanca.py
           python tests/sluzbeni.py
           python tests/lokacije.py
+          python tests/provjera_objave.py
 
       - name: Preuzmi cijene svih trgovačkih lanaca
         run: |
           pip install --quiet openpyxl==3.1.5
-          python scripts/azuriraj_cijene.py
+          # Lanci objavljuju do 8:00. Prije 8:00 (Zagreb) koristi se jučerašnji (potpuni) dan; datum se utvrđuje jednom
+          # po pokretanju (SLUZBENI_DATUM), kao u dijagnozi radne grane.
+          if [ "$(TZ=Europe/Zagreb date +%H)" -lt 8 ]; then D=$(TZ=Europe/Zagreb date -d yesterday +%F); else D=$(TZ=Europe/Zagreb date +%F); fi
+          echo "SLUZBENI_DATUM=$D" >> "$GITHUB_ENV"
+          echo "Službeni datum cjenika: $D"
+          SLUZBENI_DATUM=$D python scripts/azuriraj_cijene.py
+
+      - name: Zaštita objave (novi cjenik nije stariji ni bitno slabiji od objavljenoga)
+        run: python scripts/provjera_objave.py
 
       - name: Koordinate poslovnica i naselja (OpenStreetMap)
         run: python scripts/lokacije_poslovnica.py
@@ -161,6 +170,7 @@ jobs:
           python tests/cijene_lanca.py
           python tests/sluzbeni.py
           python tests/lokacije.py
+          python tests/provjera_objave.py
       - name: Dijagnoza cijena (krumpir)
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
       - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
@@ -210,6 +220,9 @@ jobs:
                 f"najveća {datoteke[-1].stat().st_size // 1000} kB, medijan {datoteke[len(datoteke) // 2].stat().st_size // 1000} kB; "
                 f"proizvodi.json {(d / 'proizvodi.json').stat().st_size // 1000} kB")
           EOF
+      - name: Odluka zaštite objave za ovaj uvoz (samo ispis, radna grana ne objavljuje)
+        run: python scripts/provjera_objave.py || echo "(na glavnoj grani ova odluka bi zaustavila objavu)"
+
       - name: Revizija marki i koordinata na uvezenom cjeniku
         run: |
           python -u scripts/lokacije_poslovnica.py
