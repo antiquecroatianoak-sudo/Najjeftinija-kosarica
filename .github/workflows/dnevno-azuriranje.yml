@@ -109,21 +109,6 @@ jobs:
               for t in bez[:6]:
                   print("   -", t["adresa"][:110], "|", t["razlog"][:50])
           EOF
-          python - <<'EOF'
-          import json, sys
-          sys.path.insert(0, "scripts")
-          import lokacije_poslovnica as lp
-          el = lp.overpass(lp.upit_trgovina())["elements"]
-          import collections
-          c = collections.Counter(); s_adresom = collections.Counter()
-          for e in el:
-              o = e.get("tags", {})
-              for l in lp.lanac_elementa(o):
-                  c[l] += 1
-                  if o.get("addr:street") and o.get("addr:housenumber"):
-                      s_adresom[l] += 1
-          print("OSM trgovine po lancu (ukupno / s ulicom i brojem):", {l: f"{c[l]}/{s_adresom[l]}" for l in c})
-          EOF
 
       - name: Veličina cjenika poslovnica unutar 20 km od Zagreba i Splita (objavljeni podaci)
         run: |
