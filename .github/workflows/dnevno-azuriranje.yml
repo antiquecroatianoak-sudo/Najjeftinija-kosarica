@@ -96,7 +96,7 @@ jobs:
           python - <<'EOF'
           import json, collections
           iz = json.load(open("site/data/lokacije-izvjesce.json"))
-          print("Kvaliteta:", iz["kvaliteta"], "razlog:", iz["razlog"])
+          print("Kvaliteta:", iz["kvaliteta"], "status:", iz["status"], "OSM datum:", iz["osm_datum"], "višeznačno:", iz["viseznacno"])
           po = collections.defaultdict(list)
           for t in iz["parovi"]:
               po[t["lanac"]].append(t)
