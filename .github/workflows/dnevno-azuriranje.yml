@@ -3,7 +3,7 @@ name: Dnevno ažuriranje cijena
 
 on:
   schedule:
-    - cron: "17 6 * * *"   # svaki dan oko 7-8 h po hrvatskom vremenu
+    - cron: "17 7 * * *"   # 8:17 zimi / 9:17 ljeti po hrvatskom vremenu, poslije roka objave cjenika (8:00)
   push:                     # i odmah nakon svake promjene aplikacije
   workflow_dispatch:        # gumb "Run workflow" za ručno pokretanje
 
