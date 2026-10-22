@@ -225,6 +225,29 @@ jobs:
                 f"najveća {datoteke[-1].stat().st_size // 1000} kB, medijan {datoteke[len(datoteke) // 2].stat().st_size // 1000} kB; "
                 f"proizvodi.json {(d / 'proizvodi.json').stat().st_size // 1000} kB")
           EOF
+      - name: Revizija marki i koordinata na uvezenom cjeniku
+        run: |
+          python -u scripts/lokacije_poslovnica.py
+          python - <<'EOF'
+          import json, collections
+          from pathlib import Path
+          d = Path("site/data")
+          pod = json.loads((d / "proizvodi.json").read_text())
+          print(f"Izdanje cjenika: {pod.get('izdanje')} ({pod['datum']}); različitih marki: {len(pod.get('marke', []))}")
+          s_markom = sum(1 for p in pod["proizvodi"] if len(p) > 7 and p[7] >= 0)
+          print(f"Proizvoda sa stvarnom markom iz cjenika: {s_markom} od {len(pod['proizvodi'])} ({100 * s_markom / len(pod['proizvodi']):.1f} %)")
+          po_lancu, uk = collections.Counter(), collections.Counter()
+          for p in pod["proizvodi"]:
+              for k in range(0, len(p[5]), 2):
+                  uk[pod["lanci"][p[5][k]]] += 1
+                  if p[7] >= 0:
+                      po_lancu[pod["lanci"][p[5][k]]] += 1
+          print("Ponude s poznatom markom po lancu: " + ", ".join(f"{l} {po_lancu[l]}/{uk[l]}" for l in sorted(uk)))
+          f = next((d / "poslovnice").glob("*.json"))
+          z = json.loads(f.read_text())
+          print(f"Datoteka poslovnice {f.name}: izdanje {z.get('izdanje')} == {pod.get('izdanje')}: {z.get('izdanje') == pod.get('izdanje')}, poslovnica {z.get('poslovnica')}")
+          EOF
+
       - name: Službeni zapis prijavljenog krumpira (Trgovina Krk, sirovi retci s datotekom i retkom)
         continue-on-error: true
         run: |
