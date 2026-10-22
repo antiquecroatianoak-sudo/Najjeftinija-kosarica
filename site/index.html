@@ -34,6 +34,26 @@
         </form>
       </div>
       <p id="glasovni-nacrt" class="glasovni-nacrt" role="status" hidden></p>
+      <section class="lokacija-panel" aria-labelledby="lokacija-naslov">
+        <h2 id="lokacija-naslov">Gdje kupuješ?</h2>
+        <p id="lokacija-opis" class="sitno" role="status">Bez odabrane lokacije uspoređujemo cijene cijele Hrvatske.</p>
+        <div class="lokacija-gumbi">
+          <button id="moja-lokacija" type="button" class="lokacija-gumb"><span aria-hidden="true">📍</span> Koristi moju lokaciju</button>
+          <button id="zaboravi-lokaciju" type="button" class="zaboravi" hidden>Cijela Hrvatska</button>
+        </div>
+        <form id="adresa-forma" class="adresa-forma" role="search" autocomplete="off">
+          <label for="adresa">Mjesto ili adresa</label>
+          <div class="unos-red"><input id="adresa" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="prijedlozi" placeholder="Npr. Sesvete ili Ilica 12, Zagreb" maxlength="120" enterkeyhint="search"><button id="trazi-adresu" type="submit" class="dodaj-gumb">Traži adresu</button></div>
+          <ul id="prijedlozi" class="prijedlozi" role="listbox" aria-label="Prijedlozi mjesta" hidden></ul>
+        </form>
+        <p id="lokacija-poruka" class="savjet" role="status"></p>
+        <div id="radijus" class="radijus" role="group" aria-label="Polumjer kruga oko točke">
+          <span>Krug:</span><button type="button" data-km="5">5 km</button><button type="button" data-km="10">10 km</button><button type="button" data-km="20">20 km</button><button type="button" data-km="30">30 km</button><button type="button" data-km="50">50 km</button>
+        </div>
+        <div id="karta" class="karta" role="region" aria-label="Karta: tvoja točka, krug i poslovnice u njemu" hidden></div>
+        <p class="sitno">Udaljenost je zračna (ravna crta), ne cestovna. Prijedlozi mjesta dolaze iz popisa naselja u aplikaciji; adresa se šalje OpenStreetMap Nominatimu samo kad pritisneš „Traži adresu”. Tvoja točka ostaje u ovom pregledniku.</p>
+        <p id="karta-izvor" class="sitno"></p>
+      </section>
       <section class="trgovine-panel" aria-labelledby="trgovine-naslov">
         <div class="trgovine-zaglavlje"><div><h2 id="trgovine-naslov">Trgovine</h2><p id="lanci-info" class="sitno">Učitavam trgovine…</p></div><div class="lanci-gumbi"><button id="lanci-sve" type="button">Sve</button><button id="lanci-nista" type="button">Nijedna</button></div></div>
         <div id="lanci" class="lanci" role="group" aria-label="Odaberi trgovine za usporedbu" tabindex="0"></div>
@@ -53,12 +73,13 @@
         <p id="kombinacija" class="kombinacija"></p>
         <p id="usporedne-kolicine" class="savjet"></p>
         <div class="poslovnice-odabir">
-          <h3>Stvarne poslovnice</h3>
-          <label class="grad-odabir">Grad <select id="grad"></select></label>
-          <div id="poslovnice-popis" class="lanci poslovnice-lista"></div>
+          <h3>Stvarne poslovnice u krugu</h3>
           <p id="poslovnice-status" class="savjet"></p>
           <p id="nema-potpune-poslovnice" class="upozorenje" hidden>Nijedna odabrana poslovnica nema cijeli popis: bez zajedničke poslovnice cijeli popis nije moguće kupiti u jednom dućanu.</p>
-          <ul id="poslovnice-usporedba" class="trgovine-usporedba" aria-label="Odabrane poslovnice, od najjeftinije"></ul>
+          <ul id="poslovnice-usporedba" class="trgovine-usporedba" aria-label="Poslovnice u krugu, od najjeftinije"></ul>
+          <h3>Jedan dućan ili kombinacija?</h3>
+          <ul id="kombinacije" class="trgovine-usporedba" aria-label="Najjeftinija kombinacija stvarnih poslovnica u krugu"></ul>
+          <p class="savjet">Kombinacija je točan optimum: provjerene su sve kombinacije poslovnica u krugu do zadanog broja. Ušteda je prema najpovoljnijem jednom dućanu, za cijeli popis, cijela pakiranja i samo potvrđene cijene; trošak puta nije uračunat.</p>
         </div>
         <h3 class="procjena-naslov">Procjena po lancu (različite poslovnice)</h3>
         <p id="nema-potpune" class="upozorenje" hidden>Nijedan lanac nema sve stavke s usporedivom ponudom: cijeli popis nije moguće kupiti u jednom dućanu.</p>
@@ -70,7 +91,7 @@
     </section>
     <footer>
       <div class="stanje-podataka"><p id="status" role="status">Učitavam cijene…</p><button id="ponovi" type="button" hidden>Pokušaj ponovno</button></div>
-      <details class="pomoc"><summary>Kako uspoređujemo cijene?</summary><p>Poredak je po jediničnoj cijeni (kg, l ili kom). Svaka cijena je objavljena cijena jedne stvarne poslovnice, navedene uz ponudu; ako druge poslovnice istog lanca imaju višu cijenu, to piše uz ponudu kao oznaka za provjeru. Ponuda čija se cijena i količina ne slažu s jediničnom cijenom koju je trgovac objavio ostaje vidljiva, ali bez poretka. Cijene dolaze iz dnevne arhive cijene.dev, koja preuzima cjenike lanaca; nisu izravno provjerene sa službenim cjenikom.</p></details>
+      <details class="pomoc"><summary>Kako uspoređujemo cijene?</summary><p>Poredak je po jediničnoj cijeni (kg, l ili kom). Svaka cijena je objavljena cijena jedne stvarne poslovnice, navedene uz ponudu; ako druge poslovnice istog lanca imaju višu cijenu, to piše uz ponudu kao oznaka za provjeru. Ponuda čija se cijena i količina ne slažu s jediničnom cijenom koju je trgovac objavio ostaje vidljiva, ali bez poretka. S odabranom lokacijom sve ponude i zbrojevi dolaze samo iz stvarnih poslovnica unutar kruga; poslovnica bez provjerene lokacije (OpenStreetMap) nije u krugu. Cijene dolaze iz dnevne arhive cijene.dev, koja preuzima cjenike lanaca; nisu izravno provjerene sa službenim cjenikom.</p></details>
     </footer>
   </main>
   <script src="skupine.js"></script>

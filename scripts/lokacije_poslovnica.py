@@ -159,13 +159,13 @@ def lanac_elementa(oznake: dict) -> set[str]:
 
 
 def pripremi_osm(elementi: list[dict]) -> dict[str, list[dict]]:
-    """Lanac -> OSM trgovine s adresom (ulica + kućni broj) i središtem."""
+    """Lanac -> OSM trgovine sa središtem; adresa (ulica, kućni broj, mjesto) ako je OSM navodi."""
     po_lancu = defaultdict(list)
     for e in elementi:
         o = e.get("tags", {})
         lat, lon = (e.get("lat"), e.get("lon")) if "lat" in e else (e.get("center", {}).get("lat"), e.get("center", {}).get("lon"))
-        ulica = o.get("addr:street") or o.get("addr:place")
-        if lat is None or not ulica or not kucni_broj(o.get("addr:housenumber", "")):
+        ulica = o.get("addr:street") or o.get("addr:place") or ""
+        if lat is None:
             continue
         zapis = {"osm": f"{e['type'][0]}{e['id']}", "lat": lat, "lon": lon, "ulica": ulica,
                  "broj": o.get("addr:housenumber", ""), "mjesto": o.get("addr:city", ""),
@@ -176,20 +176,37 @@ def pripremi_osm(elementi: list[dict]) -> dict[str, list[dict]]:
 
 
 def indeks_mjesta(mjesta: list[list]) -> dict[str, list[tuple]]:
-    """Normalizirani naziv naselja -> [(lat, lon)] (gradovi, mjesta, sela)."""
+    """Normalizirani naziv naselja -> [(lat, lon, vrsta)] (gradovi, mjesta, sela)."""
     rez = defaultdict(list)
     for naziv, lat, lon, vrsta, _ in mjesta:
         if vrsta <= 2:
-            rez[norm(naziv)].append((lat, lon))
+            rez[norm(naziv)].append((lat, lon, vrsta))
     return rez
 
 
 def naselje_blizu(rijeci: list[str], k: dict, naselja: dict, km: float = 10) -> bool:
     for duljina in (3, 2, 1):
         for i in range(len(rijeci) - duljina + 1):
-            if any(udaljenost_km(lat, lon, k["lat"], k["lon"]) <= km for lat, lon in naselja.get(" ".join(rijeci[i:i + duljina]), [])):
+            if any(udaljenost_km(m[0], m[1], k["lat"], k["lon"]) <= km for m in naselja.get(" ".join(rijeci[i:i + duljina]), [])):
                 return True
     return False
+
+
+def mjesto_poslovnice(rijeci: list[str], naselja: dict) -> str | None:
+    """Naselje iz adrese poslovnice: ono iza poštanskog broja, inače zadnje spomenuto (naziv mjesta je na kraju adrese)."""
+    nadjena = []
+    for duljina in (3, 2, 1):
+        for i in range(len(rijeci) - duljina + 1):
+            naziv = " ".join(rijeci[i:i + duljina])
+            if naziv in naselja and not any(a <= i < b or a < i + duljina <= b for a, b, _ in nadjena):
+                nadjena.append((i, i + duljina, naziv))
+    if not nadjena:
+        return None
+    iza_postanskog = [n for n in nadjena if n[0] > 0 and re.fullmatch(r"\d{5}", rijeci[n[0] - 1])]
+    return (iza_postanskog or sorted(nadjena, key=lambda n: n[1]))[-1][2]
+
+
+POLUMJER_MJESTA = {0: 6.0, 1: 3.0, 2: 1.5}  # km od središta: grad, mjesto, selo
 
 
 def upari_poslovnicu(tekst: str, kandidati: list[dict], naselja: dict) -> tuple[dict | None, str]:
@@ -198,7 +215,7 @@ def upari_poslovnicu(tekst: str, kandidati: list[dict], naselja: dict) -> tuple[
     broj_u_tekstu = brojevi(rijeci)
     nadjeni = []
     for k in kandidati:
-        if not any(b in broj_u_tekstu for b in kucni_broj(k["broj"])) or not ulica_odgovara(k["ulica"], rijeci):
+        if not k["ulica"] or not any(b in broj_u_tekstu for b in kucni_broj(k["broj"])) or not ulica_odgovara(k["ulica"], rijeci):
             continue
         if k["postanski"] and len(k["postanski"]) == 5 and k["postanski"] in rijeci:
             nadjeni.append((k, "adresa+postanski"))
@@ -221,16 +238,21 @@ def upari_sve(podaci: dict, osm_po_lancu: dict, naselja: dict, prethodno: dict |
     lanci = podaci["lanci"]
     lokacije, trag = [], []
     pokrivenost = defaultdict(Counter)
+    parovi = []
     for lanac_idx, store_id, adresa, grad, *_ in podaci["poslovnice"]:
         lanac = lanci[lanac_idx]
         tekst = f"{adresa} {grad}".strip()
-        pok = pokrivenost[lanac]
-        pok["poslovnica"] += 1
         if osm_po_lancu is None:
             raniji = (prethodno or {}).get(f"{lanac}|{store_id}")
             k, kvaliteta = (raniji, raniji["kvaliteta"]) if raniji and raniji.get("adresa") == tekst else (None, "OSM nedostupan")
         else:
             k, kvaliteta = upari_poslovnicu(tekst, osm_po_lancu.get(lanac, []), naselja)
+        parovi.append([lanac, store_id, tekst, k, kvaliteta])
+    if osm_po_lancu is not None:
+        jedina_u_mjestu(parovi, osm_po_lancu, naselja)
+    for lanac, store_id, tekst, k, kvaliteta in parovi:
+        pok = pokrivenost[lanac]
+        pok["poslovnica"] += 1
         if k is None:
             pok["bez_koordinata"] += 1
             pok[kvaliteta] += 1
@@ -243,6 +265,34 @@ def upari_sve(podaci: dict, osm_po_lancu: dict, naselja: dict, prethodno: dict |
                      "osm_adresa": f'{k.get("ulica", "")} {k.get("broj", "")}, {k.get("postanski", "")} {k.get("mjesto", "")}'.strip(),
                      "kvaliteta": kvaliteta})
     return lokacije, {l: dict(c) for l, c in sorted(pokrivenost.items())}, trag
+
+
+def jedina_u_mjestu(parovi: list[list], osm_po_lancu: dict, naselja: dict) -> None:
+    """
+    Drugi prolaz za poslovnice bez para po adresi: lanac ima u tom naselju točno jednu poslovnicu prema službenom popisu
+    i OSM ima točno jednu trgovinu tog lanca oko središta naselja (i ukupni brojevi se slažu). Ime naselja mora biti
+    jednoznačno (jedno naselje tog imena s trgovinama lanca). Kvaliteta "jedina u mjestu".
+    """
+    zauzeti = {p[3]["osm"] for p in parovi if p[3] is not None}
+    po_mjestu = defaultdict(list)
+    for p in parovi:
+        mjesto = mjesto_poslovnice(tokeni(p[2]), naselja)
+        if mjesto:
+            po_mjestu[(p[0], mjesto)].append(p)
+    for (lanac, mjesto), clanovi in po_mjestu.items():
+        bez = [p for p in clanovi if p[3] is None]
+        if len(bez) != 1:
+            continue
+        sredista = [m for m in naselja[mjesto]
+                    if any(udaljenost_km(m[0], m[1], k["lat"], k["lon"]) <= POLUMJER_MJESTA[m[2]] for k in osm_po_lancu.get(lanac, []))]
+        if len(sredista) != 1:
+            continue
+        lat, lon, vrsta = sredista[0]
+        u_mjestu = [k for k in osm_po_lancu.get(lanac, []) if udaljenost_km(lat, lon, k["lat"], k["lon"]) <= POLUMJER_MJESTA[vrsta]]
+        slobodni = [k for k in u_mjestu if k["osm"] not in zauzeti]
+        if len(u_mjestu) == len(clanovi) and len(slobodni) == 1:
+            bez[0][3], bez[0][4] = slobodni[0], "jedina u mjestu"
+            zauzeti.add(slobodni[0]["osm"])
 
 
 def sastavi_mjesta(elementi: list[dict]) -> list[list]:

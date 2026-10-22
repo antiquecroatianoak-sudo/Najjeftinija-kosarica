@@ -2,7 +2,7 @@
 // Isti origin (github.io) dijele i druge aplikacije: ovaj worker dira samo vlastite cacheove (prefiks "kosarica-")
 // i samo zahtjeve unutar vlastitog opsega (scope).
 const PREFIKS = "kosarica-";
-const CACHE = PREFIKS + "v33";
+const CACHE = PREFIKS + "v34";
 const OSNOVA = ["./", "index.html", "stil.css", "aplikacija.js", "skupine.js", "manifest.webmanifest", "ikona.svg", "ikona-192.png", "ikona-512.png"];
 
 self.addEventListener("install", (e) => {

@@ -11,7 +11,7 @@ function scenarij(proizvodi, poslovnice, popis) {
   izvor = izvor.slice(0, izvor.lastIndexOf("\nfor (const r of document.querySelectorAll"));
   const ctx = vm.createContext({ Skupine, window: { scrollTo() {} }, localStorage: { getItem: () => null, setItem() {} },
     document: { addEventListener() {} } });
-  vm.runInContext(izvor + `
+  vm.runInContext(izvor + require("./sluzbeno-pomoc.cjs") + `
     const cvor = () => ({ children: [], hidden: false, textContent: "", className: "", set innerHTML(v) { this.children = []; },
       appendChild(c) { this.children.push(c); }, append(...c) { this.children.push(...c); }, setAttribute() {} });
     globalThis.__cvorovi = {};
@@ -41,7 +41,7 @@ assert.deepEqual(Array.from(r.potpune, (x) => x.ime), ["Službeni"]);
 assert.equal(Math.round(r.kombinacija * 100) / 100, 1.2, "combination uses only confirmed prices");
 assert(r.nepotpune.some((x) => x.ime === "Sekundarni" && x.ukupno === 0), "secondary chain is not complete and adds nothing");
 vm.runInContext(`cjeniciPoslovnica.set(0, new Map([[0, 109]])); cjeniciPoslovnica.set(1, new Map([[0, 120]]));
-  stanje.poslovnice = ["Sekundarni|S1", "Službeni|O1"];`, app);
+  uKrug([0, 1]);`, app);
 r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.deepEqual(Array.from(r.poslovnice.potpune, (x) => [x.adresa, Math.round(x.ukupno * 100) / 100, x.najpovoljnija]),
   [["Savska 3, Zagreb", 1.2, true]], "only the store with an official price list makes a confirmed complete basket");
@@ -56,7 +56,7 @@ r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.equal(r.potpune.length, 0);
 assert.equal(r.kombinacija, null);
 assert.equal(app.__cvorovi["nema-potpune"].hidden, false);
-vm.runInContext(`cjeniciPoslovnica.set(0, new Map([[0, 109]])); stanje.poslovnice = ["Sekundarni|S1"];`, app);
+vm.runInContext(`cjeniciPoslovnica.set(0, new Map([[0, 109]])); uKrug([0]);`, app);
 r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.equal(r.poslovnice.potpune.length, 0);
 assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, false);

@@ -118,7 +118,7 @@ vm.runInContext(`
   cjeniciPoslovnica.set(0, new Map([[0, 100]]));
   cjeniciPoslovnica.set(1, new Map([[1, 90]]));
   cjeniciPoslovnica.set(2, new Map([[0, 120], [1, 110]]));
-  stanje.poslovnice = ["Konzum|K1", "Konzum|K2", "Lidl|L1"];
+  uKrug([0, 1, 2]);
 `, app);
 r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.deepEqual(Array.from(r.potpune, (x) => x.ime), ["Konzum", "Lidl"], "chain estimate: Konzum from two different stores");
@@ -127,10 +127,11 @@ assert.deepEqual(Array.from(r.poslovnice.potpune, (x) => [x.ime, x.adresa, Math.
 assert.deepEqual(Array.from(r.poslovnice.ostale, (x) => `${x.adresa} ${x.pokriveno}/${x.stavki}`),
   ["Vukovarska 2, Zagreb 1/2", "Ilica 1, Zagreb 1/2"], "partial stores: more items, then lower partial sum");
 assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, true);
-vm.runInContext(`stanje.poslovnice = ["Konzum|K1", "Konzum|K2"];`, app);
+vm.runInContext(`uKrug([0, 1]);`, app);
 r = vm.runInContext("prikaziJednuTrgovinu()", app);
 assert.equal(r.poslovnice.potpune.length, 0);
 assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, false, "no common store: no complete one-store basket");
+vm.runInContext("uNacionalno()", app);
 assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app), "Poslovnica: Ilica 1, Zagreb · službeni cjenik");
 vm.runInContext(`podaci.proizvodi[0][6][0] = [0, 3, 1.5, 1]; ponudeCache.clear();`, app);
 assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),

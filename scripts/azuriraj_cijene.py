@@ -386,8 +386,13 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
             print(f"  {lanci[-1]}: {uvezeno} proizvoda, {len(indeks_poslovnice)} poslovnica")
 
     zapisi = sorted(svi.values(), key=lambda z: min(c for c, _ in z["cijene"].values()))
-    proizvodi, po_poslovnici = [], {}
+    proizvodi, po_poslovnici, marke, indeks_marke = [], {}, [], {}
     for i, z in enumerate(zapisi):
+        # Stvarna marka iz cjenika (indeks u "marke", -1 ako je cjenik ne navodi) za filtar "Samo ova marka".
+        marka = re.sub(r"\s+", " ", z["marka"] or "").strip()
+        if marka and marka.casefold() not in indeks_marke:
+            indeks_marke[marka.casefold()] = len(marke)
+            marke.append(marka)
         cijene = sorted(z["cijene"].items(), key=lambda lc: lc[1][0])
         iznos, jedinica = z["mjera"] or (0, "")
         proizvodi.append([
@@ -398,6 +403,7 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
             broj_rijeci_marke(z["naziv"], z["marka"]),
             [x for lanac, (c, _) in cijene for x in (lanac, round(c, 2))],
             [[pon[0], pon[1], round(pon[2], 2), *pon[3:]] for _, (_, pon) in cijene],
+            indeks_marke[marka.casefold()] if marka else -1,
         ])
         # Proizvodi idu redom (i raste), pa je isti proizvod u istoj poslovnici uvijek zadnji upisani.
         # Trojke (proizvod, centi, redak u službenoj datoteci ili 0).
@@ -410,7 +416,7 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
                 else:
                     cj.extend((i, redovi_lanca[k + 1], redovi_lanca[k + 2]))
         z["redovi"] = None
-    return {"lanci": lanci, "proizvodi": proizvodi, "poslovnice": poslovnice, "po_poslovnici": po_poslovnici,
+    return {"lanci": lanci, "proizvodi": proizvodi, "poslovnice": poslovnice, "po_poslovnici": po_poslovnici, "marke": marke,
             "izvori": izvori, "sluzbeni_lanci": sluzbeni_lanci}
 
 
@@ -553,6 +559,7 @@ def main():
         "lanci": lanci,
         "izvori": rezultat["izvori"],
         "poslovnice": rezultat["poslovnice"],
+        "marke": rezultat["marke"],
         "proizvodi": proizvodi,
     }
     OUTPUT.write_text(json.dumps(podaci, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
