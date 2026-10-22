@@ -1,5 +1,7 @@
 """Cijena lanca iz stvarnih redaka (krumpir, arhiva 2026-10-21), bez mreže: python3 tests/cijene_lanca.py"""
 import csv
+import json
+from array import array
 import importlib.util
 import io
 import tempfile
@@ -131,3 +133,17 @@ with tempfile.TemporaryDirectory() as tmp:
     marke = {p[0]: (rez["marke"][p[7]] if p[7] >= 0 else None) for p in rez["proizvodi"]}
     assert marke == {"Dukat Mlijeko 2,8% 1 l": "Dukat", "Mlijeko 1 l": None}, marke
 print("MARKA PASS: stvarna marka iz cjenika, nepoznata = -1")
+
+# Otisak izdanja: isti datum, drugi redoslijed proizvoda ili poslovnica -> drugi otisak (datoteke poslovnica se ne miješaju).
+r1 = {"lanci": ["Konzum"], "proizvodi": [["A", "1 l"], ["B", "1 l"]], "poslovnice": [[0, "k1"], [0, "k2"]]}
+r2 = {"lanci": ["Konzum"], "proizvodi": [["B", "1 l"], ["A", "1 l"]], "poslovnice": [[0, "k1"], [0, "k2"]]}
+r3 = {"lanci": ["Konzum"], "proizvodi": [["A", "1 l"], ["B", "1 l"]], "poslovnice": [[0, "k2"], [0, "k1"]]}
+o = {a.otisak_izdanja(r, "2026-10-21") for r in (r1, r2, r3)}
+assert len(o) == 3 and a.otisak_izdanja(r1, "2026-10-21") == a.otisak_izdanja(dict(r1), "2026-10-21"), o
+with tempfile.TemporaryDirectory() as tmp:
+    rr = dict(r1, po_poslovnici={1: array("i", [1, 120, 0])}, izvori=[])
+    rr["poslovnice"] = [[0, "k1", "", "", -1], [0, "k2", "", "", -1]]
+    a.zapisi_poslovnice(Path(tmp), rr, "2026-10-21", "abc")
+    zapis = json.loads((Path(tmp) / "1.json").read_text())
+    assert zapis["izdanje"] == "abc" and zapis["poslovnica"] == "Konzum|k2", zapis
+print("IZDANJE PASS: otisak ovisi o redoslijedu proizvoda i poslovnica; datoteka poslovnice nosi izdanje i lanac|store_id")

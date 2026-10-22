@@ -93,6 +93,11 @@ input::placeholder{color:#4e5760}
 .radijus{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-weight:700}
 .radijus button[aria-pressed=true],.marka-gumb.aktivna{background:linear-gradient(125deg,#204f7b,#2e6a9e);color:#fff2d3;border-color:#1a436a}
 .karta{height:340px;border-radius:16px;border:2px solid #779cbc;overflow:hidden;z-index:0}
-.marka-odabir{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:14px;color:var(--muted)}.marka-gumb{background:#fff3dc;color:#243f59;border:1px solid #a47d49;padding:4px 11px;min-height:40px;font-size:15px;border-radius:99px}
+.marka-odabir{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:14px;color:var(--muted)}.marka-gumb{background:#fff3dc;color:#243f59;border:1px solid #a47d49;padding:4px 12px;min-height:44px;font-size:15px;border-radius:99px}
 .kombinacija-red{cursor:default}.kombinacija-red .iznos,.poslovnica-red .iznos{flex-shrink:0}
 @media(max-width:700px){.lokacija-panel{padding:16px 13px;margin:0 -3px 20px}.karta{height:280px}.lokacija-gumb{width:100%;justify-content:center}.zaboravi{width:100%}}
+.lokacija-zaglavlje{display:flex;justify-content:space-between;align-items:center;gap:10px}.lokacija-opis{font-size:16px;font-weight:700;color:var(--ink)}
+.adresa-forma label small{font-weight:400;font-size:14px}
+.karta-okvir{border:1px solid #c79a62;border-radius:14px;background:#fff6e480;padding:0 12px}.karta-okvir summary{min-height:44px;padding:10px 0}.karta-okvir[open]{padding-bottom:12px}
+.poslovnice-krug-popis{display:flex;flex-direction:column;gap:6px;font-size:15px;max-height:320px;overflow-y:auto}.poslovnice-krug-popis li{padding:6px 0;border-bottom:1px solid #ecd6b2;overflow-wrap:anywhere}
+#ponovi-krug{align-self:flex-start}

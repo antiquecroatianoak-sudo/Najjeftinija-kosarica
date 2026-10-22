@@ -131,7 +131,7 @@ const P = (naziv, iznos, jedinica, marka) => [naziv, `${iznos} ${jedinica}`, izn
   assert.equal(run(a, "krug.stanje"), "prazno");
   run(a, "prikaziRezultate()");
   assert.equal(a.__cvorovi.ukupno.textContent, "—");
-  assert.match(a.__cvorovi.kartice.children[0].children[1].children[2].textContent, /nema poslovnica s provjerenom lokacijom/);
+  assert.match(a.__cvorovi.kartice.children[0].children[1].children[2].textContent, /^Nema poslovnica s dostupnim podacima unutar odabranog kruga\./);
 
   // Polumjer promijenjen dok se učitava: zakašnjeli odgovor starog kruga ne smije postaviti ponude.
   a = app({ poslovnice, lokacije, cjenici, proizvodi, popis, kasni: { 0: true } });
@@ -162,10 +162,25 @@ const P = (naziv, iznos, jedinica, marka) => [naziv, `${iznos} ${jedinica}`, izn
   run(a, `mjesta = [{ naziv: "Sesvete", lat: 45.83, lon: 16.11, vrsta: 3, kraj: "Zagreb", n: "sesvete" },
     { naziv: "Sesvetski Kraljevec", lat: 45.83, lon: 16.18, vrsta: 2, kraj: "Zagreb", n: "sesvetski kraljevec" }];
     prikaziPrijedloge(prijedloziMjesta("sesv")); odaberiPrijedlog(0);`);
-  assert.deepEqual(run(a, "[stanje.lokacija.naziv, stanje.lokacija.priblizno]"), ["Sesvete", true]);
+  // Prijedlog se ne primjenjuje sam: čeka potvrdu na karti.
+  assert.equal(run(a, "stanje.lokacija"), null);
+  assert.match(a.__cvorovi["lokacija-opis"].textContent, /^Potvrdi lokaciju na karti/);
   assert.match(a.__cvorovi["lokacija-poruka"].textContent, /približno središte/);
+  run(a, "primijeniKandidata()");
+  assert.deepEqual(run(a, "[stanje.lokacija.naziv, stanje.lokacija.priblizno, kandidat]"), ["Sesvete", true, null]);
   run(a, `navigator.geolocation = { getCurrentPosition(ok) { ok({ coords: { latitude: 45.81, longitude: 15.98, accuracy: 30 } }); } }; koristiMojuLokaciju()`);
+  assert.equal(run(a, "stanje.lokacija.naziv"), "Sesvete", "GPS fix waits for confirmation");
+  run(a, "primijeniKandidata()");
   assert.deepEqual(run(a, "[stanje.lokacija.lat, stanje.lokacija.lon, stanje.lokacija.priblizno]"), [45.81, 15.98, false]);
+  // Nedovoljna preciznost: približno, uz poruku; i dalje samo nakon potvrde.
+  run(a, `navigator.geolocation = { getCurrentPosition(ok) { ok({ coords: { latitude: 45.9, longitude: 16.1, accuracy: 6000 } }); } }; koristiMojuLokaciju()`);
+  assert.match(a.__cvorovi["lokacija-poruka"].textContent, /nedovoljno precizna \(oko 6 km\)/);
+  assert.deepEqual(run(a, "[kandidat.priblizno, stanje.lokacija.lat]"), [true, 45.81]);
+  // Preglednik bez geolokacije i istek vremena: poruka i ručni unos.
+  run(a, "navigator.geolocation = undefined; koristiMojuLokaciju()");
+  assert.match(a.__cvorovi["lokacija-poruka"].textContent, /ne daje lokaciju/);
+  run(a, `navigator.geolocation = { getCurrentPosition(ok, ne) { ne({ code: 3 }); } }; koristiMojuLokaciju()`);
+  assert.match(a.__cvorovi["lokacija-poruka"].textContent, /nije pronađena na vrijeme/);
 
   // Filtar marke: "Samo Dukat" ostaje i nakon ponovnog otvaranja (spremljeni popis); nepoznata marka ga ne zadovoljava;
   // bez ponude te marke stavka nedostaje (nema tihe zamjene). Stari zapis bez marke = bilo koja marka.
@@ -179,7 +194,7 @@ const P = (naziv, iznos, jedinica, marka) => [naziv, `${iznos} ${jedinica}`, izn
   run(a, `podaci.proizvodi[0][7] = -1; pogociCache.clear(); ponudeCache.clear();`);
   assert.equal(run(a, `ponudeZaGrupu("Mlijeko").length`), 0, "unknown brand never satisfies the strict filter");
   run(a, "prikaziRezultate()");
-  assert.match(a.__cvorovi.kartice.children[0].children[1].children[2].textContent, /Nedostaje: nema ponude marke Dukat/);
+  assert.match(a.__cvorovi.kartice.children[0].children[1].children[2].textContent, /^Za ovu stavku nema odgovarajuće ponude marke Dukat/);
   a = app({ poslovnice, lokacije, cjenici, proizvodi, popis: [],
     spremljeno: JSON.stringify({ popis: ["mlijeko", { naziv: "Kruh", kom: 2 }] }) });
   assert.deepEqual(run(a, "stanje.popis.map((s) => [s.naziv, s.kom, s.marka])"), [["mlijeko", 1, null], ["Kruh", 2, null]], "old saved list migrates");

@@ -15,6 +15,7 @@ function uNacionalno() {
   krug = { kljuc: "", stanje: "nacionalno", poslovnice: [], bezKoordinata: 0, neucitane: 0 };
   lokalneCijene.clear();
   ponudeCache.clear();
+  troskoviCache = null;
 }
 // Krug oko točke s već učitanim cjenicima zadanih poslovnica (udaljenost = redni broj, km).
 function uKrug(idxs) {
@@ -23,5 +24,6 @@ function uKrug(idxs) {
     bezKoordinata: 0, neucitane: 0 };
   lokalneCijene.clear();
   ponudeCache.clear();
+  troskoviCache = null;
 }
 `;

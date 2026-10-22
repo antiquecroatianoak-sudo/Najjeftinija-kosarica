@@ -35,23 +35,29 @@
       </div>
       <p id="glasovni-nacrt" class="glasovni-nacrt" role="status" hidden></p>
       <section class="lokacija-panel" aria-labelledby="lokacija-naslov">
-        <h2 id="lokacija-naslov">Gdje kupuješ?</h2>
-        <p id="lokacija-opis" class="sitno" role="status">Bez odabrane lokacije uspoređujemo cijene cijele Hrvatske.</p>
+        <div class="lokacija-zaglavlje"><h2 id="lokacija-naslov">Gdje kupuješ?</h2><button id="zaboravi-lokaciju" type="button" class="zaboravi" hidden>Cijela Hrvatska</button></div>
+        <p id="lokacija-opis" class="lokacija-opis" role="status">Odaberi lokaciju.</p>
+        <button id="ponovi-krug" type="button" class="zaboravi" hidden>Ponovi</button>
         <div class="lokacija-gumbi">
           <button id="moja-lokacija" type="button" class="lokacija-gumb"><span aria-hidden="true">📍</span> Koristi moju lokaciju</button>
-          <button id="zaboravi-lokaciju" type="button" class="zaboravi" hidden>Cijela Hrvatska</button>
         </div>
         <form id="adresa-forma" class="adresa-forma" role="search" autocomplete="off">
-          <label for="adresa">Mjesto ili adresa</label>
-          <div class="unos-red"><input id="adresa" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="prijedlozi" placeholder="Npr. Sesvete ili Ilica 12" maxlength="120" enterkeyhint="search"><button id="trazi-adresu" type="submit" class="dodaj-gumb">Traži adresu</button></div>
-          <ul id="prijedlozi" class="prijedlozi" role="listbox" aria-label="Prijedlozi mjesta" hidden></ul>
+          <label for="adresa">Mjesto ili adresa <small>(prijedlozi su naselja; ulicu i broj traži gumbom)</small></label>
+          <div class="unos-red"><input id="adresa" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="prijedlozi" placeholder="Npr. Sesvete ili Ilica 12" maxlength="120" enterkeyhint="search"><button id="trazi-adresu" type="submit" class="dodaj-gumb">Traži</button></div>
+          <ul id="prijedlozi" class="prijedlozi" role="listbox" aria-label="Prijedlozi naselja" hidden></ul>
         </form>
         <p id="lokacija-poruka" class="savjet" role="status"></p>
+        <div id="potvrda-lokacije" class="lokacija-gumbi" hidden><button id="primijeni-lokaciju" type="button" class="lokacija-gumb">Primijeni lokaciju</button><button id="odustani-lokacija" type="button" class="zaboravi">Odustani</button></div>
         <div id="radijus" class="radijus" role="group" aria-label="Polumjer kruga oko točke">
           <span>Krug:</span><button type="button" data-km="5">5 km</button><button type="button" data-km="10">10 km</button><button type="button" data-km="20">20 km</button><button type="button" data-km="30">30 km</button><button type="button" data-km="50">50 km</button>
         </div>
-        <div id="karta" class="karta" role="region" aria-label="Karta: tvoja točka, krug i poslovnice u njemu" hidden></div>
-        <p class="sitno">Udaljenost je zračna (ravna crta), ne cestovna. Prijedlozi mjesta dolaze iz popisa naselja u aplikaciji; adresa se šalje OpenStreetMap Nominatimu samo kad pritisneš „Traži adresu”. Tvoja točka ostaje u ovom pregledniku.</p>
+        <details id="karta-okvir" class="karta-okvir"><summary>Karta</summary>
+          <div id="karta" class="karta" role="region" aria-label="Karta: točka, krug i poslovnice u krugu"></div>
+        </details>
+        <details id="poslovnice-krug" class="karta-okvir" hidden><summary id="poslovnice-krug-naslov">Poslovnice u krugu</summary>
+          <ul id="poslovnice-krug-popis" class="poslovnice-krug-popis"></ul>
+        </details>
+        <p class="sitno">Udaljenost je zračna (ravna crta), ne cestovna. Objavljena cijena ne znači da je artikl na zalihi ni da je trgovina otvorena. Tekst iz polja šalje se OpenStreetMap Nominatimu samo kad pritisneš „Traži”; točka ostaje u ovom pregledniku.</p>
         <p id="karta-izvor" class="sitno"></p>
       </section>
       <section class="trgovine-panel" aria-labelledby="trgovine-naslov">

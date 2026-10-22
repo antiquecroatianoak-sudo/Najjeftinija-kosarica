@@ -29,8 +29,8 @@ from pathlib import Path
 
 PODACI = Path(__file__).resolve().parent.parent / "site" / "data"
 OVERPASS = os.environ.get("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
-# Prethodno objavljeno izvješće: ako Overpass ne odgovori, zadržavaju se samo raniji parovi s istom adresom.
-OBJAVLJENO = "https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/data/lokacije-izvjesce.json"
+# Prethodno objavljeni podaci: ako Overpass ne odgovori, zadržavaju se samo raniji parovi s istom adresom.
+OBJAVLJENO = "https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/data"
 AGENT = "Najjeftinija-kosarica/1.0 (+https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica)"
 IZVOR = "© OpenStreetMap suradnici (ODbL), openstreetmap.org/copyright"
 
@@ -158,6 +158,12 @@ def lanac_elementa(oznake: dict) -> set[str]:
     return rez
 
 
+def valjana_koordinata(lat, lon) -> bool:
+    """Broj unutar okvira Hrvatske (s malom marginom)."""
+    return (isinstance(lat, (int, float)) and isinstance(lon, (int, float))
+            and 42.0 <= lat <= 46.7 and 13.2 <= lon <= 19.6)
+
+
 def pripremi_osm(elementi: list[dict]) -> dict[str, list[dict]]:
     """Lanac -> OSM trgovine sa središtem; adresa (ulica, kućni broj, mjesto) ako je OSM navodi."""
     po_lancu = defaultdict(list)
@@ -165,8 +171,8 @@ def pripremi_osm(elementi: list[dict]) -> dict[str, list[dict]]:
         o = e.get("tags", {})
         lat, lon = (e.get("lat"), e.get("lon")) if "lat" in e else (e.get("center", {}).get("lat"), e.get("center", {}).get("lon"))
         ulica = o.get("addr:street") or o.get("addr:place") or ""
-        if lat is None:
-            continue
+        if not valjana_koordinata(lat, lon):
+            continue  # nevaljana ili izvan Hrvatske: odbacuje se
         zapis = {"osm": f"{e['type'][0]}{e['id']}", "lat": lat, "lon": lon, "ulica": ulica,
                  "broj": o.get("addr:housenumber", ""), "mjesto": o.get("addr:city", ""),
                  "postanski": re.sub(r"\D", "", o.get("addr:postcode", ""))}
@@ -192,23 +198,6 @@ def naselje_blizu(rijeci: list[str], k: dict, naselja: dict, km: float = 10) -> 
     return False
 
 
-def mjesto_poslovnice(rijeci: list[str], naselja: dict) -> str | None:
-    """Naselje iz adrese poslovnice: ono iza poštanskog broja, inače zadnje spomenuto (naziv mjesta je na kraju adrese)."""
-    nadjena = []
-    for duljina in (3, 2, 1):
-        for i in range(len(rijeci) - duljina + 1):
-            naziv = " ".join(rijeci[i:i + duljina])
-            if naziv in naselja and not any(a <= i < b or a < i + duljina <= b for a, b, _ in nadjena):
-                nadjena.append((i, i + duljina, naziv))
-    if not nadjena:
-        return None
-    iza_postanskog = [n for n in nadjena if n[0] > 0 and re.fullmatch(r"\d{5}", rijeci[n[0] - 1])]
-    return (iza_postanskog or sorted(nadjena, key=lambda n: n[1]))[-1][2]
-
-
-POLUMJER_MJESTA = {0: 6.0, 1: 3.0, 2: 1.5}  # km od središta: grad, mjesto, selo
-
-
 def upari_poslovnicu(tekst: str, kandidati: list[dict], naselja: dict) -> tuple[dict | None, str]:
     """(OSM trgovina, kvaliteta) ili (None, razlog). Kvaliteta: "adresa+mjesto", "adresa+postanski", "adresa+blizina"."""
     rijeci = tokeni(tekst)
@@ -228,7 +217,7 @@ def upari_poslovnicu(tekst: str, kandidati: list[dict], naselja: dict) -> tuple[
         return None, "nema OSM trgovine lanca s istom ulicom, brojem i mjestom"
     prvi = nadjeni[0][0]
     if any(udaljenost_km(prvi["lat"], prvi["lon"], k["lat"], k["lon"]) > 0.15 for k, _ in nadjeni[1:]):
-        return None, "više različitih OSM trgovina odgovara adresi (nejednoznačno)"
+        return None, "višeznačno: više različitih OSM trgovina odgovara adresi"
     redoslijed = ["adresa+postanski", "adresa+mjesto", "adresa+blizina"]
     return min(nadjeni, key=lambda x: redoslijed.index(x[1]))
 
@@ -249,12 +238,14 @@ def upari_sve(podaci: dict, osm_po_lancu: dict, naselja: dict, prethodno: dict |
             k, kvaliteta = upari_poslovnicu(tekst, osm_po_lancu.get(lanac, []), naselja)
         parovi.append([lanac, store_id, tekst, k, kvaliteta])
     if osm_po_lancu is not None:
-        jedina_u_mjestu(parovi, osm_po_lancu, naselja)
+        odbij_dijeljene(parovi)
     for lanac, store_id, tekst, k, kvaliteta in parovi:
         pok = pokrivenost[lanac]
         pok["poslovnica"] += 1
         if k is None:
             pok["bez_koordinata"] += 1
+            if kvaliteta.startswith("višeznačno"):
+                pok["viseznacno"] += 1
             pok[kvaliteta] += 1
             trag.append({"lanac": lanac, "store_id": store_id, "adresa": tekst, "razlog": kvaliteta})
             continue
@@ -267,32 +258,21 @@ def upari_sve(podaci: dict, osm_po_lancu: dict, naselja: dict, prethodno: dict |
     return lokacije, {l: dict(c) for l, c in sorted(pokrivenost.items())}, trag
 
 
-def jedina_u_mjestu(parovi: list[list], osm_po_lancu: dict, naselja: dict) -> None:
-    """
-    Drugi prolaz za poslovnice bez para po adresi: lanac ima u tom naselju točno jednu poslovnicu prema službenom popisu
-    i OSM ima točno jednu trgovinu tog lanca oko središta naselja (i ukupni brojevi se slažu). Ime naselja mora biti
-    jednoznačno (jedno naselje tog imena s trgovinama lanca). Kvaliteta "jedina u mjestu".
-    """
-    zauzeti = {p[3]["osm"] for p in parovi if p[3] is not None}
-    po_mjestu = defaultdict(list)
+def potpis_adrese(tekst: str) -> frozenset:
+    """Riječi adrese bez brojeva i oznaka poslovnice (npr. "PJ77-1"): ista adresa pod dva store_id ima isti potpis."""
+    return frozenset(t for t in tokeni(tekst) if t.isalpha() and len(t) >= 3)
+
+
+def odbij_dijeljene(parovi: list[list]) -> None:
+    """Ista OSM trgovina uparena s poslovnicama različitih adresa: nijedna ne dobiva koordinate (višeznačno)."""
+    po_elementu = defaultdict(list)
     for p in parovi:
-        mjesto = mjesto_poslovnice(tokeni(p[2]), naselja)
-        if mjesto:
-            po_mjestu[(p[0], mjesto)].append(p)
-    for (lanac, mjesto), clanovi in po_mjestu.items():
-        bez = [p for p in clanovi if p[3] is None]
-        if len(bez) != 1:
-            continue
-        sredista = [m for m in naselja[mjesto]
-                    if any(udaljenost_km(m[0], m[1], k["lat"], k["lon"]) <= POLUMJER_MJESTA[m[2]] for k in osm_po_lancu.get(lanac, []))]
-        if len(sredista) != 1:
-            continue
-        lat, lon, vrsta = sredista[0]
-        u_mjestu = [k for k in osm_po_lancu.get(lanac, []) if udaljenost_km(lat, lon, k["lat"], k["lon"]) <= POLUMJER_MJESTA[vrsta]]
-        slobodni = [k for k in u_mjestu if k["osm"] not in zauzeti]
-        if len(u_mjestu) == len(clanovi) and len(slobodni) == 1:
-            bez[0][3], bez[0][4] = slobodni[0], "jedina u mjestu"
-            zauzeti.add(slobodni[0]["osm"])
+        if p[3] is not None:
+            po_elementu[p[3]["osm"]].append(p)
+    for clanovi in po_elementu.values():
+        if len({potpis_adrese(p[2]) for p in clanovi}) > 1:
+            for p in clanovi:
+                p[3], p[4] = None, "višeznačno: više poslovnica različitih adresa na istoj OSM trgovini"
 
 
 def sastavi_mjesta(elementi: list[dict]) -> list[list]:
@@ -314,48 +294,57 @@ def sastavi_mjesta(elementi: list[dict]) -> list[list]:
     return mjesta
 
 
+def dohvati_objavljeno(ime: str) -> dict:
+    with urllib.request.urlopen(urllib.request.Request(f"{OBJAVLJENO}/{ime}", headers={"User-Agent": AGENT}), timeout=60) as r:
+        return json.loads(r.read())
+
+
 def main():
     ulaz = Path(sys.argv[1]) if len(sys.argv) > 1 else PODACI / "proizvodi.json"
     podaci = json.loads(ulaz.read_text(encoding="utf-8"))
     PODACI.mkdir(parents=True, exist_ok=True)
-    razlog = ""
+    sad = datetime.now(timezone.utc).isoformat(timespec="minutes")
+    status, osm_datum = "osvježeno iz OpenStreetMapa", sad
     try:
         mjesta = sastavi_mjesta(overpass(upit_mjesta())["elements"])
         time.sleep(5)
         osm_po_lancu = pripremi_osm(overpass(upit_trgovina())["elements"])
         prethodno = None
     except Exception as e:  # noqa: BLE001
-        razlog = f"OpenStreetMap (Overpass) nedostupan: {str(e)[:160]}"
-        print(razlog)
-        osm_po_lancu, mjesta, prethodno = None, [], {}
+        # Kvar osvježavanja ne briše posljednje valjane geopodatke: zadržavaju se objavljeni parovi s istom adresom
+        # (novi ili promijenjeni store_id ostaje bez koordinata) i objavljeni popis naselja, uz njihov datum.
+        print(f"OpenStreetMap (Overpass) nedostupan: {str(e)[:160]}")
+        osm_po_lancu, mjesta, prethodno, osm_datum = None, [], {}, None
         try:
-            with urllib.request.urlopen(urllib.request.Request(OBJAVLJENO, headers={"User-Agent": AGENT}), timeout=60) as r:
-                staro = json.loads(r.read())
+            staro = dohvati_objavljeno("lokacije-izvjesce.json")
             prethodno = {f'{t["lanac"]}|{t["store_id"]}': t for t in staro.get("parovi", []) if "lat" in t}
-            print(f"Zadržavaju se raniji parovi s nepromijenjenom adresom ({len(prethodno)} u prethodnom izvješću).")
+            osm_datum = staro.get("osm_datum")
         except Exception as e2:  # noqa: BLE001
-            print(f"Ni prethodno izvješće nije dostupno: {str(e2)[:160]}")
-        stara_mjesta = PODACI / "mjesta.json"
-        if stara_mjesta.exists():
-            mjesta = json.loads(stara_mjesta.read_text(encoding="utf-8"))["mjesta"]
+            print(f"Prethodno izvješće nije dostupno: {str(e2)[:160]}")
+        try:
+            mjesta = dohvati_objavljeno("mjesta.json")["mjesta"]
+        except Exception as e2:  # noqa: BLE001
+            print(f"Prethodni popis naselja nije dostupan: {str(e2)[:160]}")
+        status = (f"OpenStreetMap nedostupan; zadržani posljednji valjani podaci od {osm_datum}" if osm_datum
+                  else "OpenStreetMap nedostupan i nema ranijih valjanih podataka")
     lokacije, pokrivenost, trag = upari_sve(podaci, osm_po_lancu, indeks_mjesta(mjesta), prethodno)
-    sad = datetime.now(timezone.utc).isoformat(timespec="minutes")
     (PODACI / "lokacije.json").write_text(json.dumps(
-        {"izvor": IZVOR, "azurirano": sad, "datum_cjenika": podaci.get("datum"), "poslovnice": lokacije},
-        ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        {"izvor": IZVOR, "status": status, "osm_datum": osm_datum, "azurirano": sad, "datum_cjenika": podaci.get("datum"),
+         "poslovnice": lokacije}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     if mjesta:
-        (PODACI / "mjesta.json").write_text(json.dumps({"izvor": IZVOR, "azurirano": sad, "mjesta": mjesta},
+        (PODACI / "mjesta.json").write_text(json.dumps({"izvor": IZVOR, "osm_datum": osm_datum, "mjesta": mjesta},
                                                       ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     ukupno = sum(p["poslovnica"] for p in pokrivenost.values())
     s_koord = sum(p.get("s_koordinatama", 0) for p in pokrivenost.values())
-    izvjesce = {"izvor": IZVOR, "azurirano": sad, "datum_cjenika": podaci.get("datum"), "razlog": razlog,
+    izvjesce = {"izvor": IZVOR, "status": status, "osm_datum": osm_datum, "azurirano": sad, "datum_cjenika": podaci.get("datum"),
                 "poslovnica": ukupno, "s_koordinatama": s_koord, "bez_koordinata": ukupno - s_koord,
+                "viseznacno": sum(p.get("viseznacno", 0) for p in pokrivenost.values()),
                 "kvaliteta": dict(Counter(l[5] for l in lokacije)), "lanci": pokrivenost, "parovi": trag}
     (PODACI / "lokacije-izvjesce.json").write_text(json.dumps(izvjesce, ensure_ascii=False, indent=0), encoding="utf-8")
-    print(f"Koordinate poslovnica: {s_koord} od {ukupno} s provjerenim koordinatama, {ukupno - s_koord} bez; "
-          f"mjesta za odabir: {len(mjesta)}; izvor: {IZVOR}")
+    print(f"Koordinate poslovnica ({status}): {s_koord} od {ukupno} s pouzdanim koordinatama, {ukupno - s_koord} bez "
+          f"(od toga višeznačno {izvjesce['viseznacno']}); naselja za odabir: {len(mjesta)}; izvor: {IZVOR}")
     for lanac, p in pokrivenost.items():
-        print(f"  {lanac}: {p.get('s_koordinatama', 0)}/{p['poslovnica']}")
+        print(f"  {lanac}: {p.get('s_koordinatama', 0)}/{p['poslovnica']}" + (f", višeznačno {p['viseznacno']}" if p.get("viseznacno") else ""))
 
 
 if __name__ == "__main__":

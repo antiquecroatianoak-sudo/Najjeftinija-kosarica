@@ -16,6 +16,7 @@ Pokretanje:  python scripts/azuriraj_cijene.py [put/do/arhive.zip]
 """
 
 import csv
+import hashlib
 import io
 import json
 import math
@@ -420,7 +421,18 @@ def obradi_sve(arhiva: Path, dopuna: dict | None = None, statistika: dict | None
             "izvori": izvori, "sluzbeni_lanci": sluzbeni_lanci}
 
 
-def zapisi_poslovnice(mapa: Path, rezultat: dict, datum: str) -> int:
+def otisak_izdanja(rezultat: dict, datum: str) -> str:
+    """Otisak jednog izdanja cjenika (datum, redoslijed proizvoda i poslovnica): povezuje proizvodi.json s datotekama
+    poslovnica, pa ponovni uvoz istog dana s drugim redoslijedom ne može pridružiti tuđe cijene."""
+    h = hashlib.sha256(datum.encode())
+    for p in rezultat["proizvodi"]:
+        h.update(b"\x1f" + f"{p[0]}|{p[1]}".encode())
+    for p in rezultat["poslovnice"]:
+        h.update(b"\x1e" + f"{rezultat['lanci'][p[0]]}|{p[1]}".encode())
+    return h.hexdigest()[:16]
+
+
+def zapisi_poslovnice(mapa: Path, rezultat: dict, datum: str, izdanje: str = "") -> int:
     """Jedna datoteka po stvarnoj poslovnici: [proizvod (razlika od prethodnog), cijena u centima, ...]."""
     mapa.mkdir(parents=True, exist_ok=True)
     for stara in mapa.glob("*.json"):
@@ -431,7 +443,9 @@ def zapisi_poslovnice(mapa: Path, rezultat: dict, datum: str) -> int:
             kompaktno.extend((cj[k] - prije, cj[k + 1]))
             redci.append(cj[k + 2])
             prije = cj[k]
-        zapis = {"datum": datum, "proizvoda": len(rezultat["proizvodi"]), "c": kompaktno}
+        p = rezultat["poslovnice"][s]
+        zapis = {"datum": datum, "izdanje": izdanje, "poslovnica": f"{rezultat['lanci'][p[0]]}|{p[1]}",
+                 "proizvoda": len(rezultat["proizvodi"]), "c": kompaktno}
         izvor = rezultat["poslovnice"][s][4] if len(rezultat["poslovnice"][s]) > 4 else -1
         if izvor >= 0 and any(redci):
             # Službena datoteka poslovnice i redak svake cijene u njoj (isti redoslijed kao "c").
@@ -548,11 +562,13 @@ def main():
     lanci, proizvodi = rezultat["lanci"], rezultat["proizvodi"]
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    broj_datoteka = zapisi_poslovnice(OUTPUT.parent / "poslovnice", rezultat, datum)
+    izdanje = otisak_izdanja(rezultat, datum)
+    broj_datoteka = zapisi_poslovnice(OUTPUT.parent / "poslovnice", rezultat, datum, izdanje)
     pokriveno = pokrivenost(rezultat, statistika, datum, izvjestaj)
     podaci = {
         "verzija": 2,
         "datum": datum,
+        "izdanje": izdanje,
         "azurirano": datetime.now(timezone.utc).isoformat(timespec="minutes"),
         "izvor": pokriveno["izvor"],
         "provjereno_prema_sluzbenom_izvoru": pokriveno["provjereno_prema_sluzbenom_izvoru"],
