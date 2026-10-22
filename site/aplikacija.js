@@ -120,6 +120,7 @@ async function ucitajPodatke() {
     podaci.marke = Array.isArray(podaci.marke) ? podaci.marke : [];
     cjeniciPoslovnica.clear();
     retciPoslovnica.clear();
+    ucitavanja.clear();
     krug = { kljuc: "", stanje: "nacionalno", poslovnice: [], bezKoordinata: 0, neucitane: 0 };
     rijeci = podaci.proizvodi.map((p) => normaliziraj(p[0]).split(" "));
     klasifikacija = null;
