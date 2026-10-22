@@ -144,7 +144,7 @@ async function ucitajPodatke() {
         for (const x of Array.isArray(d.poslovnice) ? d.poslovnice : []) {
           if (Array.isArray(x) && Number.isFinite(x[2]) && Number.isFinite(x[3])) lokacije.set(`${x[0]}|${x[1]}`, [x[2], x[3], x[4], x[5]]);
         }
-        $("karta-izvor").textContent = `Lokacije poslovnica: ${d.izvor || "OpenStreetMap"} · ${lokacije.size} poslovnica s provjerenom adresom.`;
+        $("karta-izvor").textContent = `Lokacije poslovnica: ${d.izvor || "OpenStreetMap"} · ${nPoslovnica(lokacije.size)} s provjerenom lokacijom.`;
       }
     } catch (e) { lokacije = null; }
     $("status").parentElement.classList.add("spremno");
@@ -884,7 +884,7 @@ function pripremiKrug() {
   stanje.odabirSvi = {};
   stanje.jedna = null;
   if (!kljuc) { krug = { kljuc, stanje: "nacionalno", poslovnice: [], bezKoordinata: 0, neucitane: 0 }; return; }
-  if (!lokacije) { krug = { kljuc, stanje: "bez-koordinata", poslovnice: [], bezKoordinata: 0, neucitane: 0 }; return; }
+  if (!lokacije || !lokacije.size) { krug = { kljuc, stanje: "bez-koordinata", poslovnice: [], bezKoordinata: 0, neucitane: 0 }; return; }
   const lanci = sviLanci();
   const { lat, lon } = stanje.lokacija;
   const unutra = [];
@@ -1087,6 +1087,11 @@ function redPoslovnice(r) {
   return li;
 }
 
+// 1 poslovnica, 2-4 poslovnice, 5+ poslovnica (11-14 poslovnica).
+function nPoslovnica(n) {
+  const d = n % 10, s = n % 100;
+  return `${n} ${d === 1 && s !== 11 ? "poslovnica" : d >= 2 && d <= 4 && (s < 12 || s > 14) ? "poslovnice" : "poslovnica"}`;
+}
 const opisKm = (x) => (x < 10 ? x.toFixed(1).replace(".", ",") : String(Math.round(x))) + " km";
 const NAJVISE_REDOVA = 8;
 
@@ -1124,7 +1129,7 @@ function prikaziPoslovnice() {
   const ostalo = Math.max(0, NAJVISE_REDOVA - Math.min(rez.potpune.length, NAJVISE_REDOVA));
   for (const r of rez.ostale.slice(0, Math.min(ostalo, 3))) ul.appendChild(redPoslovnice(r));
   $("nema-potpune-poslovnice").hidden = rez.potpune.length > 0;
-  $("poslovnice-status").textContent = `${rez.odabrano} poslovnica u krugu od ${stanje.radijus} km (zračna udaljenost)`
+  $("poslovnice-status").textContent = `${nPoslovnica(rez.odabrano)} u krugu od ${stanje.radijus} km (zračna udaljenost)`
     + `: ${rez.potpune.length} ima cijeli popis` + (rez.potpune.length > NAJVISE_REDOVA ? `, prikazano ${NAJVISE_REDOVA} najpovoljnijih` : "")
     + (krug.neucitane ? ` · ${krug.neucitane} bez dostupnog cjenika` : "") + ". Iznos je zbroj cijena te jedne poslovnice.";
   for (const k of rez.kombinacije) {
@@ -1196,7 +1201,8 @@ function prikaziJednuTrgovinu() {
   $("jedna-trgovina").hidden = !podaci || !stanje.popis.length;
   if (!podaci || !stanje.popis.length) return null;
   const rez = sveUJednomDucanu();
-  $("kombinacija").textContent = rez.kombinacija !== null
+  // S lokacijom kombinaciju stvarnih poslovnica kruga prikazuje "Jedan dućan ili kombinacija?".
+  $("kombinacija").textContent = stanje.lokacija ? "" : rez.kombinacija !== null
     ? `Najpovoljnija kombinacija više trgovina: ${euro(rez.kombinacija)} (svaka stavka u poslovnici s najnižom cijenom; više dućana).`
     : `Kombinacija više trgovina nije potpuna: za ${rez.kombinacijaNedostaje} od ${rez.stavki} stavki nema usporedive ponude.`;
   $("usporedne-kolicine").textContent = rez.jedinice.length ? `Iste količine u svakom lancu: ${rez.jedinice.join(" · ")}.` : "";
@@ -1222,21 +1228,17 @@ function kontroleMarke(stavka, p) {
   const div = document.createElement("div");
   div.className = "marka-odabir";
   const marka = stavka.marka || (p ? markaProizvoda(p.i) : null);
-  const bilo = gumb("Bilo koja marka", "marka-gumb" + (stavka.marka ? "" : " aktivna"), () => postaviMarku(stavka, null),
+  const oznaka = document.createElement("span");
+  oznaka.textContent = marka ? "Marka:" : "Marka nije navedena u cjeniku";
+  div.appendChild(oznaka);
+  if (!marka) return div;
+  const bilo = gumb("bilo koja", "marka-gumb" + (stavka.marka ? "" : " aktivna"), () => postaviMarku(stavka, null),
     `Bilo koja marka za ${stavka.naziv}`);
   bilo.setAttribute("aria-pressed", String(!stavka.marka));
-  div.appendChild(bilo);
-  if (marka) {
-    const samo = gumb(`Samo ${marka}`, "marka-gumb" + (stavka.marka ? " aktivna" : ""), () => postaviMarku(stavka, marka),
-      `Samo marka ${marka} za ${stavka.naziv}`);
-    samo.setAttribute("aria-pressed", String(!!stavka.marka));
-    div.appendChild(samo);
-  } else {
-    const n = document.createElement("span");
-    n.className = "marka-nepoznata";
-    n.textContent = "Marka nije navedena u cjeniku";
-    div.appendChild(n);
-  }
+  const samo = gumb(`samo ${marka}`, "marka-gumb" + (stavka.marka ? " aktivna" : ""), () => postaviMarku(stavka, marka),
+    `Samo marka ${marka} za ${stavka.naziv}`);
+  samo.setAttribute("aria-pressed", String(!!stavka.marka));
+  div.append(bilo, samo);
   return div;
 }
 
@@ -1283,11 +1285,11 @@ function prikaziStatusKruga() {
   const n = krug.poslovnice.length;
   opis.textContent = `${l.naziv || "Odabrana točka"}${l.priblizno ? " (približno središte mjesta)" : ""} · krug ${stanje.radijus} km (zračna udaljenost): `
     + (krug.stanje === "bez-koordinata" ? "lokacije poslovnica nisu dostupne"
-      : krug.stanje === "ucitava" ? `${n} poslovnica, učitavam cjenike ${krug.ucitano || 0}/${n}…`
+      : krug.stanje === "ucitava" ? `${nPoslovnica(n)}, učitavam cjenike ${krug.ucitano || 0}/${n}…`
       : krug.stanje === "prazno" ? "nema poslovnica s provjerenom lokacijom"
-      : krug.stanje === "greska" ? `${n} poslovnica, cjenici nisu dostupni`
-      : `${n} poslovnica s provjerenom lokacijom` + (krug.neucitane ? `, ${krug.neucitane} bez dostupnog cjenika` : ""))
-    + (krug.bezKoordinata ? ` · ${krug.bezKoordinata} poslovnica odabranih lanaca nema provjerenu lokaciju i nije uključeno.` : ".");
+      : krug.stanje === "greska" ? `${nPoslovnica(n)}, cjenici nisu dostupni`
+      : `${nPoslovnica(n)} s provjerenom lokacijom` + (krug.neucitane ? `, ${krug.neucitane} bez dostupnog cjenika` : ""))
+    + (krug.bezKoordinata ? ` · Bez provjerene lokacije (nisu u krugu): ${nPoslovnica(krug.bezKoordinata)} odabranih lanaca.` : ".");
   if (krug.stanje === "ucitava" && $("poslovnice-status")) {
     $("poslovnice-status").textContent = `Učitavam cjenike poslovnica u krugu (${krug.ucitano || 0}/${n})…`;
   }
@@ -1339,6 +1341,7 @@ async function nacrtajKartu() {
   if (kljuc === kartaKljuc) return;
   const prvi = !kartaKljuc;
   kartaKljuc = kljuc;
+  if (prvi) karta.setView([l.lat, l.lon], 11); // krug se može nacrtati tek kad karta ima pogled
   kartaSloj.clearLayers();
   const krugSloj = L.circle([l.lat, l.lon], { radius: stanje.radijus * 1000, color: "#2f6fb3", weight: 2, fillOpacity: 0.07 }).addTo(kartaSloj);
   const oznaka = L.marker([l.lat, l.lon], { draggable: true, keyboard: true, title: "Tvoja točka (povuci za pomak)", alt: "Tvoja točka" }).addTo(kartaSloj);
@@ -1395,7 +1398,7 @@ function prijedloziMjesta(upit) {
   if (!mjesta || q.length < 2) return [];
   const rang = (m) => (m.n.startsWith(q) ? 0 : m.n.split(" ").some((w) => w.startsWith(q)) ? 1 : m.n.includes(q) ? 2 : 9);
   return mjesta.map((m) => [rang(m), m]).filter(([r]) => r < 9)
-    .sort((a, b) => a[0] - b[0] || a[1].vrsta - b[1].vrsta || a[1].n.length - b[1].n.length || a[1].n.localeCompare(b[1].n))
+    .sort((a, b) => a[0] - b[0] || a[1].n.length - b[1].n.length || a[1].vrsta - b[1].vrsta || a[1].n.localeCompare(b[1].n))
     .slice(0, 8).map(([, m]) => ({ naziv: m.naziv, opis: [VRSTE_MJESTA[m.vrsta] || "mjesto", m.kraj ? `kraj: ${m.kraj}` : ""].filter(Boolean).join(" · "),
       lat: m.lat, lon: m.lon, priblizno: true }));
 }
