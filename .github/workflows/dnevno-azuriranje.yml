@@ -73,11 +73,11 @@ jobs:
         id: objava
         uses: actions/deploy-pages@v4
 
-  # Samo na radnim granama: dijagnoza cijena jednog proizvoda na stvarnom cjeniku, bez objave.
-  dijagnoza:
+  # Samo na radnim granama: brza provjera koordinata poslovnica (OpenStreetMap) na objavljenom cjeniku, bez objave.
+  koordinate:
     if: github.ref_name != github.event.repository.default_branch
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -85,12 +85,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Testovi uvoza
-        run: |
-          python tests/kolicine.py
-          python tests/cijene_lanca.py
-          python tests/sluzbeni.py
-          python tests/lokacije.py
+      - name: Test uparivanja
+        run: python tests/lokacije.py
       - name: Koordinate poslovnica na objavljenom cjeniku (OpenStreetMap), uzorci neuparenih
         run: |
           curl -fsS -o /tmp/objavljeno.json https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/data/proizvodi.json
@@ -127,6 +123,57 @@ jobs:
           print("OSM trgovine po lancu (ukupno / s ulicom i brojem):", {l: f"{c[l]}/{s_adresom[l]}" for l in c})
           EOF
 
+      - name: Veličina cjenika poslovnica unutar 20 km od Zagreba i Splita (objavljeni podaci)
+        run: |
+          python - <<'EOF'
+          import json, sys, hashlib, urllib.request, collections
+          sys.path.insert(0, "scripts")
+          import lokacije_poslovnica as lp
+          pod = json.load(open("/tmp/objavljeno.json"))
+          lok = json.load(open("site/data/lokacije.json"))["poslovnice"]
+          indeks = {(pod["lanci"][p[0]], p[1]): i for i, p in enumerate(pod["poslovnice"])}
+          for ime, lat, lon in (("Zagreb", 45.8131, 15.9775), ("Split", 43.5081, 16.4402)):
+              blizu = [(indeks[(l[0], l[1])], l[0]) for l in lok if (l[0], l[1]) in indeks and lp.udaljenost_km(lat, lon, l[2], l[3]) <= 20]
+              vel, cvel, jedinstveni, po_lancu = 0, 0, set(), collections.Counter()
+              for idx, lanac in blizu:
+                  try:
+                      b = urllib.request.urlopen(f"https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/data/poslovnice/{idx}.json", timeout=60).read()
+                  except Exception as e:
+                      print("  greška", idx, e); continue
+                  d = json.loads(b); vel += len(b)
+                  c = json.dumps(d["c"]).encode(); cvel += len(c)
+                  jedinstveni.add(hashlib.sha1(c).hexdigest()); po_lancu[lanac] += 1
+              print(f"{ime} 20 km: {len(blizu)} poslovnica s koordinatama, {vel // 1000} kB datoteka (samo cijene {cvel // 1000} kB), "
+                    f"jedinstvenih cjenika {len(jedinstveni)}; po lancu {dict(po_lancu)}")
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lokacije
+          path: |
+            site/data/lokacije.json
+            site/data/lokacije-izvjesce.json
+            site/data/mjesta.json
+          if-no-files-found: ignore
+
+  # Samo na radnim granama: dijagnoza cijena jednog proizvoda na stvarnom cjeniku, bez objave.
+  dijagnoza:
+    if: github.ref_name != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Testovi uvoza
+        run: |
+          python tests/kolicine.py
+          python tests/cijene_lanca.py
+          python tests/sluzbeni.py
+          python tests/lokacije.py
       - name: Dijagnoza cijena (krumpir)
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
       - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
