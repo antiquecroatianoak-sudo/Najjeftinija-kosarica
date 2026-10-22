@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 let source = fs.readFileSync(require('node:path').join(__dirname, '../site/aplikacija.js'), 'utf8');
 source = source.slice(0, source.lastIndexOf('\nfor (const r of document.querySelectorAll'));
 const context = vm.createContext({assert, window: {}, localStorage: {getItem: () => null}, document: {addEventListener: () => {}}});
-vm.runInContext(source + `
+vm.runInContext(source + require('./sluzbeno-pomoc.cjs') + `
 podaci = {lanci: ['A', 'B', 'C'], proizvodi: [
  ['Mlijeko 200 ml', '200 ml', 0.2, 'l', 0, [0, 0.5, 1, 0.6]],
  ['Mlijeko 1 l', '1 l', 1, 'l', 0, [1, 1.2, 0, 1.1]],
@@ -13,7 +13,7 @@ podaci = {lanci: ['A', 'B', 'C'], proizvodi: [
  ['Jaja 10 kom', '10 kom', 10, 'kom', 0, [0, 2.5, 1, 3]],
  ['Mlijeko bez količine', '', 0, '', 0, [0, 0.1]],
  ['Mlijeko po kilogramu', '1 kg', 1, 'kg', 0, [0, 0.15]],
-]};
+]}; uSluzbeno(podaci);
 rijeci = podaci.proizvodi.map(p => normaliziraj(p[0]).split(' '));
 stanje.popis = [{naziv: 'Mlijeko', kom: 2}, {naziv: 'Kruh', kom: 1}];
 const offers = ponudeZaGrupu('Mlijeko');
@@ -43,7 +43,7 @@ assert(Math.abs(usporedbaKosarice().najboljeMijesano - 12.8) < 1e-9);
 // Regression: two one-litre packs must compare against ten 200 ml packs.
 stanje.jedna = null; stanje.iskljuceni = []; stanje.odabir = {};
 stanje.popis = [{naziv: 'Mlijeko', kom: 2}];
-podaci.proizvodi[0][5].push(2, 0.5); pogociCache.clear(); ponudeCache.clear();
+podaci.proizvodi[0][5].push(2, 0.5); podaci.proizvodi[0][6].push([2, 1, 0.5, 0, 9, ""]); pogociCache.clear(); ponudeCache.clear();
 const sameVolume = usporedbaKosarice();
 assert.equal(sameVolume.zbroj.get(2).usporedno, 5);
 assert.equal(sameVolume.zbroj.get(2).ukupno, 5, 'ten 200 ml packs cost five euros for two litres');
@@ -63,7 +63,7 @@ prikazi = prikaziRezultate = () => {}; // UI rendering is not under test here
 podaci = {lanci: ['A', 'B'], proizvodi: [
  ['Mlijeko 1 l', '1 l', 1, 'l', 0, [0, 1]],
  ['Mlijeko 100 ml', '100 ml', 0.1, 'l', 0, [1, 0.2]],
-]};
+]}; uSluzbeno(podaci);
 rijeci = podaci.proizvodi.map(p => normaliziraj(p[0]).split(' '));
 pogociCache.clear(); ponudeCache.clear();
 stanje.iskljuceni = []; stanje.jedna = null; stanje.odabir = {}; stanje.odabirSvi = {};
@@ -102,7 +102,7 @@ podaci = {lanci: ['A', 'B', 'C'], proizvodi: [
  ['Kruh 500 g', '500 g', 0.5, 'kg', 0, [0, 1.2, 2, 1]],
  ['Kruh bez mase', '', 0, '', 0, [1, 0.9]],
  ['Jaja 10 kom', '10 kom', 10, 'kom', 0, [0, 2, 1, 2.4, 2, 2.2]],
-]};
+]}; uSluzbeno(podaci);
 rijeci = podaci.proizvodi.map(p => normaliziraj(p[0]).split(' '));
 pogociCache.clear(); ponudeCache.clear();
 stanje.iskljuceni = []; stanje.jedna = null; stanje.odabir = {}; stanje.odabirSvi = {};

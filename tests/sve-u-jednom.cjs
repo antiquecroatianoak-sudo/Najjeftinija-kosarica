@@ -12,7 +12,7 @@ function scenarij(proizvodi, popis) {
   izvor = izvor.slice(0, izvor.lastIndexOf("\nfor (const r of document.querySelectorAll"));
   const ctx = vm.createContext({ Skupine, window: { scrollTo() {} }, localStorage: { getItem: () => null, setItem() {} },
     document: { addEventListener() {} } });
-  vm.runInContext(izvor + `
+  vm.runInContext(izvor + require("./sluzbeno-pomoc.cjs") + `
     const cvor = () => ({ children: [], hidden: false, textContent: "", className: "", set innerHTML(v) { this.children = []; },
       appendChild(c) { this.children.push(c); }, append(...c) { this.children.push(...c); }, setAttribute() {} });
     globalThis.__cvorovi = {};
@@ -20,6 +20,7 @@ function scenarij(proizvodi, popis) {
     document.createElement = () => cvor();
     prikaziRezultate = () => {}; spremi = () => {};
     podaci = { datum: "2026-10-21", lanci: ["Konzum", "Lidl", "Plodine"], proizvodi: ${JSON.stringify(proizvodi)} };
+    uSluzbeno(podaci);
     rijeci = podaci.proizvodi.map((x) => normaliziraj(x[0]).split(" "));
     klasifikacija = Skupine.pripremi(podaci.proizvodi, null, rijeci);
     stanje.popis = ${JSON.stringify(popis)};
@@ -61,7 +62,7 @@ assert.equal(vm.runInContext("stanje.popis[0].kom", app), 2, "requested amount k
 const redovi = app.__cvorovi["trgovine-usporedba"].children;
 assert.equal(redovi.length, 2);
 assert.match(redovi[0].children[0].className, /najpovoljniji/);
-assert.equal(redovi[0].children[0].children[0].children[0].textContent, "★ Najpovoljniji lanac");
+assert.equal(redovi[0].children[0].children[0].children[0].textContent, "★ Najniža procjena lanca", "chain row is an estimate from different stores");
 assert.equal(app.__cvorovi["nema-potpune"].hidden, true);
 // Izjednačeni: oba najpovoljnija, na cent.
 app = scenarij([P("Mlijeko 1 l", 1, "l", [0, 0.1, 1, 0.2]), P("Kruh 500 g", 0.5, "kg", [0, 0.2, 1, 0.1])],
@@ -105,6 +106,42 @@ assert.equal(r.potpune.find((x) => x.ime === "Lidl").ukupno, 3, "a 5 l pack is n
 assert.equal(r.nepotpune.length, 1);
 assert.equal(`${r.nepotpune[0].ime} ${r.nepotpune[0].pokriveno}/${r.nepotpune[0].stavki}`, "Plodine 0/1");
 assert.equal(app.__cvorovi["trgovine-nepotpune"].children[0].children[0].children[1].textContent, "—");
+// Stvarne poslovnice (review #12): Konzum ima mlijeko samo u jednoj, a kruh samo u drugoj poslovnici. Procjena lanca
+// "ima sve" (različite poslovnice), ali nijedna stvarna poslovnica nema cijeli popis; potpuna je samo Lidl poslovnica.
+app = scenarij([P("Mlijeko 1 l", 1, "l", [0, 1.0, 1, 1.2]), P("Kruh 500 g", 0.5, "kg", [0, 0.9, 1, 1.1])],
+  [{ naziv: "Mlijeko", kom: 1 }, { naziv: "Kruh", kom: 1 }]);
+vm.runInContext(`
+  podaci.poslovnice = [[0, "K1", "Ilica 1", "Zagreb", 0], [0, "K2", "Vukovarska 2", "Zagreb", 0], [1, "L1", "Savska 3", "Zagreb", 1]];
+  for (const p of podaci.proizvodi) p[6] = [];
+  podaci.proizvodi[0][6] = [[0, 1, 1.0, 0], [2, 1, 1.2, 0]];
+  podaci.proizvodi[1][6] = [[1, 1, 0.9, 0], [2, 1, 1.1, 0]];
+  cjeniciPoslovnica.set(0, new Map([[0, 100]]));
+  cjeniciPoslovnica.set(1, new Map([[1, 90]]));
+  cjeniciPoslovnica.set(2, new Map([[0, 120], [1, 110]]));
+  stanje.poslovnice = ["Konzum|K1", "Konzum|K2", "Lidl|L1"];
+`, app);
+r = vm.runInContext("prikaziJednuTrgovinu()", app);
+assert.deepEqual(Array.from(r.potpune, (x) => x.ime), ["Konzum", "Lidl"], "chain estimate: Konzum from two different stores");
+assert.deepEqual(Array.from(r.poslovnice.potpune, (x) => [x.ime, x.adresa, Math.round(x.ukupno * 100) / 100, x.najpovoljnija]),
+  [["Lidl", "Savska 3, Zagreb", 2.3, true]], "only a store with the whole list is complete");
+assert.deepEqual(Array.from(r.poslovnice.ostale, (x) => `${x.adresa} ${x.pokriveno}/${x.stavki}`),
+  ["Vukovarska 2, Zagreb 1/2", "Ilica 1, Zagreb 1/2"], "partial stores: more items, then lower partial sum");
+assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, true);
+vm.runInContext(`stanje.poslovnice = ["Konzum|K1", "Konzum|K2"];`, app);
+r = vm.runInContext("prikaziJednuTrgovinu()", app);
+assert.equal(r.poslovnice.potpune.length, 0);
+assert.equal(app.__cvorovi["nema-potpune-poslovnice"].hidden, false, "no common store: no complete one-store basket");
+assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app), "Poslovnica: Ilica 1, Zagreb · službeni cjenik");
+vm.runInContext(`podaci.proizvodi[0][6][0] = [0, 3, 1.5, 1]; ponudeCache.clear();`, app);
+assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
+  "Poslovnica: Ilica 1, Zagreb · službeni cjenik · akcijska cijena · u drugim poslovnicama lanca do 1,50 € (provjeri)");
+// Službeni cjenik: poslovnica nosi indeks datoteke, ponuda redak i naziv akcije.
+vm.runInContext(`podaci.izvori = [["https://k.hr/c.csv", "2026-10-21"]]; podaci.poslovnice[0][4] = 0;
+  podaci.proizvodi[0][6][0] = [0, 3, 1.5, 1, 17, "TNC"]; ponudeCache.clear();`, app);
+assert.equal(vm.runInContext(`opisIzvoraCijene(ponudeZaGrupu("Mlijeko")[0])`, app),
+  "Poslovnica: Ilica 1, Zagreb · službeni cjenik, redak 17 · akcija: TNC · u drugim poslovnicama lanca do 1,50 € (provjeri)");
+
 console.log("ONE-STORE PASS: complete vs incomplete, X/Y, ties, cents, whole packs, kept quantity, row = opened cards, "
   + "difference to combination, no complete chain, whole-pack cost over unit price (#11 report), winner change by rounding, "
-  + "indivisible pack, 0/Y chains shown");
+  + "indivisible pack, 0/Y chains shown, real stores: only a store with the whole list is complete, no common store → "
+  + "no one-store basket, chain row labelled as estimate, price shows its store / promotion / range");

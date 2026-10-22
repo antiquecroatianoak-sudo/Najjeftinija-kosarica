@@ -52,16 +52,25 @@
         <h2 id="jedna-naslov">Sve u jednom dućanu</h2>
         <p id="kombinacija" class="kombinacija"></p>
         <p id="usporedne-kolicine" class="savjet"></p>
+        <div class="poslovnice-odabir">
+          <h3>Stvarne poslovnice</h3>
+          <label class="grad-odabir">Grad <select id="grad"></select></label>
+          <div id="poslovnice-popis" class="lanci poslovnice-lista"></div>
+          <p id="poslovnice-status" class="savjet"></p>
+          <p id="nema-potpune-poslovnice" class="upozorenje" hidden>Nijedna odabrana poslovnica nema cijeli popis: bez zajedničke poslovnice cijeli popis nije moguće kupiti u jednom dućanu.</p>
+          <ul id="poslovnice-usporedba" class="trgovine-usporedba" aria-label="Odabrane poslovnice, od najjeftinije"></ul>
+        </div>
+        <h3 class="procjena-naslov">Procjena po lancu (različite poslovnice)</h3>
         <p id="nema-potpune" class="upozorenje" hidden>Nijedan lanac nema sve stavke s usporedivom ponudom: cijeli popis nije moguće kupiti u jednom dućanu.</p>
         <ul id="trgovine-usporedba" class="trgovine-usporedba" aria-label="Lanci sa svim stavkama, od najjeftinijeg"></ul>
         <h3 id="nepotpune-naslov" class="nepotpune-naslov" hidden>Nepotpuno: lanci bez svih stavki</h3>
         <ul id="trgovine-nepotpune" class="trgovine-usporedba" aria-label="Lanci bez svih stavki"></ul>
-        <p class="savjet">Iznos lanca zbraja najniže objavljene cijene u njegovim poslovnicama; u pojedinoj poslovnici može biti veći.</p>
+        <p class="savjet">Procjena lanca zbraja najniže cijene iz različitih poslovnica tog lanca: to nije iznos jednog dućana. Stvarni iznos daju odabrane poslovnice iznad.</p>
       </section>
     </section>
     <footer>
       <div class="stanje-podataka"><p id="status" role="status">Učitavam cijene…</p><button id="ponovi" type="button" hidden>Pokušaj ponovno</button></div>
-      <details class="pomoc"><summary>Kako uspoređujemo cijene?</summary><p>Poredak je po jediničnoj cijeni (kg, l ili kom). Prikazana je najniža cijena unutar lanca; u tvojoj poslovnici može biti drukčija.</p></details>
+      <details class="pomoc"><summary>Kako uspoređujemo cijene?</summary><p>Poredak je po jediničnoj cijeni (kg, l ili kom). Svaka cijena je objavljena cijena jedne stvarne poslovnice, navedene uz ponudu; ako druge poslovnice istog lanca imaju višu cijenu, to piše uz ponudu kao oznaka za provjeru. Ponuda čija se cijena i količina ne slažu s jediničnom cijenom koju je trgovac objavio ostaje vidljiva, ali bez poretka. Cijene dolaze iz dnevne arhive cijene.dev, koja preuzima cjenike lanaca; nisu izravno provjerene sa službenim cjenikom.</p></details>
     </footer>
   </main>
   <script src="skupine.js"></script>

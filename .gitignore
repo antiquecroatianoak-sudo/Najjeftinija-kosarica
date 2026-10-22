@@ -1,3 +1,8 @@
 # Ovu datoteku svaki dan napravi GitHub automatski - ne sprema se ovdje.
 site/data/proizvodi.json
 __pycache__/
+site/data/poslovnice/
+site/data/pokrivenost.json
+site/data/skupine.json
+site/data/dijagnoza.json
+site/data/revizija-cijena.json

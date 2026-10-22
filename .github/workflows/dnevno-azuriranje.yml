@@ -3,7 +3,7 @@ name: Dnevno ažuriranje cijena
 
 on:
   schedule:
-    - cron: "17 6 * * *"   # svaki dan oko 7-8 h po hrvatskom vremenu
+    - cron: "17 7 * * *"   # 8:17 zimi / 9:17 ljeti po hrvatskom vremenu, poslije roka objave cjenika (8:00)
   push:                     # i odmah nakon svake promjene aplikacije
   workflow_dispatch:        # gumb "Run workflow" za ručno pokretanje
 
@@ -13,7 +13,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  # Radna grana ne prekida objavu glavne grane (ni obrnuto).
+  group: ${{ github.ref_name == github.event.repository.default_branch && 'pages' || format('provjera-{0}', github.ref_name) }}
   cancel-in-progress: true
 
 jobs:
@@ -31,8 +32,16 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Provjeri uvoz cijena i količina
+        run: |
+          python tests/kolicine.py
+          python tests/cijene_lanca.py
+          python tests/sluzbeni.py
+
       - name: Preuzmi cijene svih trgovačkih lanaca
-        run: python scripts/azuriraj_cijene.py
+        run: |
+          pip install --quiet openpyxl==3.1.5
+          python scripts/azuriraj_cijene.py
 
       - uses: actions/setup-node@v4
         with:
@@ -44,6 +53,7 @@ jobs:
           node tests/kosarica.cjs
           node tests/glasovni-unos.cjs
           node tests/sve-u-jednom.cjs
+          node tests/sluzbene-ponude.cjs
 
       - name: Pripremi skupine za novi cjenik
         run: node scripts/razvrstaj.cjs
@@ -57,3 +67,110 @@ jobs:
       - name: Objavi aplikaciju
         id: objava
         uses: actions/deploy-pages@v4
+
+  # Samo na radnim granama: dijagnoza cijena jednog proizvoda na stvarnom cjeniku, bez objave.
+  dijagnoza:
+    if: github.ref_name != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Testovi uvoza
+        run: |
+          python tests/kolicine.py
+          python tests/cijene_lanca.py
+          python tests/sluzbeni.py
+      - name: Dijagnoza cijena (krumpir)
+        run: python -u scripts/dijagnoza_proizvoda.py krumpir
+      - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
+        run: |
+          pip install --quiet openpyxl==3.1.5
+          # Lanci objavljuju do 8:00; provjera na radnoj grani prije 8:00 koristi jučerašnje (potpune) cjenike.
+          if [ "$(TZ=Europe/Zagreb date +%H)" -lt 8 ]; then D=$(TZ=Europe/Zagreb date -d yesterday +%F); else D=$(TZ=Europe/Zagreb date +%F); fi
+          echo "SLUZBENI_DATUM=$D" >> "$GITHUB_ENV"
+          SLUZBENI_DATUM=$D python -u scripts/azuriraj_cijene.py
+          python - <<'EOF'
+          import json
+          from pathlib import Path
+          d = Path("site/data")
+          pok = json.loads((d / "pokrivenost.json").read_text())
+          print(f"Provjereno prema službenom izvoru: {pok['provjereno_prema_sluzbenom_izvoru']} od {pok['ukupno_ponuda']} ponuda")
+          print("Pokrivenost po lancu (provjereno prema službenom izvoru / ponuda):")
+          for ime, x in pok["lanci"].items():
+              print(f"  {ime}: {x['provjereno_prema_sluzbenom_izvoru']}/{x['ponuda']} · {x['izvor']} · poslovnica {x['poslovnica']} · "
+                    f"proturječnih redaka {x['redak_proturjecan_jedinicnoj']} · nepotvrđena količina {x['kolicina_nepotvrdena']}"
+                    + (f" · razlog: {x['razlog']}" if x.get("razlog") else "")
+                    + (f" · neuspjelih datoteka {x['neuspjelih_datoteka']} ({x.get('primjer_greske', '')[:120]})" if x.get("neuspjelih_datoteka") else "")
+                    + (f" · nepoznati stupci {x['nepoznati_stupci']}" if x.get("nepoznati_stupci") else ""))
+          for ime, x in pok["bez_podataka"].items():
+              print(f"  BEZ PODATAKA {ime}: {x.get('razlog')}")
+          # Provjera prijavljenog krumpira u službenom zapisu: lanac, cijena, poslovnica, datoteka i redak.
+          pod = json.loads((d / "proizvodi.json").read_text())
+          for i, p in enumerate(pod["proizvodi"]):
+              if "KRUMPIR ZA GASTRO" in p[0].upper():
+                  for k in range(0, len(p[5]), 2):
+                      pon = p[6][k // 2]
+                      st = pod["poslovnice"][pon[0]]
+                      izv = pod["izvori"][st[4]] if st[4] >= 0 else None
+                      print("KRUMPIR (službeni zapis): " + json.dumps({"naziv": p[0], "lanac": pod["lanci"][p[5][k]], "cijena": p[5][k + 1],
+                            "poslovnica": st[1], "datoteka": izv, "redak": pon[4] if len(pon) > 4 else None,
+                            "najviša u lancu": pon[2], "poslovnica s cijenom": pon[1]}, ensure_ascii=False))
+                  for s_idx, st in enumerate(pod["poslovnice"]):
+                      if pod["lanci"][st[0]] == "Trgovina Krk":
+                          f = json.loads((d / "poslovnice" / f"{s_idx}.json").read_text())
+                          j, ind = 0, {}
+                          for k in range(0, len(f["c"]), 2):
+                              j += f["c"][k]
+                              ind[j] = (f["c"][k + 1], f.get("r", [None] * len(f["c"]))[k // 2])
+                          if i in ind:
+                              print(f"  Krk poslovnica {st[1]}: {ind[i][0] / 100:.2f} €, redak {ind[i][1]}, {f.get('izvor')}")
+          datoteke = sorted((d / "poslovnice").glob("*.json"), key=lambda f: f.stat().st_size)
+          print(f"Datoteka poslovnica: {len(datoteke)}, ukupno {sum(f.stat().st_size for f in datoteke) // 1000} kB, "
+                f"najveća {datoteke[-1].stat().st_size // 1000} kB, medijan {datoteke[len(datoteke) // 2].stat().st_size // 1000} kB; "
+                f"proizvodi.json {(d / 'proizvodi.json').stat().st_size // 1000} kB")
+          EOF
+      - name: Službeni zapis prijavljenog krumpira (Trgovina Krk, sirovi retci s datotekom i retkom)
+        continue-on-error: true
+        run: |
+          python - <<'EOF'
+          import json, sys
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          sys.path.insert(0, "scripts")
+          import sluzbeni_cjenici as sl
+          import os
+          d = datetime.fromisoformat(os.environ["SLUZBENI_DATUM"]).date() if os.environ.get("SLUZBENI_DATUM") else datetime.now(ZoneInfo("Europe/Zagreb")).date()
+          rez = sl.preuzmi_lanac("trgovina-krk", d)
+          print(f"Krk {d}: {len(rez.get('koristene', []))} datoteka; {rez.get('razlog', '')}")
+          for dat in rez.get("koristene", []):
+              for z in dat["zapisi"]:
+                  if "GASTRO" in z["naziv"].upper() and "KRUMPIR" in z["naziv"].upper():  # i nedostupni retci
+                      print(json.dumps({"datoteka": sl.siguran_url(dat["url"]), "redak": z["_redak"], **{k: v for k, v in z.items() if k != "_redak"}}, ensure_ascii=False))
+          EOF
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Skupine i testovi aplikacije na uvezenom cjeniku
+        run: |
+          node scripts/razvrstaj.cjs
+          node tests/skupine.cjs
+          node tests/kosarica.cjs
+          node tests/sve-u-jednom.cjs
+          node tests/sluzbene-ponude.cjs
+      - name: Revizija cijena svih lanaca (prije/poslije)
+        run: python -u scripts/revizija_cijena.py krumpir
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dijagnoza
+          path: |
+            site/data/dijagnoza.json
+            site/data/revizija-cijena.json
+            site/data/pokrivenost.json
+          if-no-files-found: ignore
+

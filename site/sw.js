@@ -1,5 +1,5 @@
 // Omogućuje da se aplikacija otvori i bez interneta (s posljednjim cijenama).
-const CACHE = "kosarica-v27";
+const CACHE = "kosarica-v32";
 const OSNOVA = ["./", "index.html", "stil.css", "aplikacija.js", "skupine.js", "manifest.webmanifest", "ikona.svg", "ikona-192.png", "ikona-512.png"];
 
 self.addEventListener("install", (e) => {
