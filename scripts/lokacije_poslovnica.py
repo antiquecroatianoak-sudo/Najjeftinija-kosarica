@@ -65,14 +65,15 @@ def udaljenost_km(a_lat, a_lon, b_lat, b_lon) -> float:
 def overpass(upit: str) -> dict:
     zahtjev = urllib.request.Request(OVERPASS, data=urllib.parse.urlencode({"data": upit}).encode(),
                                      headers={"User-Agent": AGENT})
-    for pokusaj in range(3):
+    # Najviše dva pokušaja po 240 s (upit sam ima [timeout:240]); kvar se obrađuje zadržavanjem ranijih podataka.
+    for pokusaj in range(2):
         try:
-            with urllib.request.urlopen(zahtjev, timeout=300) as r:
+            with urllib.request.urlopen(zahtjev, timeout=240) as r:
                 return json.loads(r.read())
         except Exception:  # noqa: BLE001
-            if pokusaj == 2:
+            if pokusaj == 1:
                 raise
-            time.sleep(30 * (pokusaj + 1))  # pravila korištenja: bez naglih ponavljanja
+            time.sleep(30)  # pravila korištenja: bez naglih ponavljanja
 
 
 def upit_trgovina() -> str:
