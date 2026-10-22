@@ -37,11 +37,15 @@ jobs:
           python tests/kolicine.py
           python tests/cijene_lanca.py
           python tests/sluzbeni.py
+          python tests/lokacije.py
 
       - name: Preuzmi cijene svih trgovačkih lanaca
         run: |
           pip install --quiet openpyxl==3.1.5
           python scripts/azuriraj_cijene.py
+
+      - name: Koordinate poslovnica i naselja (OpenStreetMap)
+        run: python scripts/lokacije_poslovnica.py
 
       - uses: actions/setup-node@v4
         with:
@@ -86,6 +90,43 @@ jobs:
           python tests/kolicine.py
           python tests/cijene_lanca.py
           python tests/sluzbeni.py
+          python tests/lokacije.py
+      - name: Koordinate poslovnica na objavljenom cjeniku (OpenStreetMap), uzorci neuparenih
+        run: |
+          curl -fsS -o /tmp/objavljeno.json https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/data/proizvodi.json
+          python -u scripts/lokacije_poslovnica.py /tmp/objavljeno.json
+          python - <<'EOF'
+          import json, collections
+          iz = json.load(open("site/data/lokacije-izvjesce.json"))
+          print("Kvaliteta:", iz["kvaliteta"], "razlog:", iz["razlog"])
+          po = collections.defaultdict(list)
+          for t in iz["parovi"]:
+              po[t["lanac"]].append(t)
+          for lanac, tt in po.items():
+              bez = [t for t in tt if "lat" not in t]
+              sa = [t for t in tt if "lat" in t]
+              print(f"== {lanac}: {len(sa)}/{len(tt)}")
+              for t in sa[:3]:
+                  print("   +", t["adresa"][:90], "->", t["osm_adresa"][:70], t["osm"], t["kvaliteta"])
+              for t in bez[:6]:
+                  print("   -", t["adresa"][:110], "|", t["razlog"][:50])
+          EOF
+          python - <<'EOF'
+          import json, sys
+          sys.path.insert(0, "scripts")
+          import lokacije_poslovnica as lp
+          el = lp.overpass(lp.upit_trgovina())["elements"]
+          import collections
+          c = collections.Counter(); s_adresom = collections.Counter()
+          for e in el:
+              o = e.get("tags", {})
+              for l in lp.lanac_elementa(o):
+                  c[l] += 1
+                  if o.get("addr:street") and o.get("addr:housenumber"):
+                      s_adresom[l] += 1
+          print("OSM trgovine po lancu (ukupno / s ulicom i brojem):", {l: f"{c[l]}/{s_adresom[l]}" for l in c})
+          EOF
+
       - name: Dijagnoza cijena (krumpir)
         run: python -u scripts/dijagnoza_proizvoda.py krumpir
       - name: Puni uvoz kao na glavnoj grani (bez objave), pokrivenost i veličina datoteka poslovnica
