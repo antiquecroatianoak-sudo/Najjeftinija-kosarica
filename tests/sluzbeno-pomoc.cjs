@@ -10,4 +10,20 @@ function uSluzbeno(podaci) {
   }
   return podaci;
 }
+function uNacionalno() {
+  stanje.lokacija = null;
+  krug = { kljuc: "", stanje: "nacionalno", poslovnice: [], bezKoordinata: 0, neucitane: 0 };
+  lokalneCijene.clear();
+  ponudeCache.clear();
+  troskoviCache = null;
+}
+// Krug oko točke s već učitanim cjenicima zadanih poslovnica (udaljenost = redni broj, km).
+function uKrug(idxs) {
+  stanje.lokacija = { lat: 45.8, lon: 15.97, naziv: "Test", priblizno: false };
+  krug = { kljuc: kljucKruga(), stanje: "spremno", poslovnice: idxs.map((idx, k) => ({ idx, km: k + 0.5, lat: 45.8, lon: 15.97 })),
+    bezKoordinata: 0, neucitane: 0 };
+  lokalneCijene.clear();
+  ponudeCache.clear();
+  troskoviCache = null;
+}
 `;
