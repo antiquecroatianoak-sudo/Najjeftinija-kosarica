@@ -56,6 +56,33 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(/1 kg|1000 g|600 g/.test(await s.locator('.stavka >> nth=0').innerText()), 'gumb + povećava količinu');
   await snimi('2-popis');
 
+  console.log('Glasovni unos (simulirano prepoznavanje govora)');
+  {
+    const kg = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR' });
+    const sg = await kg.newPage();
+    sg.on('pageerror', (e) => greske.push('pageerror (glas): ' + e.message));
+    await sg.addInitScript(() => {
+      // lažni SpeechRecognition: "čuje" rečenicu s greškom prepoznavanja ("mljeko") kao Chrome na Androidu
+      window.SpeechRecognition = class {
+        start() {
+          setTimeout(() => this.onresult && this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: 'kruh, mljeko i deset jaja' }], { isFinal: true })] }), 150);
+          setTimeout(() => this.onend && this.onend(), 300);
+        }
+        stop() { this.onend && this.onend(); }
+        abort() {}
+      };
+    });
+    await sg.goto(url);
+    await sg.waitForSelector('#mikrofon');
+    await sg.click('#mikrofon');
+    await sg.waitForSelector('.stavka', { timeout: 5000 });
+    const glasStavke = await sg.locator('.stavka').allInnerTexts();
+    provjeri(glasStavke.length === 3 && /Mlijeko/.test(glasStavke[1]) && /1 l/.test(glasStavke[1]) && /10 kom/.test(glasStavke[2]),
+      'glas: „kruh, mljeko i deset jaja” → Kruh, Mlijeko 1 l, Jaja 10 kom');
+    provjeri(/Razumio sam/.test(await sg.locator('#stanjeGlasa').innerText()), 'glas: prikazano što je aplikacija čula');
+    await kg.close();
+  }
+
   console.log('Rezultati');
   await s.click('[data-akcija="zakljucaj"]');
   await s.waitForSelector('.sazetak');
