@@ -1,0 +1,121 @@
+# Najjeftinija košarica: provjere na svakoj grani; na glavnoj grani svaki dan preuzme cijene i objavi aplikaciju.
+name: Cijene i objava
+
+on:
+  schedule:
+    - cron: "17 7 * * *"    # 8:17 zimi / 9:17 ljeti (Zagreb), nakon roka objave cjenika (8:00)
+    - cron: "47 15 * * *"   # popodne još jednom, za lance koji kasne
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      prisilno:
+        description: "Objavi i ako je novi cjenik bitno slabiji od objavljenoga (samo ako znaš zašto)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref_name == github.event.repository.default_branch && 'objava' || format('provjera-{0}', github.ref) }}
+  cancel-in-progress: false
+
+jobs:
+  provjere:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Testovi uvoza (Python)
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Testovi logike aplikacije (Node)
+        run: node --test tests/logika.test.mjs
+      - name: Primjer podataka za provjeru u pregledniku
+        run: |
+          python tests/primjer.py "$RUNNER_TEMP/primjer"
+          python uvoz/uvoz.py --arhiva "$RUNNER_TEMP/primjer/2026-11-05.zip" "$RUNNER_TEMP/primjer/2026-11-04.zip" \
+            --izlaz app/data/hr --bez-dopune --dopuna-poslovnica "$RUNNER_TEMP/primjer/poslovnice.csv"
+      - name: Provjera aplikacije u pregledniku (mobitel)
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.49.1
+          npx playwright install --with-deps chromium
+          node tests/preglednik.cjs app "$RUNNER_TEMP/snimke"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snimke-zaslona
+          path: ${{ runner.temp }}/snimke
+          if-no-files-found: ignore
+
+  objava:
+    needs: provjere
+    if: github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      issues: write
+    environment:
+      name: github-pages
+      url: ${{ steps.objava.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: Preuzmi i obradi današnje cijene
+        run: |
+          python uvoz/uvoz.py --izlaz app/data/hr \
+            --prethodni "${{ steps.pages.outputs.base_url }}/data/hr/meta.json" \
+            ${{ inputs.prisilno && '--prisilno' || '' }}
+          cat app/data/hr/meta.json | head -c 4000
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app
+      - name: Objavi aplikaciju
+        id: objava
+        uses: actions/deploy-pages@v4
+      - name: Provjeri objavljenu verziju
+        run: |
+          OCEKIVANO=$(python -c "import json;print(json.load(open('app/data/hr/meta.json'))['verzija'])")
+          for i in 1 2 3 4 5 6; do
+            OBJAVLJENO=$(curl -fsS "${{ steps.pages.outputs.base_url }}/data/hr/meta.json?p=$i$RANDOM" | python -c "import json,sys;print(json.load(sys.stdin)['verzija'])" || true)
+            [ "$OBJAVLJENO" = "$OCEKIVANO" ] && echo "Objavljena verzija podataka: $OBJAVLJENO" && exit 0
+            sleep 20
+          done
+          echo "::warning::Objava je završila, ali stranica još prikazuje verziju '$OBJAVLJENO' umjesto '$OCEKIVANO' (CDN se možda osvježava)."
+      - name: Izvješće o grešci (otvori ili dopuni prijavu)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            if [ -f izvjesce-greske.md ]; then cat izvjesce-greske.md; else
+              echo "## Izvješće o grešci – dnevna objava (Najjeftinija košarica)"
+              echo
+              echo "Kopiraj cijeli ovaj tekst i zalijepi ga u Claude Code s porukom: \"Popravi ovu grešku u dnevnoj objavi\"."
+              echo
+              echo "Uvoz je prošao, ali objava nije. Aplikacija i dalje prikazuje zadnje dobre cijene."
+            fi
+            echo
+            echo "- Zapis rada: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Commit: ${{ github.sha }}"
+          } > prijava.md
+          BROJ=$(gh issue list --state open --label "greška-objave" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$BROJ" ]; then
+            gh issue comment "$BROJ" --body-file prijava.md
+          else
+            gh label create "greška-objave" --color d73a4a --description "Automatska prijava neuspjele dnevne objave" 2>/dev/null || true
+            gh issue create --title "Dnevno ažuriranje cijena nije uspjelo" --label "greška-objave" --body-file prijava.md
+          fi

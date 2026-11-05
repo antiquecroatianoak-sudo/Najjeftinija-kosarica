@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Najjeftinija košarica</title>
+  <meta name="description" content="Usporedi cijene u svim hrvatskim trgovačkim lancima i saznaj gdje je tvoja košarica najjeftinija.">
+  <meta name="theme-color" content="#0b5d56">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="ikone/ikona.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="ikone/ikona-192.png">
+  <link rel="stylesheet" href="css/stil.css">
+</head>
+<body>
+  <header class="zaglavlje">
+    <div class="zaglavlje-red">
+      <button class="logo" data-idi="popis" aria-label="Početna">
+        <span class="logo-znak" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M5 9h3l3 12h13l3-9H10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="26" r="2.2" fill="currentColor"/><circle cx="22" cy="26" r="2.2" fill="currentColor"/></svg>
+        </span>
+        <span class="logo-tekst">Najjeftinija<br><b>košarica</b></span>
+      </button>
+      <button class="usteda-zna" data-idi="usteda" aria-label="Ušteđeno ukupno">
+        <span class="usteda-oznaka">Ušteđeno</span>
+        <span class="usteda-iznos" id="ustedaIznos">0,00 €</span>
+      </button>
+    </div>
+    <div id="obavijest" class="obavijest" hidden></div>
+  </header>
+
+  <main id="sadrzaj" class="sadrzaj" tabindex="-1">
+    <div class="ucitavanje" id="ucitavanje">
+      <div class="vrtuljak" aria-hidden="true"></div>
+      <p>Učitavam cijene…</p>
+    </div>
+  </main>
+
+  <nav class="izbornik" aria-label="Glavni izbornik">
+    <button data-idi="popis" class="aktivno"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span>Popis</span></button>
+    <button data-idi="rezultati"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Rezultati</span></button>
+    <button data-idi="akcije"><svg viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01"/></svg><span>Akcije</span></button>
+    <button data-idi="karta"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Karta</span></button>
+    <button data-idi="vise"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg><span>Više</span></button>
+  </nav>
+
+  <div id="ploca" class="ploca" hidden>
+    <div class="ploca-pozadina" data-zatvori></div>
+    <div class="ploca-sadrzaj" role="dialog" aria-modal="true"></div>
+  </div>
+  <div id="poruka" class="poruka" role="status" aria-live="polite" hidden></div>
+
+  <noscript><p class="bez-js">Za rad aplikacije uključi JavaScript.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

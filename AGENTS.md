@@ -15,11 +15,13 @@
 
 ## Granice ovog projekta
 
-- Repozitorij: `antiquecroatianoak-sudo/Najjeftinija-kosarica`; zadana grana potvrđena 28.10.2026. je `claude/dreamy-hopper-f6e4u0`. Uvijek je ponovno provjeri prije upisa.
-- Poslovni tijek za provjeru posljedica: uvoz cjenika → količine i jedinice → usporedba i puna košarica/poslovnica → spremanje popisa → glasovni/mobilni prikaz → Pages i offline cache.
+- Repozitorij: `antiquecroatianoak-sudo/Najjeftinija-kosarica`; zadana grana potvrđena 28.10.2026. i 5.11.2026. je `claude/dreamy-hopper-f6e4u0`. Uvijek je ponovno provjeri prije upisa.
+- Odluka vlasnika 5.11.2026.: stara aplikacija je obrisana i napravljena nova od nule (vidi `PROJECT_STATE.md`). Struktura: `app/` (web aplikacija bez build koraka), `uvoz/` (dnevni uvoz, Python bez vanjskih paketa), `tests/`, `.github/workflows/dnevno.yml`.
+- Poslovni tijek za provjeru posljedica: uvoz cjenika (`uvoz/uvoz.py`) → količine i jedinice (`uvoz/kolicina.py`) → grupe (`uvoz/grupe.json`) → popis glasom/upisom (`app/js/popis.js`) → rezultati A/B/C i zamjena (`app/js/usporedba.js`) → lokacija/karta, akcije, ušteda, dijeljenje → Pages i offline cache (`app/sw.js`).
 - Količina pakiranja i broj pakiranja nisu isto. Ne miješati cijenu pakiranja s cijenom/kg/l/kom. Nedostajuća jedinica nije dozvola za izmišljanje pretvorbe.
-- Sačuvaj ručni popis i odabire te postojeću zaštitu od starijeg/slabijeg cjenika.
-- Cijeli popis u jednoj stvarnoj poslovnici razlikuj od kombinacije trgovina i procjene po lancu.
+- Sačuvaj ručni popis i odabire te zaštitu od starijeg/slabijeg cjenika (`--prethodni`, `ZastitaObjave`).
+- Cijeli popis u jednoj stvarnoj poslovnici (lokacija uključena) razlikuj od procjene po lancu (uobičajena cijena lanca) i od kombinacije dviju trgovina.
+- Trgovine ne plaćaju položaj; Premium i oglasi nikad ne mijenjaju poredak rezultata.
 - Service worker smije upravljati samo svojim opsegom i cache prefiksom `kosarica-`; ne dirati cacheove drugih aplikacija.
 - EUnekretnine2 i građevinski materijal nisu ovaj projekt. Ne mijenjati ih u sklopu zadatka za košaricu bez zasebno utvrđenog opsega.
-- Prije spajanja/objave pokrenuti relevantne regresije i navesti ograničenja. Ovaj dokumentacijski postupak ne označava stare draft PR-ove kao pregledane niti nalaže njihovo spajanje.
+- Prije spajanja/objave pokrenuti: `python3 -m unittest discover -s tests -p "test_*.py"`, `node --test tests/logika.test.mjs`, `node tests/preglednik.cjs app` (s podacima iz `tests/primjer.py` + `uvoz/uvoz.py`) i navesti ograničenja. Ovaj dokumentacijski postupak ne označava stare draft PR-ove kao pregledane niti nalaže njihovo spajanje.

@@ -1,0 +1,248 @@
+{
+  "opis": "Grupe i podgrupe proizvoda. 'uk' = riječi (početak riječi u nazivu, bez dijakritika) koje proizvod uključuju u grupu; 'isk' = riječi koje ga isključuju; 'rijeci' = kako korisnik grupu izgovara ili upisuje; 'zadano' = zadana količina kad korisnik ne kaže koliko. Grupe se provjeravaju redom: prva koja odgovara pobjeđuje, zato su posebnije grupe (npr. čokolada) ispred općenitijih (npr. mlijeko). 'pocetak': true znači da riječ mora biti na početku naziva (svježe voće i povrće, da 'Jogurt banana' ne bude banana).",
+  "grupe": [
+    {"id": "ljubimci", "naziv": "Hrana za ljubimce", "ikona": "🐾", "zadano": [1, "pak"], "rijeci": ["hrana za pse", "hrana za macke", "hrana za psa", "hrana za macku", "pijesak za macke", "granule"], "uk": ["za pse", "za psa", "za macke", "za macku", "za mace", "pseca", "macja", "whiskas", "pedigree", "felix", "friskies", "purina", "gourmet", "pijesak za mac", "posip za mac", "kitekat", "chappi", "brit ", "sheba", "dentastix", "hobby cat", "gourmet gold", "hrana za pse", "hrana za macke", "za kucne ljubimce", "cat ", "dog ", "pas ", "pikazoo", "super pawer"], "isk": [], "pod": [
+      {"id": "psi", "naziv": "za pse", "uk": ["pse", "psa", "pseca", "pedigree", "chappi"], "rijeci": ["hrana za pse", "hrana za psa"]},
+      {"id": "macke", "naziv": "za mačke", "uk": ["mack", "mace", "macja", "whiskas", "felix", "kitekat", "gourmet", "friskies", "pijesak"], "rijeci": ["hrana za macke", "hrana za macku"]}
+    ]},
+    {"id": "bebe", "naziv": "Za bebe", "ikona": "🍼", "zadano": [1, "pak"], "rijeci": ["pelene", "pelena", "pelenu", "vlazne maramice za bebe", "kasica", "kasice", "adaptirano mlijeko", "formula"], "uk": ["pelen", "pampers", "huggies", "babylove", "kasic", "dojenac", "dojencad", "adaptiran", "pocetna hrana", "aptamil", "bebivita", "hipp ", "mlijeko za doj", "bebi "], "isk": [], "pod": [
+      {"id": "pelene", "naziv": "pelene", "uk": ["pelen", "pampers", "huggies", "babylove", "gacice"], "rijeci": ["pelene", "pelena"]},
+      {"id": "hrana", "naziv": "dječja hrana i kašice", "uk": ["kasic", "adaptiran", "aptamil", "bebivita", "hipp", "pocetna", "mlijeko"], "rijeci": ["kasica", "kasice", "adaptirano mlijeko"]}
+    ]},
+    {"id": "higijena", "naziv": "Osobna higijena", "ikona": "🧴", "zadano": [1, "pak"], "rijeci": ["sampon", "sampona", "gel za tusiranje", "sapun", "sapuna", "pasta za zube", "paste za zube", "cetkica za zube", "dezodorans", "uloske", "ulosci", "brijac", "pjena za brijanje", "krema"], "uk": ["sampon", "regenerator", "balzam za kosu", "gel za tus", "gel za tijelo", "kupka", "sapun", "pasta za zube", "zubna pasta", "cetkica za zub", "vodica za usta", "dezodor", "antiperspir", "roll on", "uloz", "ulosc", "tampon", "brijac", "pjena za brij", "gel za brij", "losion", "vlazne maram", "stapici za usi", "dental", "nivea", "sensodyne", "gillette", "always", "carefree", "suncanj", "spf", "za tijelo", "boja za kosu", "maska za kosu", "suhi sampon", "krema za lice", "krema za ruke", "krema za tijelo", "gel za ciscenje lica", "micelar", "deo ", "poklon paket", "dezodorans", "toaletna voda", "parfem", "lak za nokte", "balzam za usne", "garnier", "palmolive", "schauma", "syoss", "loreal", "l oreal", "pantene", "head shoulders", "o b ", "oral b", "meridol", "ziaja", "biobaza", "dove ", "signal ", "colgate", "elmex", "vata ", "vatirani"], "isk": [], "pod": [
+      {"id": "kosa", "naziv": "šampon i regenerator", "uk": ["sampon", "regenerator", "balzam za kos", "maska za kos"], "rijeci": ["sampon", "sampona", "regenerator"]},
+      {"id": "tijelo", "naziv": "gel za tuširanje i sapun", "uk": ["gel za tus", "gel za tij", "kupka", "sapun", "tekuci sapun"], "rijeci": ["gel za tusiranje", "sapun", "sapuna"]},
+      {"id": "zubi", "naziv": "pasta i četkica za zube", "uk": ["zub", "dental", "colgate", "signal", "elmex", "sensodyne", "vodica za usta"], "rijeci": ["pasta za zube", "cetkica za zube"]},
+      {"id": "dezodorans", "naziv": "dezodorans", "uk": ["dezodor", "antiperspir", "roll on", "deo "], "rijeci": ["dezodorans", "deo"]},
+      {"id": "ulosci", "naziv": "ulošci i tamponi", "uk": ["uloz", "ulosc", "tampon", "always", "carefree"], "rijeci": ["ulosci", "uloske"]},
+      {"id": "brijanje", "naziv": "brijanje", "uk": ["brij", "gillette", "zilet"], "rijeci": ["brijac", "pjena za brijanje"]}
+    ]},
+    {"id": "posude", "naziv": "Sredstva za pranje posuđa", "ikona": "🍽️", "zadano": [1, "pak"], "rijeci": ["sredstvo za pranje posuda", "deterdzent za posude", "tablete za perilicu", "tablete za posude", "jar", "fairy", "pur"], "uk": ["za posude", "za pranje posu", "za sude", "perilicu posu", "strojno pranje posu", "tablete za peril", "fairy", "jar ", "pur ", "somat", "finish", "calgonit"], "isk": [], "pod": [
+      {"id": "rucno", "naziv": "za ručno pranje", "uk": ["fairy", "jar", "pur", "rucno", "deterdz"]},
+      {"id": "strojno", "naziv": "tablete i sredstva za perilicu", "uk": ["tablet", "perilic", "strojn", "somat", "finish", "calgonit", "kapsul"]}
+    ]},
+    {"id": "deterdzent", "naziv": "Deterdžent i omekšivač", "ikona": "🧺", "zadano": [1, "pak"], "rijeci": ["deterdzent", "deterdzenta", "prasak za rublje", "omeksivac", "omeksivaca", "gel za rublje", "kapsule za rublje"], "uk": ["deterdz", "omeksiv", "za rublje", "za pranje rublja", "ariel", "persil", "faks", "rubel", "lenor", "silan", "perwoll", "bonux", "dash", "tide", "vanish", "duel", "pods"], "isk": ["za posude", "za sude", "perilicu posud", "strojno pranje posu"], "pod": [
+      {"id": "deterdzent", "naziv": "deterdžent za rublje", "uk": ["deterdz", "prasak", "gel", "kapsul", "ariel", "persil", "faks", "bonux", "tide", "pods", "rubel"], "rijeci": ["deterdzent", "prasak za rublje"]},
+      {"id": "omeksivac", "naziv": "omekšivač", "uk": ["omeksiv", "lenor", "silan", "ornel"], "rijeci": ["omeksivac"]}
+    ]},
+    {"id": "ciscenje", "naziv": "Sredstva za čišćenje", "ikona": "🧽", "zadano": [1, "pak"], "rijeci": ["sredstvo za ciscenje", "varikina", "varikine", "domestos", "cistac", "spuzve", "spuzvice", "vrece za smece", "vrecice za smece"], "uk": ["varikin", "domestos", "cistac", "za ciscenje", "ciscenje", "spuzv", "vrece za smece", "vrecice za smece", "za smece", "ajax", "cif ", "mr. proper", "mr proper", "sanitar", "wc gel", "wc blok", "osvjezivac prostor", "krpa", "krpe", "dezinfek", "spuzva", "glitzi", "magicna krpa", "frosch"], "isk": ["za lice", "losion", "micelar", "za zube"], "pod": []},
+    {"id": "toaletni-papir", "naziv": "Toaletni papir i ubrusi", "ikona": "🧻", "zadano": [1, "pak"], "rijeci": ["toaletni papir", "toaletnog papira", "wc papir", "papir", "ubrusi", "ubrusa", "papirnati rucnici", "maramice", "papirnate maramice", "salvete"], "uk": ["toaletni papir", "toalet papir", "wc papir", "toaletni pap", "papirnati ubrus", "kuhinjski ubrus", "ubrus", "papirnati rucnik", "papirnate maram", "maramice papir", "salvet", "rolica"], "isk": ["vlazne", "vlazni", "drzac", "osvjez"], "pod": [
+      {"id": "toaletni", "naziv": "toaletni papir", "uk": ["toalet", "wc"], "rijeci": ["toaletni papir", "wc papir"]},
+      {"id": "ubrusi", "naziv": "kuhinjski ubrusi", "uk": ["ubrus", "rucnik", "kuhinjsk"], "rijeci": ["ubrusi", "kuhinjski ubrusi"]},
+      {"id": "maramice", "naziv": "maramice i salvete", "uk": ["maramic", "salvet"], "rijeci": ["maramice", "salvete"]}
+    ]},
+    {"id": "sladoled", "naziv": "Sladoled", "ikona": "🍨", "zadano": [1, "pak"], "rijeci": ["sladoled", "sladoleda", "sladolede"], "uk": ["sladoled", "ice cream", "kornet", "rumenko"], "isk": ["kornet za", "posip", "preljev", "aparat"], "pod": []},
+    {"id": "cokolada", "naziv": "Čokolada", "ikona": "🍫", "zadano": [100, "g"], "rijeci": ["cokolada", "cokolade", "cokoladu", "cokolada za kuhanje"], "uk": ["cokolada", "cokoladica", "cokol "], "isk": ["napitak", "mlijeko", "keks", "sladoled", "namaz", "pahuljic", "jogurt", "puding", "liker", "kakao", "granola", "musli", "muesli", "kasa", "cappuccino", "slag", "zitaric"], "pod": [
+      {"id": "mlijecna", "naziv": "mliječna čokolada", "uk": ["mlijecna"]},
+      {"id": "tamna", "naziv": "tamna čokolada", "uk": ["tamna", "crna", "dark", "bitter"]},
+      {"id": "bijela", "naziv": "bijela čokolada", "uk": ["bijela"]},
+      {"id": "punjena", "naziv": "punjena / s dodacima", "uk": ["ljesnja", "lesnja", "badem", "grozd", "punjen", "keks", "jagod"]}
+    ]},
+    {"id": "keksi", "naziv": "Keksi", "ikona": "🍪", "zadano": [1, "pak"], "rijeci": ["keks", "keksi", "keksa", "kekse", "biskvit", "biskviti", "petit beurre"], "uk": ["keks", "biskvit", "petit", "cajni kolut", "kreker", "napolitank", "oblat"], "isk": ["mrvic", "cokolada ", "lignj"], "pod": [
+      {"id": "cajni", "naziv": "čajni / petit keksi", "uk": ["petit", "cajni", "domacica", "albert", "maria"]},
+      {"id": "napolitanke", "naziv": "napolitanke i oblatne", "uk": ["napolitank", "oblat"]},
+      {"id": "krekeri", "naziv": "krekeri", "uk": ["kreker", "slani"]},
+      {"id": "cokoladni", "naziv": "keksi s čokoladom", "uk": ["cokolad", "kakao"]}
+    ]},
+    {"id": "kruh", "naziv": "Kruh", "ikona": "🍞", "zadano": [500, "g"], "rijeci": ["kruh", "kruha", "kruhove", "kruhovi", "hljeb", "hleb"], "uk": ["kruh", "kruha", "tost kruh", "baguette", "bageta", "ciabatta", "ciabata", "sendvic kruh", "pogaca"], "isk": ["za kruh", "mrvic", "smjesa", "mjesavina za", "pecivo za", "namaz", "kalup", "toster", "aparat", "pekac", "kruh sv", "kruskovac", "krumpir"], "pod": [
+      {"id": "sjemenke", "naziv": "kruh sa sjemenkama", "uk": ["sjemen", "zrn", "lan", "sezam", "suncokret", "bundev", "chia", "multi", "vise vrsta"], "rijeci": ["kruh sa sjemenkama", "kruh s sjemenkama"]},
+      {"id": "integralni", "naziv": "integralni / crni kruh", "uk": ["integral", "crni", "razen", "raz ", "pir", "heljd", "zob", "graham", "kukuruz"], "rijeci": ["integralni kruh", "crni kruh", "razeni kruh"]},
+      {"id": "tost", "naziv": "tost i sendvič kruh", "uk": ["tost", "sendvic", "toast"], "rijeci": ["tost", "tost kruh"]},
+      {"id": "bijeli", "naziv": "bijeli i polubijeli kruh", "uk": ["bijeli", "polubijel", "seljac", "baguette", "bageta", "ciabatt", "ciabat", "francusk", "domaci", "pogac", "kruh"], "rijeci": ["bijeli kruh", "polubijeli kruh"]}
+    ]},
+    {"id": "peciva", "naziv": "Peciva", "ikona": "🥐", "zadano": [1, "pak"], "rijeci": ["pecivo", "peciva", "kifla", "kifle", "kiflice", "zemicka", "zemicke", "kroasan", "kroasani", "burek"], "uk": ["pecivo", "kifl", "zemick", "kroasan", "croissant", "burek", "pereca", "lisnato", "krafn"], "isk": ["za pecivo", "mjesavina za"], "pod": [
+      {"id": "kroasani", "naziv": "kroasani", "uk": ["kroasan", "croissant"]},
+      {"id": "kifle", "naziv": "kifle i žemičke", "uk": ["kifl", "zemick", "pecivo"]},
+      {"id": "burek", "naziv": "burek i lisnato", "uk": ["burek", "lisnat"]}
+    ]},
+    {"id": "jogurt", "naziv": "Jogurt", "ikona": "🥣", "zadano": [1, "kg"], "rijeci": ["jogurt", "jogurta", "jogurte", "kefir", "acidofil", "kiselo mlijeko"], "uk": ["jogurt", "kefir", "acidofil", "kiselo mlijeko", "skyr", "ab kultura"], "isk": ["cokolad", "preljev", "umak za"], "pod": [
+      {"id": "tekuci", "naziv": "tekući jogurt", "uk": ["tekuci", "jogurt 2", "jogurt 3", "b. jogurt", "jogurt "]},
+      {"id": "cvrsti", "naziv": "čvrsti / grčki jogurt", "uk": ["cvrsti", "grcki", "skyr"]},
+      {"id": "vocni", "naziv": "voćni jogurt", "uk": ["vocni", "jagod", "breskv", "visnj", "borovnic", "malin", "vanilij"]},
+      {"id": "kefir", "naziv": "kefir i acidofil", "uk": ["kefir", "acidofil", "kiselo"]}
+    ]},
+    {"id": "biljni-napitak", "naziv": "Biljni napitak", "ikona": "🌾", "zadano": [1, "l"], "rijeci": ["biljno mlijeko", "biljni napitak", "zobeno mlijeko", "sojino mlijeko", "bademovo mlijeko", "rizino mlijeko"], "uk": ["zobeni napitak", "sojin napitak", "bademov napitak", "rizin napitak", "biljni napitak", "napitak od zobi", "napitak od soje", "napitak od badema", "oat drink"], "isk": [], "pod": []},
+    {"id": "mlijeko", "naziv": "Mlijeko", "ikona": "🥛", "zadano": [1, "l"], "rijeci": ["mlijeko", "mlijeka", "mlijeku", "mleko", "mlijeka trajnog"], "uk": ["mlijeko", "mlijeka", "trajno mlij", "svjeze mlij"], "isk": ["cokolad", "keks", "kakao", "napitak", "kondenz", "u prahu", "prah", "kokos", "kiselo", "kupka", "losion", "tijelo", "za lice", "demakij", "ciscenje", "sapun", "dusa", "krema", "sir", "sladoled", "riza na mlijeku", "puding", "kava", "cappuccino", "pahulj", "musli", "kasa", "zitarice", "mlijecni", "jogurt", "vrhnje", "badem", "zob", "soj", "kefir", "suncanj", "spf", "rolada", "poslije"], "pod": [
+      {"id": "bez-laktoze", "naziv": "mlijeko bez laktoze", "uk": ["bez laktoze", "laktoze", "lactose", "lf "], "rijeci": ["mlijeko bez laktoze"]},
+      {"id": "trajno", "naziv": "trajno mlijeko", "uk": ["trajno", "uht", "dugotrajno"], "rijeci": ["trajno mlijeko"]},
+      {"id": "svjeze", "naziv": "svježe mlijeko", "uk": ["svjeze", "pasteriz", "fresh"], "rijeci": ["svjeze mlijeko"]}
+    ]},
+    {"id": "vrhnje", "naziv": "Vrhnje", "ikona": "🥄", "zadano": [200, "g"], "rijeci": ["vrhnje", "vrhnja", "kiselo vrhnje", "slatko vrhnje", "mileram"], "uk": ["vrhnje", "vrhnja", "mileram", "creme fraiche", "kuhinjsko vrhnje", "kiselo vrhnje", "slatko vrhnje", "vrhnje za"], "isk": ["sladoled", "cips", "umak", "namaz", "kikiriki", "loptice", "flips"], "pocetak": true, "pod": [
+      {"id": "kiselo", "naziv": "kiselo vrhnje", "uk": ["kiselo", "mileram"]},
+      {"id": "slatko", "naziv": "slatko vrhnje", "uk": ["slatko", "za sladoled", "za tucenje", "slag"]},
+      {"id": "kuhanje", "naziv": "vrhnje za kuhanje", "uk": ["kuhanje", "kuhinjsko"]}
+    ]},
+    {"id": "maslac", "naziv": "Maslac i margarin", "ikona": "🧈", "zadano": [250, "g"], "rijeci": ["maslac", "maslaca", "putar", "margarin", "margarina", "maslo"], "uk": ["maslac", "margarin", "maslo", "biljni namaz"], "isk": ["kikiriki", "keks", "cokolad", "kroasan", "pecivo", "lisnato", "kakao", "popcorn", "kokice", "shea"], "pod": [
+      {"id": "maslac", "naziv": "maslac", "uk": ["maslac", "butter", "maslo"]},
+      {"id": "margarin", "naziv": "margarin", "uk": ["margarin", "biljni namaz"]}
+    ]},
+    {"id": "sir", "naziv": "Sir", "ikona": "🧀", "zadano": [250, "g"], "rijeci": ["sir", "sira", "sireve", "sirevi", "gauda", "gaude", "mozzarella", "mocarela", "svjezi sir", "parmezan", "feta"], "uk": ["sir ", "sir,", "sira ", "sirni namaz", "gauda", "edamer", "trapist", "mozzarell", "parmez", "grana padano", "feta", "cheddar", "ementaler", "svjezi sir", "skuta", "camembert", "brie", "gorgonzol", "mascarpone", "ricotta", "halloumi", "tilsit", "paski"], "isk": ["sirup", "siroko", "sirok", "cips", "krekeri", "keks", "pizza", "burek", "pita", "sendvic", "tortelin", "ravioli", "punjen", "umak", "sirnica", "spremnik", "sirena", "stapic", "grisini", "od sira", "sa sirom", "loptice", "kroketi", "flips", "smoki", "crunchips"], "pod": [
+      {"id": "polutvrdi", "naziv": "gauda, edamer i polutvrdi", "uk": ["gauda", "edamer", "trapist", "tilsit", "polutvrd", "ementaler", "cheddar", "zdenka", "tvrdi"], "rijeci": ["gauda", "edamer"]},
+      {"id": "svjezi", "naziv": "svježi sir i skuta", "uk": ["svjezi", "skuta", "cottage", "zrnati", "ricotta", "kravlji"], "rijeci": ["svjezi sir", "kravlji sir"]},
+      {"id": "mozzarella", "naziv": "mozzarella", "uk": ["mozzarell"], "rijeci": ["mozzarella", "mocarela"]},
+      {"id": "namaz", "naziv": "sirni namaz i topljeni", "uk": ["namaz", "topljen", "listici", "trokut"]},
+      {"id": "tvrdi", "naziv": "tvrdi i zreli sirevi", "uk": ["parmez", "grana", "paski", "zreli", "ovcji", "kozji"]}
+    ]},
+    {"id": "jaja", "naziv": "Jaja", "ikona": "🥚", "zadano": [10, "kom"], "rijeci": ["jaja", "jaje", "jajca", "jajce", "jajima"], "uk": ["jaja", "jaje", "jajca", "kokosja jaja", "svjeza jaja", "domaca jaja"], "isk": ["cokolad", "tjesten", "kinder", "s jajima", "rezanci", "makaron", "liker", "boja za"], "pocetak": true, "pod": [
+      {"id": "slobodni", "naziv": "jaja iz slobodnog uzgoja", "uk": ["slobodn", "free range", "bio", "eko"]},
+      {"id": "podni", "naziv": "jaja iz podnog uzgoja", "uk": ["podn", "kavez", "jaja"]}
+    ]},
+    {"id": "krumpir", "naziv": "Krumpir", "ikona": "🥔", "zadano": [1, "kg"], "rijeci": ["krumpir", "krumpira", "krompir", "krompira", "kumpir", "krumpiri"], "uk": ["krumpir", "krompir"], "isk": ["cips", "pire", "prah", "pomfri", "pomes", "kroket", "njok", "salata", "smrznut", "zamrznut", "krumpirov", "pecen", "fritul", "palacink", "kruh", "ploske", "wedges", "stapici", "pekarski"], "pocetak": true, "pod": [
+      {"id": "mladi", "naziv": "mladi krumpir", "uk": ["mladi"]},
+      {"id": "crveni", "naziv": "crveni krumpir", "uk": ["crveni"]},
+      {"id": "bijeli", "naziv": "bijeli / žuti krumpir", "uk": ["bijeli", "zuti", "krumpir"]}
+    ]},
+    {"id": "pomfrit", "naziv": "Pomfrit i smrznuti krumpir", "ikona": "🍟", "zadano": [1, "kg"], "rijeci": ["pomfrit", "pomfrita", "pomes", "krompirici"], "uk": ["pomfri", "pommes", "pomes", "kroket", "steakhouse", "country potato"], "isk": ["zacin", "sol za", "kroki"], "pod": []},
+    {"id": "luk", "naziv": "Luk", "ikona": "🧅", "zadano": [1, "kg"], "rijeci": ["luk", "luka", "crveni luk", "crvenog luka", "cesnjak", "cesnjaka", "bijeli luk", "kapula"], "uk": ["luk crveni", "luk bijeli", "luk mladi", "luk srebrnac", "luk ljubicasti", "crveni luk", "cesnjak", "kapula", "luk ", "mladi luk", "bijeli luk", "kapul", "luk"], "isk": ["u prahu", "granul", "pire", "prsut", "kobas", "cips", "pecen", "u ulju", "salama", "pasteta", "zacin", "umak", "pohani", "kolut", "smrz"], "pocetak": true, "pod": [
+      {"id": "crveni", "naziv": "crveni luk", "uk": ["crveni", "kapula", "zuti"], "rijeci": ["crveni luk", "crvenog luka"]},
+      {"id": "cesnjak", "naziv": "češnjak", "uk": ["cesnjak", "bijeli"], "rijeci": ["cesnjak", "bijeli luk"]},
+      {"id": "mladi", "naziv": "mladi luk", "uk": ["mladi"]}
+    ]},
+    {"id": "mrkva", "naziv": "Mrkva", "ikona": "🥕", "zadano": [1, "kg"], "rijeci": ["mrkva", "mrkve", "mrkvu", "mrkvi"], "uk": ["mrkva", "mrkve"], "isk": ["sok", "kasic", "juha", "salata", "grasak i", "smrz", "pire", "nektar", "flips", "grasak", "suho ulje", "poklon"], "pocetak": true, "pod": []},
+    {"id": "rajcica", "naziv": "Rajčica", "ikona": "🍅", "zadano": [1, "kg"], "rijeci": ["rajcica", "rajcice", "rajcicu", "paradajz", "paradajza", "pomidor", "pomidori", "cherry rajcica"], "uk": ["rajcic", "rajcica", "paradajz", "pomidor"], "isk": ["sok", "pire", "pasirana", "koncentrat", "umak", "ketchup", "kecap", "susen", "pesto", "juha", "konzerv", "sjecka", "pelat", "polpa", "passata", "cips", "u ulju", "kekeci"], "pocetak": true, "pod": [
+      {"id": "cherry", "naziv": "cherry rajčica", "uk": ["cherry", "cheri", "koktel", "mini"]},
+      {"id": "obicna", "naziv": "rajčica", "uk": ["rajcic", "paradajz", "pomidor"]}
+    ]},
+    {"id": "rajcica-konzerva", "naziv": "Pasirana rajčica i umak", "ikona": "🥫", "zadano": [500, "g"], "rijeci": ["pasirana rajcica", "pelati", "passata", "koncentrat rajcice", "sjeckana rajcica"], "uk": ["pasirana raj", "passata", "pelat", "sjeckana raj", "koncentrat raj", "polpa", "pire od raj", "rajcica sjeck", "rajcica pasir"], "isk": [], "pod": []},
+    {"id": "krastavci", "naziv": "Krastavci", "ikona": "🥒", "zadano": [1, "kg"], "rijeci": ["krastavac", "krastavca", "krastavci", "krastavce", "kornisoni"], "uk": ["krastav", "kornison"], "isk": ["sapun", "gel", "krema", "losion", "maska", "namaz", "toco"], "pocetak": true, "pod": [
+      {"id": "kiseli", "naziv": "kiseli krastavci", "uk": ["kisel", "kornison", "u octu", "salamuri"]},
+      {"id": "svjezi", "naziv": "svježi krastavci", "uk": ["krastav"]}
+    ]},
+    {"id": "paprika", "naziv": "Paprika", "ikona": "🫑", "zadano": [1, "kg"], "rijeci": ["paprika", "paprike", "papriku", "babura", "babure"], "uk": ["paprika", "paprike", "babur"], "isk": ["mljeven", "zacin", "slatka mlj", "ljuta mlj", "cips", "ajvar", "umak", "pasteta", "salama", "kobas", "u prahu", "punjene", "dimljen", "pecene", "filet", "krem", "slatka extra", "ljuta extra", "extra"], "pocetak": true, "pod": []},
+    {"id": "salata", "naziv": "Zelena salata", "ikona": "🥬", "zadano": [1, "kom"], "rijeci": ["salata", "salate", "salatu", "zelena salata", "zelene salate", "rukola", "matovilac", "iceberg"], "uk": ["salata zelen", "zelena salata", "salata ledenka", "ledenka", "iceberg", "rukola", "matovilac", "radic", "salata mix", "mix salat", "kristalka", "puterica", "salata hrast"], "isk": ["preljev", "majonez", "tuna", "rakov", "piletin", "krumpir", "ruska", "francusk", "grah", "hobotnic"], "pocetak": true, "pod": []},
+    {"id": "kupus", "naziv": "Kupus", "ikona": "🥬", "zadano": [1, "kg"], "rijeci": ["kupus", "kupusa", "kiseli kupus", "zelje", "kelj"], "uk": ["kupus", "zelje", "kelj"], "isk": ["salata od", "sarm", "rolada", "pupoljc", "vreca", "pita"], "pocetak": true, "pod": [
+      {"id": "kiseli", "naziv": "kiseli kupus", "uk": ["kisel", "glavica kis", "ribani"]},
+      {"id": "svjezi", "naziv": "svježi kupus", "uk": ["kupus", "zelje", "kelj"]}
+    ]},
+    {"id": "banane", "naziv": "Banane", "ikona": "🍌", "zadano": [1, "kg"], "rijeci": ["banana", "banane", "bananu", "banani"], "uk": ["banan"], "isk": ["cips", "jogurt", "sok", "nektar", "kasic", "susen", "cokolad", "napitak", "puding", "keks", "smoothie", "musli", "pire", "chips", "bananko"], "pocetak": true, "pod": []},
+    {"id": "jabuke", "naziv": "Jabuke", "ikona": "🍎", "zadano": [1, "kg"], "rijeci": ["jabuka", "jabuke", "jabuku", "jabuki"], "uk": ["jabuk", "jabuka"], "isk": ["sok", "nektar", "ocat", "kasic", "pire", "cips", "susen", "strudel", "pita", "rakija", "jogurt", "cider", "caj", "kompot", "pekmez", "dzem", "napitak", "musli", "puding", "keks", "smoothie", "aroma", "sampon", "gel", "osvjez", "omeksiv", "deterdz", "tekuc", "jabukovac"], "pocetak": true, "pod": [
+      {"id": "zelene", "naziv": "zelene jabuke", "uk": ["granny", "zelen"]},
+      {"id": "crvene", "naziv": "crvene i žute jabuke", "uk": ["jabuk"]}
+    ]},
+    {"id": "naranca", "naziv": "Naranče i mandarine", "ikona": "🍊", "zadano": [1, "kg"], "rijeci": ["naranca", "narance", "narancu", "mandarina", "mandarine", "mandarinu", "klementine"], "uk": ["naranca", "narance", "mandarin", "klementin"], "isk": ["sok", "nektar", "cips", "cokolad", "keks", "napitak", "jogurt", "sirup", "dzem", "marmelad", "aroma", "caj", "liker", "sampon", "gel", "osvjez", "omeksiv", "deterdz", "kora", "ulje", "fanta", "sprite", "limunada", "voda", "dehidr", "narancad"], "pocetak": true, "pod": [
+      {"id": "narance", "naziv": "naranče", "uk": ["naranc"]},
+      {"id": "mandarine", "naziv": "mandarine", "uk": ["mandarin", "klementin"]}
+    ]},
+    {"id": "limun", "naziv": "Limun", "ikona": "🍋", "zadano": [500, "g"], "rijeci": ["limun", "limuna", "limune"], "uk": ["limun"], "isk": ["sok", "limunad", "caj", "cips", "keks", "napitak", "sirup", "aroma", "sampon", "gel", "osvjez", "omeksiv", "deterdz", "tekuc", "ulje", "voda", "pivo", "radler", "kora", "esencij", "jogurt", "ledeni", "kontrast", "vino", "kiselina", "koncentrat", "dehidr", "limunska trava", "limun secer"], "pocetak": true, "pod": []},
+    {"id": "voce-ostalo", "naziv": "Ostalo voće", "ikona": "🍇", "zadano": [1, "kg"], "rijeci": ["voce", "kruska", "kruske", "grozde", "grozda", "jagode", "jagoda", "kivi", "breskve", "breskva", "lubenica", "lubenicu", "dinja", "sljive", "sljiva", "ananas", "avokado", "borovnice", "malina", "maline"], "uk": ["kruska", "kruske", "grozd", "jagod", "kivi", "breskv", "nektarin", "lubenic", "dinj", "sljiv", "ananas", "avokad", "borovnic", "malin", "tresnj", "visnj", "marelic", "smokv", "nar ", "mango", "grejp", "pomelo", "kaki", "kesten"], "isk": ["sok", "nektar", "jogurt", "dzem", "pekmez", "marmelad", "cips", "keks", "cokolad", "susen", "kompot", "sirup", "caj", "rakija", "liker", "napitak", "puding", "smrz", "sladoled", "aroma", "sampon", "gel", "osvjez", "omeksiv", "deterdz", "kolac", "torta", "musli", "pahulj", "vino", "voda", "kasic", "pire", "punjen", "krem", "konzerv", "u soku", "piv", "sljivovic", "kruskovac", "visnjevac", "orahovac", "travarica"], "pocetak": true, "pod": [
+      {"id": "kruske", "naziv": "kruške", "uk": ["kruska", "kruske"], "rijeci": ["kruska", "kruske", "krusku"]},
+      {"id": "grozde", "naziv": "grožđe", "uk": ["grozd"], "rijeci": ["grozde", "grozda"]},
+      {"id": "jagode", "naziv": "jagode i bobičasto", "uk": ["jagod", "borovnic", "malin"], "rijeci": ["jagode", "jagoda", "borovnice", "maline"]},
+      {"id": "kivi", "naziv": "kivi", "uk": ["kivi"], "rijeci": ["kivi"]},
+      {"id": "lubenica", "naziv": "lubenica i dinja", "uk": ["lubenic", "dinj"], "rijeci": ["lubenica", "lubenicu", "dinja", "dinju"]},
+      {"id": "avokado", "naziv": "avokado", "uk": ["avokad"], "rijeci": ["avokado"]}
+    ]},
+    {"id": "riza", "naziv": "Riža", "ikona": "🍚", "zadano": [1, "kg"], "rijeci": ["riza", "rize", "rizu", "rizoto", "basmati"], "uk": ["riza", "rize", "basmati", "jasmin riz", "arborio"], "isk": ["krekeri", "galet", "napitak", "puding", "na mlijeku", "mlijecna", "pahulj", "brasno", "ocat", "rezanci", "papir", "kreker", "vafl", "chips", "cips", "salata", "juha", "gotov", "obrok"], "pod": [
+      {"id": "basmati", "naziv": "basmati i jasmin", "uk": ["basmati", "jasmin"]},
+      {"id": "integralna", "naziv": "integralna riža", "uk": ["integral", "smed"]},
+      {"id": "obicna", "naziv": "bijela riža", "uk": ["riza", "dugo", "okrugl", "arborio"]}
+    ]},
+    {"id": "tjestenina", "naziv": "Tjestenina", "ikona": "🍝", "zadano": [500, "g"], "rijeci": ["tjestenina", "tjestenine", "tjesteninu", "spageti", "spagete", "spageta", "spagetti", "makaroni", "penne", "fusili", "njoki", "njoke", "rezanci", "lazanje", "pasta"], "uk": ["tjesten", "spaget", "spaghett", "makaron", "penne", "pene ", "fusill", "fusil", "farfalle", "njok", "rezanc", "lazanj", "lasagn", "tagliatell", "pasta ", "tortelin", "tortelli", "ravioli", "linguin", "fleckerl", "trganci", "pljukanci", "kus kus", "cous"], "isk": ["umak", "pesto", "salata", "gotov", "sir za", "pasta za zube", "zubna", "pasta od", "pasta za", "tahini", "juha", "juhe", "instant"], "pod": [
+      {"id": "spageti", "naziv": "špageti", "uk": ["spaget", "spaghett", "linguin"], "rijeci": ["spageti", "spagete", "spageta"]},
+      {"id": "kratka", "naziv": "kratka tjestenina", "uk": ["penne", "pene", "fusil", "farfalle", "makaron", "kolut", "spiral", "puzic", "school"], "rijeci": ["penne", "fusili", "makaroni"]},
+      {"id": "punjena", "naziv": "punjena tjestenina i njoki", "uk": ["tortel", "ravioli", "njok"], "rijeci": ["njoki", "tortelini"]},
+      {"id": "rezanci", "naziv": "rezanci i tjestenina za juhu", "uk": ["rezanc", "fide", "za juhu", "trganc", "zvjezdic"], "rijeci": ["rezanci"]}
+    ]},
+    {"id": "brasno", "naziv": "Brašno", "ikona": "🌾", "zadano": [1, "kg"], "rijeci": ["brasno", "brasna", "glatko brasno", "ostro brasno", "kukuruzno brasno", "palenta"], "uk": ["brasno", "palenta", "griz"], "isk": ["keks", "kolac", "smjesa za palac", "od psenicnog brasna", "od brasna"], "pod": [
+      {"id": "psenicno", "naziv": "pšenično brašno", "uk": ["psenic", "glatko", "ostro", "t 400", "t-400", "t 550", "t-550", "t 850", "brasno"]},
+      {"id": "kukuruzno", "naziv": "kukuruzno brašno i palenta", "uk": ["kukuruz", "palenta"]},
+      {"id": "griz", "naziv": "griz", "uk": ["griz"]}
+    ]},
+    {"id": "kava", "naziv": "Kava", "ikona": "☕", "zadano": [250, "g"], "rijeci": ["kava", "kave", "kavu", "mljevena kava", "kava u zrnu", "espresso", "nescafe", "instant kava", "kapsule za kavu"], "uk": ["kava", "kave", "caffe", "coffee", "espresso", "nescafe", "cappuccino", "kafa"], "isk": ["aparat za", "aparat", "lonc", "keks", "cokolad", "liker", "sladoled", "jogurt", "napitak od zitar", "zitna", "cikorij", "proja", "kavana", "salic", "solic", "solja", "filter za aparat", "cistac", "omeksiv"], "pod": [
+      {"id": "mljevena", "naziv": "mljevena kava", "uk": ["mljeven", "turska", "domaca", "bijeli kava", "kava "], "rijeci": ["mljevena kava", "turska kava"]},
+      {"id": "zrno", "naziv": "kava u zrnu", "uk": ["zrno", "zrnu", "beans"], "rijeci": ["kava u zrnu"]},
+      {"id": "instant", "naziv": "instant kava i cappuccino", "uk": ["instant", "nescafe", "cappuccino", "3u1", "3 u 1", "2u1", "frappe", "topljiva"], "rijeci": ["instant kava", "nescafe", "cappuccino"]},
+      {"id": "kapsule", "naziv": "kapsule i jastučići", "uk": ["kapsul", "caps", "pads", "jastucic", "dolce gusto", "nespresso", "tassimo"], "rijeci": ["kapsule za kavu"]}
+    ]},
+    {"id": "caj", "naziv": "Čaj", "ikona": "🍵", "zadano": [1, "pak"], "rijeci": ["caj", "caja", "cajeve", "kamilica", "kamilice", "metvica", "ledeni caj"], "uk": ["caj ", "caj,", "cajna mjes", "kamilic", "metvic", "zeleni caj", "crni caj", "vocni caj", "ice tea", "ledeni caj"], "isk": ["cajni kolut", "cajno pecivo", "keks", "cajna kobas", "salama", "posuda", "salic", "solic", "kuhalo", "drvo caj", "cajevac", "sampon", "gel", "krema"], "pod": [
+      {"id": "ledeni", "naziv": "ledeni čaj", "uk": ["ledeni", "ice tea", "icetea", "nestea", "lipton ice", "fuze"], "rijeci": ["ledeni caj"]},
+      {"id": "cajevi", "naziv": "čaj u vrećicama", "uk": ["caj", "kamilic", "metvic"]}
+    ]},
+    {"id": "secer", "naziv": "Šećer", "ikona": "🧂", "zadano": [1, "kg"], "rijeci": ["secer", "secera", "seceru", "kristal secer", "secer u prahu"], "uk": ["secer", "secera"], "isk": ["bez secera", "bez dodanog", "vanilin", "vanili", "bombon", "secerna", "keks", "cokolad", "sok", "napitak", "jogurt", "vafl", "mrkva", "kava", "nescafe", "kakao", "kukuruz", "sa secerom"], "pod": [
+      {"id": "kristal", "naziv": "kristal šećer", "uk": ["kristal", "bijeli", "secer"]},
+      {"id": "prah", "naziv": "šećer u prahu", "uk": ["u prahu", "prah"]},
+      {"id": "smedi", "naziv": "smeđi šećer", "uk": ["smed", "trsk", "demerara"]}
+    ]},
+    {"id": "sol", "naziv": "Sol", "ikona": "🧂", "zadano": [1, "kg"], "rijeci": ["sol", "soli", "morska sol"], "uk": ["sol morska", "morska sol", "kuhinjska sol", "sol jodir", "sol kamena", "kamena sol", "sol sitna", "sol krupna", "sol "], "isk": ["za perilicu", "za posude", "za kupanje", "kupka", "regenerac", "solnjak", "solanum", "solo", "solar", "solju", "s morskom", "sa solju", "slanac", "cips", "kikiriki", "pistac", "kreker", "stapic", "tablet", "pivo", "incun"], "pod": []},
+    {"id": "ulje", "naziv": "Ulje", "ikona": "🫒", "zadano": [1, "l"], "rijeci": ["ulje", "ulja", "suncokretovo ulje", "maslinovo ulje", "jestivo ulje", "bucino ulje", "repicino ulje"], "uk": ["ulje", "ulja"], "isk": ["u ulju", "za tijelo", "za kosu", "za bebe", "masaz", "motorn", "eteric", "za lice", "ricinus", "kupke", "suncanje", "sjajilo", "tuna", "sardin", "skus", "papric", "masline u", "rajcic", "mreza", "losion", "bebe", "gel", "krema", "sampon", "dezodor", "parfem", "tablet", "kapsul", "omega", "lanseno", "kokos za", "masl. za"], "pod": [
+      {"id": "suncokretovo", "naziv": "suncokretovo i jestivo ulje", "uk": ["suncokret", "jestivo", "repic", "biljno", "kukuruz", "sojino"], "rijeci": ["suncokretovo ulje", "jestivo ulje"]},
+      {"id": "maslinovo", "naziv": "maslinovo ulje", "uk": ["maslin", "olive"], "rijeci": ["maslinovo ulje"]},
+      {"id": "bucino", "naziv": "bučino i ostala ulja", "uk": ["bucin", "orah", "sezam", "lanen", "kokos"]}
+    ]},
+    {"id": "ocat", "naziv": "Ocat", "ikona": "🍶", "zadano": [1, "l"], "rijeci": ["ocat", "octa", "alkoholni ocat", "jabucni ocat", "balzamico"], "uk": ["ocat", "octa", "balzamico", "balsamico", "aceto bals", "ocat balz", "ocat bals"], "isk": ["u octu", "krastav", "kornison", "za kosu", "balzam za", "balsam za", "regener", "paprik", "cikla", "salat"], "pod": []},
+    {"id": "voda", "naziv": "Voda", "ikona": "💧", "zadano": [1.5, "l"], "rijeci": ["voda", "vode", "vodu", "mineralna voda", "mineralne vode", "gazirana voda", "negazirana voda", "kisela voda", "jamnica", "jana"], "uk": ["voda", "vode", "mineraln", "izvorska", "kisela voda", "jamnica", "jana ", "jana,", "studena", "voda sensation"], "isk": ["toaletna", "micelarna", "parfem", "kolonj", "vodopija", "termalna", "za lice", "destilir", "za glacanje", "osvjez", "cistac", "vodootporn", "deterdz", "ruzina", "toalet", "kupka", "sprej", "maramic", "sirup", "vodka", "votka", "voden", "u vodi", "vlastit", "kokosova", "tonic", "tonik", "boja za", "felix", "deo", "roll on"], "pod": [
+      {"id": "negazirana", "naziv": "negazirana voda", "uk": ["negazir", "izvorska", "prirodna izvor", "stolna", "still", "jana", "studena"], "rijeci": ["negazirana voda", "obicna voda", "izvorska voda"]},
+      {"id": "gazirana", "naziv": "mineralna i gazirana voda", "uk": ["mineral", "gazir", "kisela", "jamnica", "sensation"], "rijeci": ["mineralna voda", "kisela voda", "gazirana voda"]}
+    ]},
+    {"id": "sok", "naziv": "Sokovi", "ikona": "🧃", "zadano": [1, "l"], "rijeci": ["sok", "soka", "sokove", "sokovi", "nektar", "cedevita", "coca cola", "kola", "cola", "fanta", "sprite", "gazirani sok", "ledeni caj"], "uk": ["sok ", "sok,", "nektar", "cedevita", "coca", "cola", "pepsi", "fanta", "sprite", "schweppes", "cockta", "pipi", "orangina", "limunada", "gazirani", "napitak gaz", "tonic", "bitter lemon", "energet", "red bull", "monster", "sirup", "smoothie", "100% sok", "multivitamin"], "isk": ["limun sok", "sok od limuna", "kocka", "jogurt", "pivo", "radler", "rum", "votka", "vodka", "whisk", "gin ", "liker", "bombon", "zvak", "keks", "sladoled", "kasic", "cokolad", "umak", "sojin", "zobeni", "bademov"], "pod": [
+      {"id": "gazirani", "naziv": "gazirani sokovi", "uk": ["coca", "cola", "pepsi", "fanta", "sprite", "schweppes", "cockta", "pipi", "gazir", "tonic", "bitter", "orangina", "limunada"], "rijeci": ["coca cola", "kola", "cola", "gazirani sok", "fanta", "sprite"]},
+      {"id": "vocni", "naziv": "voćni sokovi i nektari", "uk": ["nektar", "sok", "100%", "smoothie", "multivitamin"], "rijeci": ["vocni sok", "nektar", "sok od naranace", "sok od jabuke"]},
+      {"id": "instant", "naziv": "Cedevita i sirupi", "uk": ["cedevita", "sirup", "instant"], "rijeci": ["cedevita", "sirup"]},
+      {"id": "energetski", "naziv": "energetska pića", "uk": ["energet", "red bull", "monster", "burn", "hell"]}
+    ]},
+    {"id": "pivo", "naziv": "Pivo", "ikona": "🍺", "zadano": [0.5, "l"], "rijeci": ["pivo", "piva", "pive", "lager", "radler", "ozujsko", "karlovacko"], "uk": ["pivo", "piva", "lager", "radler", "ozujsk", "karlovack", "heineken", "stella", "tuborg", "laško", "lasko", "staropramen", "corona", "ipa ", "pale ale", "stout", "pivo pan", "pan lager", "pan zlatni", "tomislav pivo", "limenka piva"], "isk": ["casa za", "kvasac", "pivnica", "otvarac", "sampon", "mlinci", "hidra", "izoton"], "pod": [
+      {"id": "bezalkoholno", "naziv": "bezalkoholno pivo i radler", "uk": ["bezalkohol", "0,0", "0.0", "alcohol free", "radler"]},
+      {"id": "svijetlo", "naziv": "svijetlo pivo", "uk": ["pivo", "lager", "ozujsk", "karlovack", "pan", "heineken", "tomislav", "stella", "tuborg", "lasko", "corona"]}
+    ]},
+    {"id": "vino", "naziv": "Vino", "ikona": "🍷", "zadano": [0.75, "l"], "rijeci": ["vino", "vina", "crno vino", "bijelo vino", "rose", "pjenusac", "prosecco"], "uk": ["vino", "vina", "pjenusac", "prosecco", "merlot", "cabernet", "grasevin", "malvazij", "plavac", "teran", "chardonnay", "pinot", "sauvignon", "rizling", "frankovk", "zlahtin", "posip", "babic", "rose ", "spritzer", "bevanda"], "isk": ["ocat", "vinski ocat", "casa", "otvarac", "vinjak", "vinjet", "grozd", "liker"], "pod": [
+      {"id": "crno", "naziv": "crno vino", "uk": ["crno", "merlot", "cabernet", "plavac", "teran", "frankovk", "babic", "crveno"]},
+      {"id": "bijelo", "naziv": "bijelo vino", "uk": ["bijelo", "grasevin", "malvazij", "chardonnay", "pinot", "sauvignon", "rizling", "zlahtin", "posip"]},
+      {"id": "pjenusac", "naziv": "pjenušac i prosecco", "uk": ["pjenus", "prosecco", "spumante", "champagne"]}
+    ]},
+    {"id": "piletina", "naziv": "Piletina", "ikona": "🍗", "zadano": [1, "kg"], "rijeci": ["piletina", "piletine", "piletinu", "pileca prsa", "pilecih prsa", "pileci batak", "pilece", "pile", "pileta", "batak", "bataci", "krilca"], "uk": ["pilet", "pileci", "pilec", "pile ", "pile,", "pilic", "pileta", "pureci", "puret", "pura ", "batak", "zabatak", "krilc", "chicken"], "isk": ["pasteta", "hrenovk", "salama", "kobas", "juha", "kocka", "cips", "zacin", "nuggets za", "hrana za", "mačk", "mack", "psi", "pas ", "kroket", "parizer", "sunka", "narezak", "pecenica", "lijes", "u konzervi", "gotov", "sendvic", "wrap", "pizza", "krem", "vegeta"], "pod": [
+      {"id": "prsa", "naziv": "pileća prsa i file", "uk": ["prsa", "file", "fileti", "odrezak"], "rijeci": ["pileca prsa", "pilecih prsa", "pileci file"]},
+      {"id": "batak", "naziv": "batak, zabatak i krilca", "uk": ["batak", "zabatak", "krilc", "nogic", "noge"], "rijeci": ["batak", "bataci", "zabatak", "krilca"]},
+      {"id": "cijelo", "naziv": "cijelo pile", "uk": ["cijel", "trup"], "rijeci": ["cijelo pile", "pile"]},
+      {"id": "puretina", "naziv": "puretina", "uk": ["pure", "puret", "pura"], "rijeci": ["puretina", "puretine", "pureca prsa"]}
+    ]},
+    {"id": "meso", "naziv": "Svinjetina i junetina", "ikona": "🥩", "zadano": [1, "kg"], "rijeci": ["meso", "mesa", "svinjetina", "svinjetine", "junetina", "junetine", "teletina", "mljeveno meso", "mljevenog mesa", "odrezak", "odresci", "kotlet", "kotleti", "vratina", "but"], "uk": ["svinjsk", "svinjet", "junet", "junec", "jun.", "teletin", "telec", "govedin", "goved", "mljeveno meso", "miješano mljeveno", "mjesano mlj", "mljeveno", "vratina", "kotlet", "odrez", "rebarc", "buncic", "lungic", "but ", "plecka", "cevapc", "pljeskavic", "ramstek", "biftek", "janjet"], "isk": ["pasteta", "hrenovk", "salama", "kobas", "juha", "kocka", "konzerv", "pizza", "zacin", "kroket", "mast", "cvarci", "cips", "hrana za", "gotov", "u umaku", "lazanj", "sarma", "punjen", "rizoto", "vegeta", "riblj", "tuna", "losos", "oslic", "pas", "mack"], "pod": [
+      {"id": "mljeveno", "naziv": "mljeveno meso", "uk": ["mljeven"], "rijeci": ["mljeveno meso", "mljevenog mesa", "mljeveno"]},
+      {"id": "svinjetina", "naziv": "svinjetina", "uk": ["svinj", "vratina", "kotlet", "lungic", "buncic", "rebarc", "plecka"], "rijeci": ["svinjetina", "svinjetine", "svinjski kotlet"]},
+      {"id": "junetina", "naziv": "junetina i teletina", "uk": ["junet", "junec", "teletin", "telec", "goved", "ramstek", "biftek"], "rijeci": ["junetina", "junetine", "teletina", "govedina"]},
+      {"id": "cevapi", "naziv": "ćevapi i pljeskavice", "uk": ["cevap", "pljeskav"], "rijeci": ["cevapi", "cevapcici", "pljeskavice"]}
+    ]},
+    {"id": "riba", "naziv": "Riba i plodovi mora", "ikona": "🐟", "zadano": [1, "kg"], "rijeci": ["riba", "ribe", "ribu", "tuna", "tune", "tunu", "sardine", "srdele", "losos", "lososa", "oslic", "oslica", "lignje", "skampi", "pastrva"], "uk": ["tuna", "tunj", "sardin", "srdel", "losos", "oslic", "lignj", "skamp", "pastrv", "skus", "bakalar", "hobotnic", "kozic", "dagnj", "orad", "brancin", "riblj", "inćun", "incun", "sipa ", "sipe", "riba ", "ribe "], "isk": ["hrana za", "mack", "psi", "pas ", "ulje od", "omega", "kapsul", "pasteta za", "zacin za", "sipak", "deterdz", "stapici za"], "pod": [
+      {"id": "tuna", "naziv": "tuna u konzervi", "uk": ["tuna", "tunj"], "rijeci": ["tuna", "tune", "tunu"]},
+      {"id": "sardine", "naziv": "sardine i skuša", "uk": ["sardin", "srdel", "skus", "incun"], "rijeci": ["sardine", "srdele"]},
+      {"id": "svjeza", "naziv": "svježa i smrznuta riba", "uk": ["losos", "oslic", "pastrv", "bakalar", "orad", "brancin", "file", "riba"], "rijeci": ["losos", "oslic", "pastrva"]},
+      {"id": "plodovi", "naziv": "lignje, škampi i plodovi mora", "uk": ["lignj", "skamp", "kozic", "hobotnic", "dagnj", "sipa"], "rijeci": ["lignje", "skampi"]}
+    ]},
+    {"id": "suhomesnato", "naziv": "Šunka, salama i hrenovke", "ikona": "🥓", "zadano": [200, "g"], "rijeci": ["sunka", "sunke", "sunku", "salama", "salame", "salamu", "hrenovke", "hrenovka", "hrenovki", "kobasica", "kobasice", "kobasicu", "slanina", "slanine", "prsut", "prsuta", "pancetta", "parizer", "pecenica", "pasteta", "paste"], "uk": ["sunka", "sunke", "salama", "salame", "hrenovk", "kobas", "slanin", "prsut", "pancet", "parizer", "pecenic", "mortadel", "kulen", "cajna", "zimska", "pasteta", "narezak", "frankfurt", "safalad", "pancet", "carsk"], "isk": ["hrana za", "mack", "psi", "pas ", "pizza", "sendvic", "burek", "tortelini", "zacin", "u tijestu"], "pod": [
+      {"id": "sunka", "naziv": "šunka i pečenica", "uk": ["sunka", "sunke", "pecenic", "narezak"], "rijeci": ["sunka", "sunke", "sunku", "pecenica"]},
+      {"id": "salama", "naziv": "salama i kulen", "uk": ["salam", "kulen", "cajna", "zimska", "mortadel", "parizer"], "rijeci": ["salama", "salame", "salamu", "parizer"]},
+      {"id": "hrenovke", "naziv": "hrenovke i kobasice", "uk": ["hrenovk", "kobas", "frankfurt", "safalad"], "rijeci": ["hrenovke", "hrenovka", "kobasice", "kobasica"]},
+      {"id": "prsut", "naziv": "pršut i slanina", "uk": ["prsut", "slanin", "pancet"], "rijeci": ["prsut", "slanina"]},
+      {"id": "pasteta", "naziv": "pašteta", "uk": ["pasteta"], "rijeci": ["pasteta", "paste"]}
+    ]},
+    {"id": "grah", "naziv": "Grah, leća i mahunarke", "ikona": "🫘", "zadano": [500, "g"], "rijeci": ["grah", "graha", "leca", "lece", "slanutak", "grasak", "graska", "mahune"], "uk": ["grah", "leca", "lece", "slanut", "grasak", "graska", "mahun", "soja zrno", "bob "], "isk": ["cips", "pasteta", "juha od", "kava", "kakao", "salata", "hummus", "humus", "falafel", "cokolad", "kokice", "sladoled", "smrznut mix", "vanilij"], "pod": [
+      {"id": "grah", "naziv": "grah", "uk": ["grah"]},
+      {"id": "leca", "naziv": "leća i slanutak", "uk": ["leca", "lece", "slanut"]},
+      {"id": "grasak", "naziv": "grašak i mahune", "uk": ["grasak", "graska", "mahun"]}
+    ]},
+    {"id": "zitarice", "naziv": "Pahuljice i žitarice", "ikona": "🥣", "zadano": [500, "g"], "rijeci": ["pahuljice", "pahuljica", "zobene pahuljice", "corn flakes", "musli", "zitarice", "zitarica"], "uk": ["pahulj", "musli", "muesli", "granola", "corn flakes", "cornflakes", "zitaric", "zobene", "choco pops", "chocapic", "nesquik zit", "fitness", "cini mini", "kosmic", "jastucic"], "isk": ["cokolad za", "kava", "kapsul", "deterdz", "sapun", "vrece", "za kruh", "bombon"], "pod": []},
+    {"id": "kolaci", "naziv": "Kolači i torte", "ikona": "🍰", "zadano": [1, "pak"], "rijeci": ["kolac", "kolaca", "kolace", "torta", "torte", "strudel", "strudla", "krafna", "krafne", "muffin", "muffini"], "uk": ["kolac", "torta", "torte", "strudel", "strudl", "muffin", "brownie", "biskvitni kolac", "kroasan s", "rolada", "savijaca", "pita od", "baklava", "kremsnit"], "isk": ["smjesa za", "mix za", "prasak za", "kalup", "dekor", "posip", "krema za tor", "svjecic", "boja za", "mjesavina za"], "pod": []},
+    {"id": "dzem", "naziv": "Džem, med i namazi", "ikona": "🍯", "zadano": [1, "pak"], "rijeci": ["dzem", "dzema", "pekmez", "pekmeza", "marmelada", "med", "meda", "nutella", "eurokrem", "namaz", "kikiriki maslac"], "uk": ["dzem", "pekmez", "marmelad", "med ", "med,", "meda ", "medni", "nutella", "eurokrem", "lino lada", "linolada", "namaz od", "lesnjak namaz", "kikiriki maslac", "maslac od kikir", "kremni namaz", "cokoladni namaz"], "isk": ["medvjed", "medalj", "medicin", "meden", "medeno", "keks", "sapun", "sampon", "krema za", "bombon", "liker", "rakija", "medovaca", "muffin"], "pod": [
+      {"id": "dzem", "naziv": "džem i marmelada", "uk": ["dzem", "pekmez", "marmelad"]},
+      {"id": "med", "naziv": "med", "uk": ["med", "medni"]},
+      {"id": "namaz", "naziv": "čokoladni i ostali namazi", "uk": ["nutella", "eurokrem", "lino", "namaz", "kikiriki"]}
+    ]},
+    {"id": "grickalice", "naziv": "Grickalice", "ikona": "🥨", "zadano": [1, "pak"], "rijeci": ["cips", "cipsa", "grickalice", "grickalica", "smoki", "kokice", "kikiriki", "stapici", "perece", "pistacije", "orasasti plodovi", "lesnjaci", "orasi", "bademi"], "uk": ["cips", "chips", "smoki", "kokic", "kikiriki", "stapic", "perec", "flips", "pistac", "lesnjak", "orah", "orasi", "bademi", "indijski", "grickal", "tortilla", "nachos", "pringles", "slani stap", "mjesavina orasast"], "isk": ["namaz", "maslac", "brasno", "cokolad", "ulje", "keks", "sladoled", "riblj", "rakovi", "rakija", "liker", "orahovac", "zvakac", "muskatni", "za usi"], "pod": [
+      {"id": "cips", "naziv": "čips", "uk": ["cips", "chips", "pringles", "tortilla", "nachos"], "rijeci": ["cips", "cipsa"]},
+      {"id": "smoki", "naziv": "smoki i flips", "uk": ["smoki", "flips"], "rijeci": ["smoki"]},
+      {"id": "orasasti", "naziv": "orašasti plodovi", "uk": ["kikiriki", "pistac", "lesnjak", "orah", "orasi", "bademi", "indijski", "mjesavina"], "rijeci": ["kikiriki", "orasi", "lesnjaci", "bademi"]},
+      {"id": "stapici", "naziv": "štapići, pereci i kokice", "uk": ["stapic", "perec", "kokic"], "rijeci": ["stapici", "kokice"]}
+    ]},
+    {"id": "smrznuto", "naziv": "Smrznuto povrće i pizza", "ikona": "🧊", "zadano": [1, "pak"], "rijeci": ["smrznuto povrce", "smrznuta pizza", "pizza", "pizze", "smrznuti grasak", "spinat", "spinata"], "uk": ["pizza", "pizze", "smrznut", "zamrznut", "duboko smrz", "spinat", "brokul", "cvjetac", "mjesavina povrca", "povrce za juhu", "povrtna mjes"], "isk": ["za pizzu", "umak za", "brasno", "zacin", "kalup", "noz", "rezac", "sir za", "juha", "mjesavina za", "kokos", "vrecica", "bombon", "grissini", "bake rolls"], "pod": [
+      {"id": "pizza", "naziv": "smrznuta pizza", "uk": ["pizza", "pizze"], "rijeci": ["pizza", "pizze", "smrznuta pizza"]},
+      {"id": "povrce", "naziv": "smrznuto povrće", "uk": ["spinat", "brokul", "cvjetac", "povrc", "grasak", "mahun", "smrznut", "zamrznut"], "rijeci": ["smrznuto povrce", "spinat"]}
+    ]},
+    {"id": "zacini", "naziv": "Začini i umaci", "ikona": "🌶️", "zadano": [1, "pak"], "rijeci": ["zacin", "zacini", "vegeta", "papar", "papra", "majoneza", "majoneze", "ketchup", "kecap", "senf", "sens", "ajvar", "umak", "kocka za juhu", "juha", "juhe"], "uk": ["vegeta", "zacin", "papar", "papra", "majonez", "ketchup", "kecap", "senf", "ajvar", "umak", "kocka za", "juha ", "juha,", "instant juha", "lovor", "origano", "bosiljak", "cimet", "vanilin", "prasak za pec", "kvasac", "mljevena paprika", "paprika mljev", "kurkum", "curry", "pesto", "dresing", "preljev", "sens "], "isk": ["za pse", "za mack", "losion", "krema", "sampon", "gel", "zub", "cetkic", "pasta za zube", "sensia"], "pod": [
+      {"id": "vegeta", "naziv": "Vegeta i univerzalni začin", "uk": ["vegeta", "univerzaln", "dodatak jelima"], "rijeci": ["vegeta"]},
+      {"id": "majoneza", "naziv": "majoneza, ketchup i senf", "uk": ["majonez", "ketchup", "kecap", "senf", "sens"], "rijeci": ["majoneza", "ketchup", "kecap", "senf"]},
+      {"id": "juhe", "naziv": "juhe i kocke", "uk": ["juha", "kocka"], "rijeci": ["juha", "juhe", "kocka za juhu"]},
+      {"id": "kvasac", "naziv": "kvasac i dodaci za kolače", "uk": ["kvasac", "prasak", "vanilin", "puding"], "rijeci": ["kvasac", "prasak za pecivo", "vanilin secer"]},
+      {"id": "zacini", "naziv": "papar i ostali začini", "uk": ["papar", "papra", "lovor", "origano", "bosiljak", "cimet", "kurkum", "curry", "paprika", "zacin"], "rijeci": ["papar", "papra"]}
+    ]},
+    {"id": "slatkisi", "naziv": "Bomboni i slatkiši", "ikona": "🍬", "zadano": [1, "pak"], "rijeci": ["bomboni", "bombona", "bombone", "zvakaca", "zvake", "lizalica", "gumeni bomboni", "kinder", "slatkisi"], "uk": ["bombon", "zvakac", "zvake", "lizalic", "gumeni", "haribo", "kinder", "bajadera", "bananic", "napolitan", "rafaello", "raffaello", "ferrero", "toblerone", "snickers", "mars ", "twix", "bounty", "kitkat", "kit kat", "milka", "domacica", "praline", "desert", "puding", "slag"], "isk": ["za pecenje", "napitak", "sladoled", "keks"], "pod": []}
+  ]
+}
