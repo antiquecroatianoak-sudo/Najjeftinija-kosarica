@@ -58,3 +58,10 @@ Pregledati PR #7 i usporediti ga s aktualnom produkcijskom granom. Provjeriti st
 - Zapreka: TWA traži `/.well-known/assetlinks.json` u korijenu domene; projektni Pages URL to ne pokriva. Potrebna je odluka (korisnička Pages stranica ili vlastita domena).
 - Nije provjereno: mreža ove sesije blokira github.io (403), pa živa verzija i datum cjenika nisu potvrđeni.
 - Sljedeći korak: vlasnik potvrđuje pristup, ID aplikacije i domenu. Zatim slijedi korak 2 (TWA build + assetlinks). Gotovo kad APK radi na vlasnikovu mobitelu i testovi u `tests/` prolaze.
+
+## Zapis 5.11.2026. 10:20 CET (Europe/Zagreb) — korak 2: probna Android aplikacija
+- Vlasnik je odobrio TWA pristup i troškove. ID aplikacije `hr.najjeftinijakosarica.app` i domena github.io korišteni su kao **pretpostavka** (prijedlog), još nisu izričito potvrđeni. ID je reverzibilan do prvog uploada na Google Play.
+- Implementirano: `android/` (android-browser-helper 2.5.0, AGP 8.10.1, target/compile SDK 36) i `.github/workflows/android.yml` (APK + AAB; trajni ključ iz tajni `ANDROID_KEYSTORE_B64` itd., inače privremeni ključ po pokretanju). Upute: `docs/android-instalacija.md`.
+- Dokaz: run [42000408675](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42000408675) na commitu `a011f0a` je success; artefakt `kosarica-android-1` (APK + AAB) vrijedi do 5.12.2026. Postojeći testovi u `tests/` (14) lokalno prolaze; `site/` nije mijenjan.
+- Nije testirano: instalacija i rad na stvarnom mobitelu. Bez assetlinks.json na korijenu domene aplikacija prikazuje traku s adresom. Ništa nije spojeno u produkcijsku granu ni objavljeno na Google Play.
+- Sljedeći korak: vlasnik instalira APK i javi rezultat provjera iz `docs/android-instalacija.md`; odluka o domeni za assetlinks. Gotovo kad aplikacija radi na vlasnikovu mobitelu.
