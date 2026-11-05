@@ -32,25 +32,25 @@ Root causes found: (1) no location control on the main screen, only a separate m
 - [x] Quantity, brand and type always shown next to the price – every result line: pack size, brand, type (subgroup), number of packs, price per kg/l/kom; "količina nije objavljena" when the store did not publish it. Root fix: 7,929 products had sizes like "0,415 kom" (weight written as pieces) – now read correctly from the name or marked unknown. NEW: "neobično niska cijena – provjeri u trgovini" next to prices below 1/8 of the normal price per kg/l (e.g. chicken legs 0,29 €/kg).
 
 ## Part 3 – Results (after the list is locked)
-- [ ] Cheapest item of each group and which store has it
-- [ ] Cheapest single store for the whole list
-- [ ] Best mix of two stores
-- [ ] Tapping an item swaps it for the next cheapest in the same group
-- [ ] User chooses stores; only those are searched
+- [x] Cheapest item of each group and which store has it – view A, checked on real data with a 15-item list (each line: product, brand, size, type, store, price, price per kg/l).
+- [x] Cheapest single store for the whole list – view B (real data: Konzum 19,13 € for the 15 items; with location: real stores in the circle).
+- [x] Best mix of two stores – view C (real data: Konzum + Trgovina Krk 15,64 €, 3,49 € less than all in Konzum); test checks the pair is never dearer than one store.
+- [x] Tapping an item swaps it for the next cheapest in the same group – browser test: "Kruh bijeli 700 g" → "Kruh polubijeli 310 g", and "Vrati" undoes it.
+- [x] User chooses stores; only those are searched – real data: only Konzum + Lidl ticked → A, B and C show only those two, and "2 od 26 lanaca".
 
 ## Part 5 – Extra screens
-- [ ] Savings counter (main feature)
-- [ ] Weekly deals
-- [ ] Shared family list
-- [ ] "Report wrong price" button
-- [ ] In-store barcode scan to check the price
-- [ ] Share list and results via Viber, WhatsApp, etc.
+- [x] Savings counter (main feature) – always visible top right; "Kupio/la sam" adds the saving (real data: 0,00 € → 9,30 €); Više → Moja ušteda shows the history.
+- [x] Weekly deals – real data: 150 deals in 0,1 s, biggest discount first, search and group filter.
+- [~] Shared family list – works by sending a link (opens the same list on the other phone; tested). Limit: not live/real-time; that needs an online database (a cost/account decision for you).
+- [x] "Report wrong price" button – ⓘ next to every product → "Prijavi pogrešnu cijenu" (opens a GitHub issue or copies the report); tested on real data.
+- [x] In-store barcode scan to check the price – camera scan (where the phone's Chrome supports it) or typing the number; real data: 5449000000286 → Coca-Cola 2L with prices per chain; merged duplicates keep every barcode.
+- [x] Share list and results via Viber, WhatsApp, etc. – "Pošalji" uses the phone's share menu, plus direct WhatsApp/Viber/SMS links (tested).
 
 ## Part 6 – Design and money
-- [ ] Modern, attractive, premium-looking design, easy for everyone
-- [ ] Free version with a few small ads
-- [ ] Premium about 1.99 EUR/month: no ads, extra features
-- [ ] Stores can never pay to look cheaper
+- [x] Modern, attractive, premium-looking design, easy for everyone – checked on screenshots at phone size (320–768 px, no sideways scrolling); big buttons, light and dark mode.
+- [~] Free version with a few small ads – small marked ad places are in the app. Limit: no ad network is connected; that needs an account in your name (e.g. Google AdSense).
+- [~] Premium about 1.99 EUR/month: no ads, extra features – described in Postavke ("uskoro · 1,99 €/mj"). Limit: payments are not connected; that needs a payment provider account in your name.
+- [x] Stores can never pay to look cheaper – ranking uses only price; stated in the app next to the ad place and in Postavke; no code path changes order for ads or Premium.
 
 ## Part 7 – Final check
 - [ ] Every part tested together as a normal customer would use it (real data, phone size)

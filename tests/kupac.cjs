@@ -89,6 +89,67 @@ const t0 = () => Date.now();
     console.log('  C: ' + (await s.locator('.sazetak').innerText()).replace(/\n+/g, ' | ').slice(0, 200));
   }
 
+  if (korak('trgovine')) {
+    console.log('Odabir trgovina (samo Konzum i Lidl)');
+    await s.click('nav [data-idi="vise"]');
+    await s.click('[data-idi="trgovine"]');
+    await s.click('[data-akcija="lanci-nijedan"]');
+    await s.check('input[data-lanac="konzum"]');
+    await s.check('input[data-lanac="lidl"]');
+    await s.click('nav [data-idi="rezultati"]');
+    await s.waitForSelector('.sazetak', { timeout: 30000 });
+    for (const tab of ['A', 'B', 'C']) {
+      await s.click(`[data-tab="${tab}"]`);
+      await s.waitForSelector('.sazetak');
+      const tekst = await s.locator('.zaslon').innerText();
+      const drugi = ['Plodine', 'Kaufland', 'Spar', 'Tommy', 'Studenac', 'Eurospin', 'Žabac', 'Trgovina Krk', 'Interspar', 'NTL', 'KTC', 'dm']
+        .filter((n) => new RegExp(`(^|\\n)${n}(\\n| |$)`).test(tekst));
+      provjeri(/Konzum|Lidl/.test(tekst) && drugi.length === 0, `${tab}: samo Konzum i Lidl${drugi.length ? ' – pojavljuje se i: ' + drugi.join(', ') : ''}`);
+    }
+    provjeri(/2 od \d+ lanaca/.test(await s.locator('.zaslon').innerText()), 'rezultati pokazuju „2 od N lanaca”');
+    await snimi('trgovine-c');
+    await s.click('nav [data-idi="vise"]');
+    await s.click('[data-idi="trgovine"]');
+    await s.click('[data-akcija="lanci-svi"]');
+  }
+
+  if (korak('dodatno')) {
+    console.log('Dodatni zasloni');
+    // ušteda
+    await s.click('nav [data-idi="rezultati"]');
+    await s.waitForSelector('.sazetak', { timeout: 30000 });
+    const prije = await s.locator('#ustedaIznos').innerText();
+    if (await s.locator('[data-akcija="kupljeno"]').count()) await s.click('[data-akcija="kupljeno"]');
+    await s.waitForTimeout(300);
+    provjeri(await s.locator('#ustedaIznos').innerText() !== prije, `ušteda: ${prije} → ${await s.locator('#ustedaIznos').innerText()}`);
+    // akcije
+    t = t0();
+    await s.click('nav [data-idi="akcije"]');
+    await s.waitForSelector('.akcija, .prazno', { timeout: 30000 });
+    const n = await s.locator('.akcija').count();
+    provjeri(n > 0, `akcije: ${n} prikazano za ${((Date.now() - t) / 1000).toFixed(1)} s`);
+    await snimi('akcije');
+    // skener: stvarni barkod
+    await s.click('nav [data-idi="vise"]');
+    await s.click('[data-idi="skener"]');
+    await s.waitForSelector('#barkodPolje, input[inputmode="numeric"]');
+    await s.fill('#barkodPolje, input[inputmode="numeric"]', '5449000000286');
+    await s.keyboard.press('Enter');
+    await s.waitForSelector('.ploca-sadrzaj .tablica', { timeout: 5000 }).catch(() => {});
+    const skener = await s.locator('body').innerText();
+    provjeri(/Coca/i.test(skener), 'skener: barkod 5449000000286 → ' + ((skener.match(/Coca[^\n]*/i) || ['-'])[0]));
+    provjeri(await s.locator('.ploca-sadrzaj [data-akcija="prijavi"]').count() === 1, 'gumb „Prijavi pogrešnu cijenu” u detaljima proizvoda');
+    await snimi('skener');
+    await s.click('.ploca-pozadina', { position: { x: 10, y: 10 } });
+    // obiteljski popis i dijeljenje
+    await s.click('nav [data-idi="vise"]');
+    await s.click('[data-idi="obitelj"]');
+    await s.waitForTimeout(300);
+    const obitelj = await s.locator('.zaslon').innerText();
+    provjeri(/#popis=|poveznic/i.test(obitelj) || await s.locator('[data-akcija*="dijeli"], [data-akcija*="posalji"]').count() > 0, 'obiteljski popis: poveznica za dijeljenje');
+    await snimi('obitelj');
+  }
+
   if (korak('lokacija')) {
     console.log('Lokacija (jedan gumb na glavnom zaslonu)');
     await s.click('nav [data-idi="popis"]');
