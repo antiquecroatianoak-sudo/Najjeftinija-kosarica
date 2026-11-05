@@ -89,16 +89,32 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await snimi('6-proizvod');
   await s.click('.ploca-pozadina', { position: { x: 10, y: 10 } });
 
-  console.log('Trgovine, lokacija i karta');
+  console.log('Lokacija: jedan gumb na glavnom zaslonu');
+  await s.click('nav [data-idi="popis"]');
+  await s.waitForSelector('.lokacija-gumb');
+  provjeri(/Cijela Hrvatska/.test(await s.locator('.lokacija-gumb').innerText()), 'gumb lokacije na glavnom zaslonu (bez lokacije: cijela HR)');
+  await s.click('.lokacija-gumb');
+  await s.waitForSelector('.lok-ploca');
+  await s.waitForSelector('.lok-krug:not([disabled])', { timeout: 25000 });
+  const krugovi = await s.locator('.lok-krug').allInnerTexts();
+  provjeri(krugovi.length === 4 && krugovi.every((x) => /km/.test(x) && /trgovin/.test(x)), 'jedan dodir: lokacija pronađena, krugovi 2/5/10/20 km s brojem trgovina');
+  await snimi('7a-lokacija-ploca');
+  await s.click('.lok-krug[data-r="10"]');
+  await s.waitForTimeout(300);
+  provjeri(await s.locator('#ploca').isHidden(), 'nakon odabira kruga ploča se zatvara');
+  const gumbTekst = await s.locator('.lokacija-gumb').innerText();
+  const brojUKrugu = Number((gumbTekst.match(/U krugu 10 km · (\d+) trgovin/) || [])[1] || 0);
+  provjeri(brojUKrugu > 0 && await s.locator('.stavke').count() === 1, `odmah natrag na popis; gumb pokazuje krug i broj trgovina (${brojUKrugu})`);
+  await snimi('7b-popis-krug');
   await s.click('nav [data-idi="karta"]');
   await s.waitForSelector('#karta');
-  await s.click('[data-akcija="radijus"][data-r="10"]');
-  await s.waitForTimeout(800);
-  provjeri(/u krugu 10 km/i.test(await s.locator('.naslov-zaslona').innerText()), 'krug 10 km oko lokacije');
+  provjeri(/u krugu 10 km/i.test(await s.locator('.naslov-zaslona').innerText()), 'karta prikazuje isti krug');
   await snimi('7-karta');
   await s.click('nav [data-idi="rezultati"]');
   await s.waitForSelector('.sazetak, .prazno', { timeout: 20000 });
-  provjeri(/U krugu 10 km/.test(await s.locator('.zaslon').innerText()), 'rezultati koriste poslovnice u krugu');
+  const rezKrug = await s.locator('.zaslon').innerText();
+  const brojPoslovnica = Number((rezKrug.match(/U krugu 10 km: (\d+) poslovnic/) || [])[1] || 0);
+  provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
   await snimi('8-rezultat-krug');
 
   console.log('Akcije i Više');
@@ -167,6 +183,46 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     await s.setViewportSize({ width: w, height: 800 });
     const siroko = await s.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     provjeri(!siroko, `bez vodoravnog pomicanja na ${w}px`);
+  }
+
+  console.log('Lokacija: odbijeno dopuštenje i spora veza (zaslon se ne smije zaglaviti)');
+  {
+    const k2 = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR' });
+    await k2.route(/tile\.openstreetmap\.org/, (r) => r.abort());
+    const s2 = await k2.newPage();
+    s2.on('pageerror', (e) => greske.push('pageerror (odbijeno): ' + e.message));
+    await s2.addInitScript(() => {
+      navigator.geolocation.getCurrentPosition = (ok, ne) => setTimeout(() => ne({ code: 1, message: 'denied' }), 200);
+    });
+    await s2.goto(url);
+    await s2.waitForSelector('.lokacija-gumb');
+    await s2.click('.lokacija-gumb');
+    await s2.waitForSelector('.lok-stanje.upozorenje', { timeout: 5000 });
+    provjeri(/nije dopuštena/.test(await s2.locator('.lok-stanje').innerText()), 'odbijena lokacija: jasna poruka kako je dopustiti');
+    await s2.click('[data-akcija="lok-iskljuci"]');
+    await s2.waitForTimeout(200);
+    provjeri(await s2.locator('#ploca').isHidden() && /Cijela Hrvatska/.test(await s2.locator('.lokacija-gumb').innerText()), 'bez lokacije aplikacija radi dalje (cijela HR)');
+    await k2.close();
+
+    const k3 = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR', geolocation: { latitude: 45.8130, longitude: 15.9770 }, permissions: ['geolocation'] });
+    await k3.route(/tile\.openstreetmap\.org/, (r) => r.abort());
+    await k3.route(/\/data\/hr\/s\//, async (r) => { await new Promise((z) => setTimeout(z, 60000)); try { await r.continue(); } catch { /* prekinuto */ } });
+    const s3 = await k3.newPage();
+    s3.on('pageerror', (e) => greske.push('pageerror (spora veza): ' + e.message));
+    await s3.goto(url);
+    await s3.waitForSelector('#upisPolje');
+    await s3.fill('#upisPolje', 'kruh, mlijeko');
+    await s3.press('#upisPolje', 'Enter');
+    await s3.click('.lokacija-gumb');
+    await s3.waitForSelector('.lok-krug:not([disabled])', { timeout: 25000 });
+    await s3.click('.lok-krug[data-r="20"]');
+    await s3.click('[data-akcija="zakljucaj"]');
+    const t0 = Date.now();
+    await s3.waitForSelector('.sazetak', { timeout: 25000 });
+    const sek = (Date.now() - t0) / 1000;
+    provjeri(sek < 20, `spora veza: rezultati za ${sek.toFixed(1)} s (rok 15 s), zaslon se ne zaglavi`);
+    provjeri(/nisu se učitale na vrijeme/.test(await s3.locator('.zaslon').innerText()) && await s3.locator('[data-akcija="ponovno-poslovnice"]').count() === 1, 'spora veza: umjesto praznog zaslona cijene lanaca, jasno objašnjenje i „Pokušaj ponovno”');
+    await k3.close();
   }
 
   provjeri(greske.length === 0, 'nema JavaScript grešaka' + (greske.length ? ':\n' + greske.join('\n') : ''));

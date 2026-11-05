@@ -45,6 +45,14 @@ export async function nacrtajKartu(element, { poslovnice, lokacija, boja, naziv,
   karta.on('click', (e) => {
     if (confirm('Postaviti ovu točku kao središte kruga za usporedbu?')) odaberi(e.latlng.lat, e.latlng.lng);
   });
-  setTimeout(() => karta.invalidateSize(), 50);
+  // odgođeno preračunavanje veličine samo dok je karta još na zaslonu (inače Leaflet baca "_leaflet_pos")
+  const sat = setTimeout(() => { if (element.isConnected && karta._loaded && !karta._uklonjena) karta.invalidateSize(); }, 50);
+  karta.on('unload', () => { karta._uklonjena = true; clearTimeout(sat); });
   return karta;
+}
+
+// Sigurno uklanjanje karte: zaustavi animacije prije uklanjanja.
+export function ukloniKartu(karta) {
+  if (!karta) return;
+  try { karta._uklonjena = true; karta.stop(); karta.off(); karta.remove(); } catch { /* karta je već uklonjena */ }
 }

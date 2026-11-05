@@ -17,12 +17,13 @@ App: https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/
 - [x] Data status screen shows when prices were last updated – checked with the real data in a phone-size browser (`tests/kupac.cjs status`): date 5.11.2026 and every chain shown.
 
 ## Part 4 – Location (fix right after Part 1)
-- [ ] One location icon on the main screen
-- [ ] One tap gets the user's location
-- [ ] User picks a radius: 2, 5, 10 or 20 km
-- [ ] Only stores inside the circle are used – on the map and in the results
-- [ ] Goes straight back to the list; no extra steps; screen never gets stuck
-- [ ] Location is optional (everything works without it)
+Root causes found: (1) no location control on the main screen, only a separate map tab; (2) store prices could wait minutes on a weak connection (3 tries × 20 s per store); (3) the browser tests never had store coordinates (`--bez-dopune` silently dropped the coordinates file), so the location path was never really tested – fixed in the importer, tests now require stores inside the circle.
+- [x] One location icon on the main screen – big button at the top of the list screen: "Trgovine u blizini · Cijela Hrvatska" or "U krugu 5 km · 77 trgovina". The same button is the location chip on the results screen.
+- [x] One tap gets the user's location – the tap asks the phone for the position at once and opens the radius panel; own 20 s safety timer (the screen can never wait forever); clear message if location is refused or off, with "Pokušaj ponovno".
+- [x] User picks a radius: 2, 5, 10 or 20 km – each button shows the number of stores inside (real data, central Zagreb: 19 / 77 / 146 / 199).
+- [x] Only stores inside the circle are used – on the map and in the results – same circle and same store count on the list button, the map and the results (test checks the numbers match). Limit: the 60 nearest stores are compared when more are inside (e.g. 60 of 77).
+- [x] Goes straight back to the list; no extra steps; screen never gets stuck – picking a radius closes the panel and shows the list (0.8 s on real data); store prices load in the background, so results are ready at once. Slow network: hard 15 s limit; if no store loads in time, chain prices are shown with an explanation and "Pokušaj ponovno" (test with 60 s delayed store files: result after 15.4 s).
+- [x] Location is optional (everything works without it) – "Bez lokacije (cijela Hrvatska)" in the panel; refused permission tested: clear message, app keeps working.
 
 ## Part 2 – Shopping list
 - [ ] Build the list by voice; typing also works

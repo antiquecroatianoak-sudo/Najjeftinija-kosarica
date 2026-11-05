@@ -678,17 +678,20 @@ def pokreni(argumenti) -> dict:
     izlaz = Path(argumenti.izlaz)
     raz = Razvrstavanje()
 
-    if argumenti.bez_dopune:
-        dp, dpo = {}, {}
-    else:
-        dp, dpo = {}, {}
-        def tekst(izvor):
-            return (preuzmi(izvor) if izvor.startswith("http") else Path(izvor).read_bytes()).decode("utf-8", "replace")
+    # --bez-dopune isključuje samo mrežne (zadane) izvore dopune; datoteka navedena izričito uvijek se koristi
+    # (prije je --bez-dopune tiho odbacivao i --dopuna-poslovnica, pa testovi u pregledniku nisu imali koordinate).
+    dp, dpo = {}, {}
+    def tekst(izvor):
+        return (preuzmi(izvor) if izvor.startswith("http") else Path(izvor).read_bytes()).decode("utf-8", "replace")
+    def koristi(izvor, zadano):
+        return not (argumenti.bez_dopune and (izvor == zadano or str(izvor).startswith("http")))
+    if koristi(argumenti.dopuna_proizvoda, DOPUNA_PROIZVODA):
         try:
             dp = citaj_dopunu_proizvoda(tekst(argumenti.dopuna_proizvoda))
             log(f"Dopuna proizvoda: {len(dp)}")
         except Exception as e:  # noqa: BLE001 - dopuna nije obavezna
             log(f"Dopuna proizvoda nedostupna ({e}); nastavljam bez nje")
+    if koristi(argumenti.dopuna_poslovnica, DOPUNA_POSLOVNICA):
         try:
             dpo = citaj_dopunu_poslovnica(tekst(argumenti.dopuna_poslovnica))
             log(f"Koordinate poslovnica: {len(dpo)}")

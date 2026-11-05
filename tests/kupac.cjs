@@ -60,28 +60,36 @@ const t0 = () => Date.now();
   }
 
   if (korak('lokacija')) {
-    console.log('Lokacija');
+    console.log('Lokacija (jedan gumb na glavnom zaslonu)');
     await s.click('nav [data-idi="popis"]');
     await s.waitForSelector('#upisPolje');
-    await s.fill('#upisPolje', 'mlijeko, kruh, jaja');
+    await s.fill('#upisPolje', 'mlijeko, kruh, jaja, banane, kava');
     await s.press('#upisPolje', 'Enter');
     await s.waitForSelector('.stavka');
-    await snimi('lok-1-popis');
-    const ikona = s.locator('[data-akcija="lokacija"], .lokacija-gumb, [aria-label*="okacij"]');
-    console.log('  ikona lokacije na glavnom zaslonu: ' + (await ikona.count()));
-    // Trenutačni put: kartica Karta -> 5 km
+    provjeri(await s.locator('.lokacija-gumb').count() === 1, 'gumb lokacije na glavnom zaslonu');
     t = t0();
+    await s.click('.lokacija-gumb');
+    await s.waitForSelector('.lok-krug:not([disabled])', { timeout: 25000 });
+    const krugovi = await s.locator('.lok-krug').allInnerTexts();
+    console.log('  krugovi: ' + krugovi.map((x) => x.replace(/\n/g, ' ')).join(' | '));
+    await s.waitForTimeout(400);
+    await snimi('lok-1-ploca');
+    await s.click('.lok-krug[data-r="5"]');
+    await s.waitForTimeout(300);
+    const gumb = await s.locator('.lokacija-gumb').innerText();
+    provjeri(await s.locator('#ploca').isHidden() && /U krugu 5 km · \d+/.test(gumb) && await s.locator('#upisPolje').count() === 1,
+      `natrag na popis za ${((Date.now() - t) / 1000).toFixed(1)} s: ${gumb.split('\n')[0]}`);
+    await snimi('lok-2-popis');
+    await s.click('[data-akcija="zakljucaj"]');
+    t = t0();
+    await s.waitForSelector('.sazetak', { timeout: 30000 });
+    const rez = await s.locator('.zaslon').innerText();
+    provjeri(/U krugu 5 km: \d+ poslovnic/.test(rez), `rezultati za ${((Date.now() - t) / 1000).toFixed(1)} s: ${(rez.match(/U krugu 5 km: [^\n]*/) || [''])[0]}`);
+    await snimi('lok-3-rezultati');
     await s.click('nav [data-idi="karta"]');
-    await snimi('lok-2-karta');
-    const gumb5 = s.locator('[data-akcija="radijus"][data-r="5"]').first();
-    if (await gumb5.count()) {
-      await gumb5.click();
-      let zaglavljeno = false;
-      try { await s.waitForFunction(() => /u krugu 5 km/i.test((document.querySelector('.naslov-zaslona') || {}).innerText || ''), null, { timeout: 30000 }); } catch { zaglavljeno = true; }
-      console.log(`  5 km: ${((Date.now() - t) / 1000).toFixed(1)} s${zaglavljeno ? ' – NIJE ZAVRŠILO u 30 s' : ''}`);
-      await snimi('lok-3-nakon-5km');
-      console.log('  tekst zaslona: ' + (await s.locator('body').innerText()).slice(0, 600).replace(/\n+/g, ' | '));
-    }
+    await s.waitForSelector('#karta');
+    provjeri(/u krugu 5 km/.test(await s.locator('.naslov-zaslona').innerText()), 'karta: ' + (await s.locator('.naslov-zaslona').innerText()).replace(/\n/g, ' '));
+    await snimi('lok-4-karta');
   }
 
   provjeri(greske.length === 0, 'nema JavaScript grešaka' + (greske.length ? ': ' + greske.slice(0, 3).join(' ; ') : ''));
