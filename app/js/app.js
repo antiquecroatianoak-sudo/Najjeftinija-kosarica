@@ -1,6 +1,6 @@
 // Najjeftinija košarica – sučelje aplikacije.
 import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm } from './tekst.js';
-import { pripremiGrupe, rastavi, novaStavkaId } from './popis.js';
+import { pripremiGrupe, rastavi, novaStavkaId, kanon } from './popis.js';
 import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost } from './usporedba.js';
 import { ucitajPodatke, ucitajPoslovnice, pripremiPoslovnice, DRZAVE } from './podaci.js';
 import { ukljuciHvatanje, zabiljezi, izvjesce, obrisiGreske, VERZIJA_APLIKACIJE } from './greske.js';
@@ -47,6 +47,8 @@ const POCETNO = {
   drzava: 'hr', stavke: [], zakljucano: false, lanci: null, rezTab: 'B', zaslon: 'popis',
   lokacija: { ukljucena: false, lat: null, lon: null, radijus: 5, izvor: '' },
   usteda: { ukupno: 0, kupnje: [] }, premium: false, tema: 'auto', kupljenoKljuc: '',
+  povijest: {},        // id grupe/podgrupe -> koliko puta dodano (za "Često kupuješ")
+  favoriti: [],        // barkod ili naziv proizvoda
 };
 let S = ucitajStanje();
 let P = null;           // { meta, grupe, poslovnice, baza, izSpremista }
@@ -135,7 +137,7 @@ function prikazi() {
   if (karta && S.zaslon !== 'karta') { const k = karta; karta = null; import('./karta.js').then((m) => m.ukloniKartu(k)); }
   try {
     const zasloni = { popis: zaslonPopis, rezultati: zaslonRezultati, akcije: zaslonAkcije, karta: zaslonKarta, vise: zaslonVise,
-      usteda: zaslonUsteda, obitelj: zaslonObitelj, skener: zaslonSkener, status: zaslonStatus, trgovine: zaslonTrgovine,
+      usteda: zaslonUsteda, favoriti: zaslonFavoriti, obitelj: zaslonObitelj, skener: zaslonSkener, status: zaslonStatus, trgovine: zaslonTrgovine,
       postavke: zaslonPostavke, greska: zaslonGreska, o: zaslonO };
     (zasloni[S.zaslon] || zaslonPopis)(sadrzaj);
   } catch (e) {
@@ -168,7 +170,8 @@ function opisStavke(s) {
       const ima = P.baza.filtarPronaden(s);
       return `${g.naziv} · ${ima ? `samo „${esc(s.filtar)}”` : `${pod} <span class="upozorenje">(„${esc(s.filtar)}” nije pronađeno)</span>`}`;
     }
-    return `${g.naziv} · ${pod}`;
+    // ne ponavljaj ime: "Mlijeko" + "sve vrste", a ne "Mlijeko" + "Mlijeko · sve vrste"
+    return nazivStavke(s).toLowerCase() === g.naziv.toLowerCase() ? pod : `${g.naziv} · ${pod}`;
   }
   if (s.samoTaj && s.proizvod != null) return 'točno ovaj proizvod';
   const n = P.baza.trazi(s.upit || s.tekst, 1).length;
@@ -182,29 +185,69 @@ function nazivStavke(s) {
   return s.tekst.replace(/^./, (z) => z.toUpperCase());
 }
 
+const ZADANE_BRZE = ['kruh', 'mlijeko', 'jaja', 'krumpir', 'banane', 'kava', 'piletina', 'toaletni-papir', 'sir', 'jogurt'];
+
+// "Često kupuješ": najčešće dodavane grupe/podgrupe korisnika, dopunjene uobičajenima (kao Listonic/Bring!)
+function cestoKupujes() {
+  const out = [];
+  const vec = new Set(S.stavke.map((s) => `${s.g}|${s.pg}`));
+  const kljucevi = Object.entries(S.povijest || {}).sort((x, y) => y[1] - x[1]).map(([k]) => k);
+  for (const k of [...kljucevi, ...ZADANE_BRZE]) {
+    const [gid, pid] = k.split('/');
+    const g = P.grupe.findIndex((x) => x.id === gid);
+    if (g < 0) continue;
+    const pg = pid ? P.grupe[g].pod.findIndex((x) => x.id === pid) : -1;
+    if (pid && pg < 0) continue;
+    if (vec.has(`${g}|${pg}`) || out.some((x) => x.g === g && x.pg === pg)) continue;
+    out.push({ g, pg, naziv: pg >= 0 ? P.grupe[g].pod[pg].naziv : P.grupe[g].naziv, ikona: P.grupe[g].ikona });
+    if (out.length >= 10) break;
+  }
+  return out;
+}
+
+function zapamtiPovijest(stavke) {
+  S.povijest = S.povijest || {};
+  for (const s of stavke) {
+    if (s.g < 0 || s.samoTaj) continue;
+    const k = P.grupe[s.g].id + (s.pg >= 0 ? '/' + P.grupe[s.g].pod[s.pg].id : '');
+    S.povijest[k] = (S.povijest[k] || 0) + 1;
+  }
+}
+
 function zaslonPopis(el) {
   const stavke = S.stavke;
-  const brze = ['kruh', 'mlijeko', 'jaja', 'krumpir', 'banane', 'kava', 'piletina', 'toaletni-papir', 'sir', 'jogurt']
-    .map((id) => P.grupe.findIndex((g) => g.id === id)).filter((i) => i >= 0);
+  const prazan = !stavke.length;
+  const brze = cestoKupujes();
+  const imaPovijest = Object.keys(S.povijest || {}).length > 0;
+  const uKosari = stavke.filter((s) => s.uKosari).length;
+  // redoslijed: još nekupljeno gore, u košarici dolje (način kupnje)
+  const poredane = [...stavke].sort((x, y) => (x.uKosari ? 1 : 0) - (y.uKosari ? 1 : 0));
   el.innerHTML = `<div class="zaslon">
     ${gumbLokacije()}
-    ${S.zakljucano ? `<div class="zakljucano">${IKONE.lokot}<span class="razmak">Popis je zaključan. Rezultati su spremni.</span><button class="gumb mali" data-akcija="otkljucaj">Uredi</button></div>` : `
-    <section class="kartica glas">
-      <h2>Što trebaš kupiti?</h2>
-      <p class="prigusen">Dodirni mikrofon i reci, npr. „kruh, dvije litre mlijeka i deset jaja”.</p>
-      <button class="mikrofon" id="mikrofon" aria-label="Govori popis">${IKONE.mikrofon}</button>
-      <div class="stanje-glasa" id="stanjeGlasa">Dodirni i govori</div>
-      <div class="prijepis" id="prijepis"></div>
+    ${S.zakljucano ? `<div class="zakljucano">${IKONE.lokot}<span class="razmak">Popis je zaključan. U trgovini označi što je u košarici.</span><button class="gumb mali" data-akcija="otkljucaj">Uredi</button></div>` : `
+    <section class="kartica glas ${prazan ? '' : 'sazeto'}">
+      ${prazan ? `<h2>Što trebaš kupiti?</h2>
+      <ol class="koraci"><li><b>1</b> Reci ili upiši popis</li><li><b>2</b> Zaključaj popis</li><li><b>3</b> Vidi gdje je najjeftinije</li></ol>` : ''}
+      <div class="glas-red">
+        <button class="mikrofon" id="mikrofon" aria-label="Govori popis">${IKONE.mikrofon}</button>
+        <div class="glas-tekst"><div class="stanje-glasa" id="stanjeGlasa">${prazan ? 'Dodirni i reci, npr. „kruh, dvije litre mlijeka i deset jaja”' : 'Dodirni i dodaj još'}</div>
+        <div class="prijepis" id="prijepis"></div></div>
+      </div>
       <form class="upis" id="upis" autocomplete="off">
-        <input id="upisPolje" type="text" inputmode="text" enterkeyhint="done" placeholder="ili upiši: kruh, mlijeko, 1 kg krumpira" aria-label="Upiši stavku">
+        <input id="upisPolje" type="text" inputmode="text" enterkeyhint="done" placeholder="ili upiši: kruh, mlijeko, 1 kg krumpira" aria-label="Upiši stavku" aria-autocomplete="list" aria-controls="prijedlozi">
         <button class="gumb glavni" aria-label="Dodaj">${IKONE.plus}</button>
       </form>
+      <div class="prijedlozi" id="prijedlozi" role="listbox" hidden></div>
+      <div class="brze-naslov">${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}</div>
+      <div class="cipovi vodoravno">${brze.map((x) => `<button class="cip" data-akcija="brzo" data-g="${x.g}" data-pg="${x.pg}">${x.ikona} ${esc(x.naziv.replace(/^./, (z) => z.toUpperCase()))}</button>`).join('')}</div>
     </section>`}
     <section class="kartica">
       <div class="redak"><h3 class="razmak">Moj popis${stavke.length ? ` <span class="oznaka">${stavke.length}</span>` : ''}</h3>
+      ${uKosari ? `<span class="oznaka zelena">${IKONE.kvacica} ${uKosari} od ${stavke.length} u košarici</span>` : ''}
       ${stavke.length && !S.zakljucano ? '<button class="gumb mali" data-akcija="isprazni">Isprazni</button>' : ''}</div>
-      ${stavke.length ? `<ul class="stavke" style="margin-top:6px">${stavke.map((s) => `
-        <li class="stavka">
+      ${stavke.length ? `<ul class="stavke" style="margin-top:6px">${poredane.map((s) => `
+        <li class="stavka ${s.uKosari ? 'u-kosari' : ''}">
+          <button class="kvacica-kosara" data-akcija="u-kosaru" data-id="${s.id}" role="checkbox" aria-checked="${!!s.uKosari}" aria-label="${s.uKosari ? 'Makni iz košarice' : 'Stavi u košaricu'}">${s.uKosari ? IKONE.kvacica : ''}</button>
           <span class="stavka-ikona" aria-hidden="true">${ikonaStavke(s)}</span>
           <button class="stavka-tekst" data-akcija="uredi" data-id="${s.id}" ${S.zakljucano ? 'disabled' : ''}>
             <span class="stavka-naziv">${esc(nazivStavke(s))}</span>
@@ -215,27 +258,71 @@ function zaslonPopis(el) {
             <span>${esc(prikazKolicine(s.kolicina, s.jedinica))}${s.zadano ? '<br><span class="zadano">zadano</span>' : ''}</span>
             ${S.zakljucano ? '' : `<button data-akcija="vise" data-id="${s.id}" aria-label="Više">+</button>`}
           </div>
-        </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci ili upiši što trebaš.</p></div>`}
-      ${!S.zakljucano ? `<div class="cipovi" style="margin-top:12px">${brze.map((gi) => `<button class="cip" data-akcija="brzo" data-g="${gi}">${P.grupe[gi].ikona} ${esc(P.grupe[gi].naziv)}</button>`).join('')}</div>` : ''}
+        </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci, upiši ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}”.</p></div>`}
     </section>
     ${stavke.length ? (S.zakljucano
       ? `<button class="gumb glavni puni" data-idi="rezultati">Pogledaj rezultate</button>`
       : `<button class="gumb glavni puni" data-akcija="zakljucaj">${IKONE.lokot} Zaključaj popis i usporedi cijene</button>
-         <p class="sitno" style="text-align:center">Količinu bez broja aplikacija postavlja na uobičajenu (npr. mlijeko 1 l, krumpir 1 kg) – promijeni je gumbima − i +.</p>`) : ''}
+         <p class="sitno" style="text-align:center">Količinu bez broja aplikacija postavlja na uobičajenu (npr. mlijeko 1 l, krumpir 1 kg) – promijeni je gumbima − i +. U trgovini dodirni kružić pokraj stavke kad je u košarici.</p>`) : ''}
   </div>`;
   if (!S.zakljucano) {
+    const polje = $('#upisPolje');
     $('#upis').onsubmit = (e) => {
       e.preventDefault();
-      const polje = $('#upisPolje');
       if (dodajTekst(polje.value)) polje.value = '';
     };
+    polje.oninput = () => prikaziPrijedloge(polje.value);
     pripremiGlas();
   }
+}
+
+// Prijedlozi dok korisnik tipka (grupe i podgrupe koje počinju upisanim, uključujući ijekavski/ekavski zapis)
+function prijedloziZa(tekst) {
+  const zadnji = tekst.split(/,|\bi\b/).pop().trim();
+  const n = kanon(zadnji);
+  const nn = norm(zadnji);
+  if (nn.length < 2) return [];
+  // vrijedi i obični zapis ("mli" → mlijeko) i ijekavski/ekavski ("mle" → mlijeko)
+  const pocinje = (ime) => { const a = norm(ime); const b = kanon(ime); return a.startsWith(nn) || b.startsWith(n); };
+  const sadrzi = (ime) => norm(ime).split(' ').some((r) => r.startsWith(nn)) || kanon(ime).split(' ').some((r) => r.startsWith(n));
+  const out = [];
+  P.grupe.forEach((g, gi) => {
+    const kandidati = [[g.naziv, -1], ...(g.rijeci || []).map((r) => [r, -1]), ...(g.pod || []).map((p, pi) => [p.naziv, pi])];
+    for (const [ime, pg] of kandidati) {
+      if (!(pocinje(ime) || sadrzi(ime))) continue;
+      if (out.some((x) => x.g === gi && x.pg === pg)) continue;
+      out.push({ g: gi, pg, naziv: pg >= 0 ? g.pod[pg].naziv : g.naziv, ikona: g.ikona, grupa: g.naziv, pocinje: pocinje(ime) });
+    }
+  });
+  out.sort((x, y) => (y.pocinje - x.pocinje) || (x.pg - y.pg) || x.naziv.length - y.naziv.length);
+  return out.slice(0, 6);
+}
+
+function prikaziPrijedloge(tekst) {
+  const el = $('#prijedlozi');
+  if (!el) return;
+  const p = prijedloziZa(tekst);
+  if (!p.length) { el.hidden = true; el.innerHTML = ''; return; }
+  el.innerHTML = p.map((x) => `<button type="button" role="option" class="prijedlog" data-akcija="prijedlog" data-g="${x.g}" data-pg="${x.pg}">
+    <span>${x.ikona}</span><span class="razmak"><b>${esc(x.naziv.replace(/^./, (z) => z.toUpperCase()))}</b>${x.pg >= 0 ? `<span class="sitno"> · ${esc(x.grupa)}</span>` : '<span class="sitno"> · sve vrste</span>'}</span></button>`).join('');
+  el.hidden = false;
+}
+
+function dodajGrupu(g, pg) {
+  const grupa = P.grupe[g];
+  const [k, j] = grupa.zadano;
+  const n = { id: novaStavkaId(), tekst: pg >= 0 ? grupa.pod[pg].naziv : grupa.naziv, g, pg, upit: '', filtar: '', kolicina: k, jedinica: j, zadano: true };
+  const ista = S.stavke.find((s) => s.g === g && s.pg === pg && !s.samoTaj && !s.filtar && s.jedinica === j);
+  if (ista) { ista.kolicina = Math.round((ista.kolicina + k) * 1000) / 1000; ista.zadano = false; } else S.stavke.push(n);
+  zapamtiPovijest([n]);
+  promjenaPopisa();
+  poruka(`Dodano: ${nazivStavke(n)}`);
 }
 
 function dodajTekst(tekst) {
   const nove = rastavi(tekst);
   if (!nove.length) { poruka('Nisam razumio. Pokušaj, npr. „kruh i mlijeko”.'); return false; }
+  zapamtiPovijest(nove);
   for (const n of nove) {
     const ista = S.stavke.find((s) => s.g === n.g && s.pg === n.pg && s.g >= 0 && !s.samoTaj && s.jedinica === n.jedinica && (s.filtar || '') === (n.filtar || ''));
     if (ista) { ista.kolicina = Math.round((ista.kolicina + n.kolicina) * 1000) / 1000; ista.zadano = false; } else S.stavke.push(n);
@@ -652,6 +739,26 @@ function ponudiDijeljenje(tekst, naslov = 'Pošalji') {
 }
 
 // ---------------------------------------------------------------- proizvod: sve cijene i prijava
+function kljucFavorita(i) {
+  const p = P.baza.p[i];
+  return p[6] || `${p[0]}|${p[1]}`;
+}
+function indeksFavorita(k) {
+  if (P.baza.poBarkodu.has(k)) return P.baza.poBarkodu.get(k);
+  if (!indeksFavorita.mapa) indeksFavorita.mapa = new Map(P.baza.p.map((p, i) => [`${p[0]}|${p[1]}`, i]));
+  return indeksFavorita.mapa.get(k);
+}
+function jeFavorit(i) { return (S.favoriti || []).includes(kljucFavorita(i)); }
+// najniža uobičajena cijena među odabranim lancima
+function najjeftinijeKod(i) {
+  let naj = null;
+  for (const id of odabraniLanci()) {
+    const c = P.baza.lanci[id] && P.baza.lanci[id].cijena[i];
+    if (c && (!naj || c < naj.c)) naj = { c, lanac: id, raspon: P.baza.raspon(id, i) };
+  }
+  return naj;
+}
+
 function prikaziProizvod(i, izSkenera = false) {
   const p = P.baza.p[i];
   const [naziv, marka, kol, vrsta, g, pg, barkod] = p;
@@ -660,7 +767,9 @@ function prikaziProizvod(i, izSkenera = false) {
   const blizu = zadnjiIzracun && zadnjiIzracun.pr.nacin === 'poslovnice'
     ? zadnjiIzracun.pr.popis.filter((x) => x.cijena[i]).map((x) => ({ x, c: x.cijena[i] })).sort((a, b) => a.c - b.c).slice(0, 6) : [];
   otvoriPlocu(`
-    <div><h3>${esc(naziv)}</h3><p class="sitno">${[marka, prikazPakiranja(kol, vrsta), g >= 0 ? P.grupe[g].naziv + (pg >= 0 ? ' · ' + P.grupe[g].pod[pg].naziv : '') : '', barkod ? 'barkod ' + barkod : ''].filter(Boolean).map(esc).join(' · ')}</p></div>
+    <div class="redak"><div class="razmak"><h3>${esc(naziv)}</h3></div>
+      <button class="gumb mali zvjezdica ${jeFavorit(i) ? 'aktivna' : ''}" data-akcija="favorit" data-i="${i}" aria-pressed="${jeFavorit(i)}">${jeFavorit(i) ? '★ U favoritima' : '☆ Prati cijenu'}</button></div>
+    <div><p class="sitno">${[marka, prikazPakiranja(kol, vrsta), g >= 0 ? P.grupe[g].naziv + (pg >= 0 ? ' · ' + P.grupe[g].pod[pg].naziv : '') : '', barkod ? 'barkod ' + barkod : ''].filter(Boolean).map(esc).join(' · ')}</p></div>
     <table class="tablica"><thead><tr><th>Lanac</th><th class="broj">Uobičajeno</th><th class="broj">Raspon</th></tr></thead><tbody>
       ${redovi.map((x) => `<tr><td>${znakTrgovine({ lanac: x.id, naziv: nazivLanca(x.id) }, false)}${x.raspon.redovna > x.c ? ' <span class="oznaka crvena">akcija</span>' : ''}</td>
         <td class="broj"><b>${eur(x.c)}</b>${kol && vrsta ? `<br><span class="sitno">${jedinicnaCijena(x.c, kol, vrsta)}</span>` : ''}</td>
@@ -699,6 +808,38 @@ function tekstPrijave(i) {
 
 // ---------------------------------------------------------------- AKCIJE
 let filterAkcija = { grupa: -1, upit: '' };
+function favoritiNaAkciji() {
+  const na = [];
+  for (const k of S.favoriti || []) {
+    const i = indeksFavorita(k);
+    if (i == null) continue;
+    const n = najjeftinijeKod(i);
+    if (n && n.raspon && n.raspon.redovna > n.c) na.push({ i, ...n });
+  }
+  if (!na.length) return (S.favoriti || []).length ? '<p class="sitno">★ Nijedan tvoj favorit danas nije na akciji.</p>' : '';
+  return `<section class="kartica favoriti-akcija"><h3>★ Tvoji favoriti na akciji</h3>${na.map((x) => {
+    const p = P.baza.p[x.i];
+    return `<button class="akcija" data-akcija="proizvod" data-i="${x.i}"><span class="popust">−${Math.round((1 - x.c / x.raspon.redovna) * 100)}%</span>
+      <span class="razmak"><b style="display:block">${esc(p[0])}</b>${znakTrgovine({ lanac: x.lanac, naziv: nazivLanca(x.lanac) }, false)}</span>
+      <span class="ponuda-cijena"><b>${eur(x.c)}</b><span class="precrtano">${eur(x.raspon.redovna)}</span></span></button>`;
+  }).join('')}</section>`;
+}
+
+function zaslonFavoriti(el) {
+  const fav = (S.favoriti || []).map((k) => ({ k, i: indeksFavorita(k) }));
+  el.innerHTML = `<div class="zaslon">${natrag()}
+    <div class="naslov-zaslona"><div><h2>★ Moji favoriti</h2><p>Proizvodi kojima pratiš cijenu. Kad su na akciji, pokazuju se na vrhu zaslona Akcije.</p></div></div>
+    <section class="kartica">${fav.length ? fav.map(({ k, i }) => {
+      if (i == null) return `<div class="trgovina-red"><span class="razmak">${esc(k.split('|')[0])}<br><span class="sitno">danas nije u cjenicima</span></span><button class="gumb mali" data-akcija="favorit-makni" data-k="${esc(k)}">Makni</button></div>`;
+      const p = P.baza.p[i]; const n = najjeftinijeKod(i);
+      const akc = n && n.raspon && n.raspon.redovna > n.c;
+      return `<button class="akcija" data-akcija="proizvod" data-i="${i}"><span class="razmak"><b style="display:block">${esc(p[0])}</b>
+        <span class="sitno">${esc([p[1], prikazPakiranja(p[2], p[3])].filter(Boolean).join(' · '))}</span><br>${n ? znakTrgovine({ lanac: n.lanac, naziv: nazivLanca(n.lanac) }, false) : '<span class="sitno">nema u odabranim trgovinama</span>'}</span>
+        <span class="ponuda-cijena">${n ? `<b>${eur(n.c)}</b>${akc ? `<span class="precrtano">${eur(n.raspon.redovna)}</span><span class="oznaka crvena">akcija</span>` : ''}` : ''}</span></button>`;
+    }).join('') : '<div class="prazno"><div class="velika">☆</div><p>Još nemaš favorita. Otvori bilo koji proizvod (ⓘ u rezultatima, akcijama ili skeneru) i dodirni „☆ Prati cijenu”.</p></div>'}</section>
+  </div>`;
+}
+
 function zaslonAkcije(el) {
   const lista = akcije(P.baza, odabraniLanci(), filterAkcija);
   const grupeSAkcijom = [...new Set(akcije(P.baza, odabraniLanci(), { najvise: 5000 }).map((x) => P.baza.p[x.i][4]).filter((g) => g >= 0))];
@@ -706,6 +847,7 @@ function zaslonAkcije(el) {
     <div class="naslov-zaslona"><div><h2>Akcije ovog tjedna</h2><p>Proizvodi kojima je cijena niža od redovne u većini poslovnica lanca.</p></div></div>
     <div class="redak"><input class="polje" id="akcijeUpit" placeholder="Traži akciju (npr. kava)" value="${esc(filterAkcija.upit)}">
       <select class="polje" id="akcijeGrupa" style="max-width:44%"><option value="-1">Sve grupe</option>${grupeSAkcijom.sort((a, b) => P.grupe[a].naziv.localeCompare(P.grupe[b].naziv, 'hr')).map((g) => `<option value="${g}" ${g === filterAkcija.grupa ? 'selected' : ''}>${esc(P.grupe[g].naziv)}</option>`).join('')}</select></div>
+    ${favoritiNaAkciji()}
     ${oglas()}
     <section class="kartica">${lista.length ? lista.slice(0, 150).map((x) => {
       const p = P.baza.p[x.i];
@@ -867,6 +1009,7 @@ function zaslonVise(el) {
   const st = P.meta.lanci.filter((l) => l.status !== 'ok').length;
   const kartice = [
     ['usteda', IKONE.novac, 'Moja ušteda', `${eur(Math.round(S.usteda.ukupno))} ukupno`],
+    ['favoriti', '<span style="font-size:1.4rem;line-height:1">★</span>', 'Moji favoriti', `${(S.favoriti || []).length} proizvoda · obavijest o akciji`],
     ['obitelj', IKONE.obitelj, 'Obiteljski popis', 'Podijeli popis s ukućanima'],
     ['skener', IKONE.barkod, 'Skeniraj barkod', 'Provjeri cijenu u trgovini'],
     ['status', IKONE.status, 'Status podataka', `Cijene od ${datumHR(P.meta.datum)}${st ? ` · ${st} upozorenja` : ''}`],
@@ -1100,9 +1243,34 @@ document.addEventListener('click', (e) => {
   const id = a.dataset.id;
   const stavka = id ? S.stavke.find((s) => s.id === id) : null;
   switch (a.dataset.akcija) {
-    case 'brzo': {
-      const g = P.grupe[Number(a.dataset.g)];
-      dodajTekst(g.rijeci[0] || g.naziv);
+    case 'brzo': case 'prijedlog': {
+      dodajGrupu(Number(a.dataset.g), Number(a.dataset.pg ?? -1));
+      if (a.dataset.akcija === 'prijedlog') {
+        // upisani dio zamijeni odabranim prijedlogom; prethodne stavke iz istog upisa ostaju u polju
+        const polje = $('#upisPolje');
+        if (polje) { polje.value = ''; polje.focus(); }
+      }
+      break;
+    }
+    case 'favorit': {
+      const i = Number(a.dataset.i);
+      const k = kljucFavorita(i);
+      S.favoriti = S.favoriti || [];
+      if (S.favoriti.includes(k)) { S.favoriti = S.favoriti.filter((x) => x !== k); poruka('Maknuto iz favorita.'); } else { S.favoriti.push(k); poruka('★ Dodano u favorite – javit ćemo kad bude na akciji (zaslon Akcije).'); }
+      spremi();
+      a.classList.toggle('aktivna', jeFavorit(i));
+      a.setAttribute('aria-pressed', String(jeFavorit(i)));
+      a.textContent = jeFavorit(i) ? '★ U favoritima' : '☆ Prati cijenu';
+      break;
+    }
+    case 'favorit-makni': S.favoriti = (S.favoriti || []).filter((x) => x !== a.dataset.k); spremi(); prikazi(); break;
+    case 'u-kosaru': {
+      if (!stavka) break;
+      stavka.uKosari = !stavka.uKosari;
+      spremi();
+      prikazi();
+      const sve = S.stavke.length && S.stavke.every((s) => s.uKosari);
+      if (sve) poruka('Sve je u košarici. Dodirni „Kupio/la sam” u rezultatima da zabilježiš uštedu.');
       break;
     }
     case 'manje': case 'vise': {

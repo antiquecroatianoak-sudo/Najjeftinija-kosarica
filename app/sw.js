@@ -1,6 +1,6 @@
 // Service worker aplikacije Najjeftinija košarica.
 // Upravlja samo vlastitim opsegom (mapa aplikacije) i samo cacheovima s prefiksom "kosarica-".
-const VERZIJA = '1.2.0';
+const VERZIJA = '1.3.0';
 const PREFIKS = 'kosarica-';
 const APLIKACIJA = `${PREFIKS}aplikacija-${VERZIJA}`;
 const PODACI = `${PREFIKS}podaci`;

@@ -57,3 +57,13 @@ Root causes found: (1) no location control on the main screen, only a separate m
 ## Part 7 – Final check
 - [x] Every part tested together as a normal customer would use it (real data, phone size) – one session on the real published data (224k+ products, 1,520 stores): status → 15-item list → A/B/C → only Konzum+Lidl → savings → deals → barcode → report button → family list → location 5 km → results → map; no JavaScript errors. Automated: Python tests OK, Node 16/16, browser test 38 checks incl. voice, refused location and slow network.
 - [x] PLAN.md updated and final report given
+
+## Round 2 – whole-app review and ideas from the best apps (5 Nov 2026)
+Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by store; Flipp, Marktguru – deals and followed products; Listonic, Bring! – suggestions while typing, frequent items, ticking items off in the shop.
+- [x] Grouping checked for the cheapest product in every chain for 34 everyday items (26 chains each). Fixed by type: pet food, offal/bones/skin, coffee sweets and drinks, bread mixes, decorations (polystyrene eggs, "offert."), clotheslines, perfume ("Lagerfeld" ≠ lager), body scrub ("Rose"), fish guts, baby muesli, cooking wafers, pickled/fried onions, passata. 14,022 products moved to a better group. Tests: `test_razvrstavanje.py` (real names).
+- [x] Start screen: 3 short steps for a new user; microphone and typing in one row once the list has items, so the list is visible at once; no repeated item names.
+- [x] Suggestions while typing ("mli" → Mlijeko, Mliječna čokolada, Mlijeko bez laktoze); tap adds the item.
+- [x] "Često kupuješ": quick-add from your own most-used items (before that: "Brzo dodaj" with common items).
+- [x] Shopping mode: circle next to every item → "u košarici" (ticked items go to the bottom, "3 od 10 u košarici"), also on a locked list.
+- [x] Favourites: "☆ Prati cijenu" on every product; Akcije shows "★ Tvoji favoriti na akciji" first; Više → Moji favoriti with today's cheapest price.
+- [x] App version 1.3.0 shown at the bottom of Više; new version always downloads fresh files.
