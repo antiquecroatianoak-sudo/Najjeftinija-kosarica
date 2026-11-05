@@ -21,14 +21,24 @@ Sačuvano iz starog: samo `AGENTS.md`, ovaj zapis (povijest) i radni tok `.githu
 - GitHub Actions „Cijene i objava” na `daeeffe`: posao `provjere` USPJEŠAN (run 42008484834: Python, Node, preglednik na primjeru); `objava` preskočena jer grana nije zadana (ispravno).
 - NIJE provjereno: stvarni uvoz s api.cijene.dev (mreža ove sesije ga blokira – prvi stvarni uvoz bit će u GitHub Actions), stvarni glasovni unos na Android uređaju, kamera/skener na uređaju, OSM pločice, objava na Pages.
 
+### Spojeno i objavljeno (provjereno 5.11.2026. 11:28 CET, Europe/Zagreb)
+- Uzrok vlasnikove pritužbe: sesije su se otvarale na zadanoj grani sa starom aplikacijom, a nova aplikacija nije bila spojena ni objavljena, pa je javna adresa i dalje prikazivala staru.
+- Vlasnik je izričito naložio: „Merge the new web app and publish it.” [PR #16](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/16) (`ccr-1c31c1df-63brmk` → `claude/dreamy-hopper-f6e4u0`) spojen; merge commit `19fe4d7`.
+- Prije spajanja, lokalno na `1120066`: 18 Python testova OK, logika 13/13, preglednik (primjer podataka) „SVE PROVJERE SU PROŠLE”.
+- [Run 42009381562](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42009381562) na `19fe4d7`: `provjere` uspješne, `objava` uspješna. Pages deployment za `19fe4d7` „Reported success”; provjera objave: „Objavljena verzija podataka: 0f2fb9242a”.
+- Prvi stvarni uvoz (arhiva 2026-11-05): 220 769 proizvoda, 1 464 poslovnice, 25 lanaca. Prethodni `meta.json` nije postojao (404 sa stare stranice), pa je usporedba zaštite objave ovaj put preskočena – očekivano za prvu objavu.
+- Nalazi iz uvoza za provjeru: NTL 287 poslovnica, 0 s koordinatama (ne prikazuje se u krugu na karti); Studenac samo 20 poslovnica u arhivi; Eurospin 31/45 s koordinatama.
+- Grana sesije `claude/claude-code-app-issue-bhn89z` premotana na `19fe4d7` i gurnuta.
+- NIJE provjereno: otvaranje objavljene adrese na vlasnikovu Androidu (ova sesija nema pristup github.io), glas i kamera na uređaju, zamjena stare verzije u cacheu na vlasnikovu mobitelu (stari service worker koristio je `kosarica-v34`).
+
 ### Otvoreno / zapreke
-- Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0` (PR još nije otvoren – čeka nalog vlasnika).
-- Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Ta grana i ova nova aplikacija se međusobno isključuju; vlasnik treba odlučiti koji smjer ide na glavnu granu.
+- ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
+- Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).
 - Draft PR #7 i #4 odnose se na obrisanu staru aplikaciju; nakon spajanja nove aplikacije postaju zastarjeli (ne zatvarati bez vlasnika).
 - Oglasi, Premium naplata i obiteljski popis u stvarnom vremenu nisu povezani (trebaju vlasnikove račune/uslugu).
 
 ### Sljedeći konkretni korak
-Nakon spajanja: ručno pokrenuti „Cijene i objava” i provjeriti zapis uvoza (broj proizvoda po lancu, udio bez grupe, koordinate, veličina `data/hr/s/`), zatim otvoriti objavljenu adresu na Androidu. Gotovo kad: posao `objava` zelen, korak „Provjeri objavljenu verziju” ispiše verziju podataka, i A/B/C rade na mobitelu sa stvarnim cijenama.
+Spajanje i objava su gotovi (vidi gore). Sljedeće: vlasnik otvara https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/ na Androidu (ako se prikaže stara aplikacija, zatvoriti karticu i ponovno otvoriti). Gotovo kad: na mobitelu se vidi nova aplikacija, status podataka pokazuje 5.11.2026., a A/B/C daju stvarne cijene. Zatim popraviti koordinate NTL-a i provjeriti nepotpun Studenac.
 
 ---
 
