@@ -80,3 +80,17 @@ Pregledati PR #7 i usporediti ga s aktualnom produkcijskom granom. Provjeriti st
 - Vlasnik javlja da probni APK nije „nova aplikacija” prema uputama koje je poslao „iz oblaka”. U ovom razgovoru primljen je samo odjeljak „14. Steps” (koraci 1–5); odjeljci 1–13 nisu primljeni. U repozitoriju, issueima i PR-ovima nije nađena nova specifikacija.
 - Ono što je izgrađeno (TWA u `android/`, release `proba`) samo omata **postojeću** web-aplikaciju. To je pretpostavka iz ovog razgovora, ne vlasnikova specifikacija.
 - Sljedeći korak: vlasnik dostavlja potpune upute (odjeljke 1–13). Zatim slijedi usporedba sa zatečenim stanjem i odluka o tome što se zadržava. Release `proba` ostaje javan dok vlasnik ne odluči drukčije.
+
+## Zapis 5.11.2026. 11:00 CET (Europe/Zagreb) — vlasnikove upute pronađene; izvorna Android aplikacija v0.2
+- Vlasnikove potpune upute (odjeljci 1–14) nalaze se u njegovu Claude Docs dokumentu „Najjeftinija košarica – upute za Claude Code” (https://claude.ai/artifact/5gXoqhEjcWGtgPThjskNMV). Traže **izvornu Android aplikaciju** (Material 3), mali server do ~5 €/mj., premium, oglase, admin i sl. Prvi odgovor u ovom razgovoru primio je samo odjeljak 14. Zato je TWA omotač bio pogrešna pretpostavka; zamijenjen je.
+- Plan i troškovi prepisani prema uputama: `docs/google-play-plan.md`.
+- Implementirano (korak 2, prva verzija):
+  - `android/jezgra`: čista Kotlin logika s 12 JVM testova; lokalno prošlo 5.11. — razumijevanje popisa, količine i brojevi riječima, najmanji trošak za količinu, najjeftinije ukupno, sve u jednom lancu, ušteda, bez pretvorbe kg↔l.
+  - `android/app`: Kotlin/Compose — glas hr-HR i upis, odabir lanaca, zamjena sljedećim najjeftinijim, slanje, ugrađeni katalog za rad bez interneta i osvježavanje.
+  - `scripts/app_katalog.cjs` s testom `tests/app-katalog.cjs` gradi katalog iz objavljenog `proizvodi.json` po istim pravilima `site/skupine.js`. Dodan je samo izvoz `zaAplikaciju`; postojeći testovi (15 datoteka) prolaze.
+- Prvi lanci: Kaufland, Konzum, Lidl, Plodine, Spar. Katalog 5.11.2026.: 26.201 proizvoda; Lidl samo 632 — slab izvor, istražiti u koraku 3.
+- Cijena u aplikaciji je **najniža objavljena u lancu** (označeno u sučelju). Stvarna poslovnica, radijus i karta dolaze u koraku 3.
+- Dokazi: CI [42005820823](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42005820823) na `c85785f`: build + proba na emulatoru (API 34) uspješni, bez rušenja; snimke uz release `proba`. Javni APK: `releases/download/proba/najjeftinija-kosarica.apk`; katalog: `releases/download/podaci/katalog.json.gz`.
+- Nije testirano: vlasnikov mobitel; glasovni unos na stvarnom uređaju. Na emulatoru je osvježavanje kataloga javilo „nema veze”; razlog se istražuje.
+- Nije spojeno ni objavljeno na Google Play. Dnevno osvježavanje kataloga za aplikaciju tek nakon spajanja u produkcijsku granu (raspored radi samo na zadanoj grani).
+- Sljedeći korak: vlasnik instalira APK i javi što ne valja. Zatim korak 3 prema planu. Gotovo kad aplikacija radi na vlasnikovu mobitelu.
