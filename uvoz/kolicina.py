@@ -144,6 +144,10 @@ def odaberi_kolicinu(polje, naziv, dopuna, implicirana: tuple[float, str] | None
     implicirana = cijena / jedinična cijena (ako ju je trgovina objavila) – služi samo kao provjera.
     Redoslijed: ručno provjerena dopuna (po barkodu) > polje > naziv, ali samo ako se slaže s jediničnom cijenom.
     """
+    # "0,415 kom": polje nosi težinu/volumen, a jedinica je jedinica prodaje. Komada nikad nema u razlomku –
+    # vrijedi naziv ako potvrđuje isti iznos u kg/l ("Simba 415 g"), inače je količina nepoznata (ne nagađa se).
+    if polje and polje[1] == "kom" and abs(polje[0] - round(polje[0])) > 1e-6:
+        polje = naziv if naziv and naziv[1] in ("kg", "l") and slaze_se(polje[0], naziv[0]) else None
     kandidati = [(dopuna, "dopuna"), (polje, "polje"), (naziv, "naziv")]
     kandidati = [(k, o) for k, o in kandidati if k]
     if not kandidati:

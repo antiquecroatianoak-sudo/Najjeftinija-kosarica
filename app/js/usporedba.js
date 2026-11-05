@@ -62,6 +62,38 @@ export class Baza {
     }
   }
 
+  // Neobično niska cijena: jedinična cijena ispod 1/8 medijana iste vrste proizvoda (grupa, podgrupa, kg/l).
+  // Ne briše se i ne mijenja poredak (rasprodaje i veća pakiranja su stvarne), nego se kupca upozori.
+  sumnjivoNiska(i, cijenaCenti) {
+    const [, , kol, vrsta, g, pg] = this.p[i];
+    if (!(kol > 0) || (vrsta !== 'kg' && vrsta !== 'l') || g < 0) return false;
+    if (!this.mediani) this.mediani = this.izracunajMedijane();
+    const m = this.mediani.get(`${g}|${pg}|${vrsta}`);
+    return m != null && cijenaCenti / kol < m / 8;
+  }
+
+  izracunajMedijane() {
+    const po = new Map();
+    for (const L of Object.values(this.lanci)) {
+      const idx = this.indeksiLanca(L.id);
+      for (let k = 0; k < L.t.length; k++) {
+        const i = idx[k];
+        const [, , kol, vrsta, g, pg] = this.p[i];
+        if (!(kol > 0) || (vrsta !== 'kg' && vrsta !== 'l') || g < 0) continue;
+        const kljuc = `${g}|${pg}|${vrsta}`;
+        if (!po.has(kljuc)) po.set(kljuc, []);
+        po.get(kljuc).push(L.t[k] / kol);
+      }
+    }
+    const out = new Map();
+    for (const [k, v] of po) {
+      if (v.length < 20) continue;
+      v.sort((a, b) => a - b);
+      out.set(k, v[Math.floor(v.length / 2)]);
+    }
+    return out;
+  }
+
   // Indeksi proizvoda lanca redom (za datoteke poslovnica).
   indeksiLanca(id) {
     const L = this.lanci[id];

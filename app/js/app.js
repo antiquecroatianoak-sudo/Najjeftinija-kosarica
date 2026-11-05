@@ -298,14 +298,25 @@ function pripremiGlas() {
       stanje.textContent = poruke[e.error] ?? `Glasovni unos nije uspio (${e.error}).`;
       if (e.error !== 'aborted' && e.error !== 'no-speech') zabiljezi('glas', e.error, e.message || '');
     };
+    // sigurnosni sat: neki Android preglednici nikad ne jave kraj – mikrofon se ne smije zaglaviti u "Slušam…"
+    const sat = setTimeout(() => {
+      if (prepoznavanje !== r) return;
+      try { r.abort(); } catch { /* već zaustavljeno */ }
+      r.onend && r.onend();
+    }, 15000);
     r.onend = () => {
+      clearTimeout(sat);
+      if (prepoznavanje !== r && !gumb.classList.contains('slusa')) return;
+      r.onend = null;
       prepoznavanje = null;
       gumb.classList.remove('slusa');
       const tekst = (konacno || prijepis.textContent).trim();
       if (tekst) {
         stanje.className = 'stanje-glasa';
-        stanje.textContent = `Razumio sam: „${tekst}”`;
         dodajTekst(tekst);
+        // zaslon se nakon dodavanja iscrta iznova: prikaži što je čuto i na novom elementu
+        const novo = $('#stanjeGlasa');
+        if (novo) { novo.className = 'stanje-glasa'; novo.textContent = `Razumio sam: „${tekst}”`; }
       } else if (!stanje.classList.contains('greska')) {
         stanje.textContent = 'Dodirni i govori';
       }
@@ -440,6 +451,7 @@ function redakPonude(stavka, ponuda, { prodavac, nacin, ostali = 0, prikaziTrgov
           ${vrstaNaziv ? `<span>${esc(vrstaNaziv)}</span>` : ''}
           ${ponuda.poPakiranju && stavka.jedinica !== 'pak' && stavka.jedinica !== 'kom' ? '<span class="oznaka zuta">uspoređeno po pakiranju</span>' : ''}
           ${akcija ? '<span class="oznaka crvena">akcija</span>' : ''}
+          ${P.baza.sumnjivoNiska(ponuda.i, ponuda.cijena) ? '<span class="oznaka zuta">neobično niska cijena – provjeri u trgovini</span>' : ''}
         </div>
         ${prikaziTrgovinu ? `<div class="ponuda-detalji" style="margin-top:5px">${znakTrgovine(pr)}${ostali ? `<span>i još ${ostali} po istoj cijeni</span>` : ''}</div>` : ''}
         ${raspon && raspon.min !== raspon.max ? `<div class="ponuda-detalji"><span>U poslovnicama ${esc(nazivLanca(pr.lanac))}: ${eur(raspon.min)} – ${eur(raspon.max)}</span></div>` : ''}

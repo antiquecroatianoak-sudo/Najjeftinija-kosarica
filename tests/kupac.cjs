@@ -59,6 +59,36 @@ const t0 = () => Date.now();
     await snimi('status');
   }
 
+  if (korak('popis')) {
+    console.log('Popis i rezultati (cijela Hrvatska)');
+    await s.click('nav [data-idi="popis"]');
+    if (await s.locator('[data-akcija="otkljucaj"]').count()) await s.click('[data-akcija="otkljucaj"]');
+    if (await s.locator('[data-akcija="isprazni"]').count()) { s.once('dialog', (d) => d.accept()); await s.click('[data-akcija="isprazni"]'); await s.waitForTimeout(200); }
+    await s.waitForSelector('#upisPolje');
+    const POPIS = 'kruh, mlijeko, deset jaja, kilu krumpira, banane, kava, šećer, ulje, sir, jogurt, piletina, toaletni papir, riža, špageti, voda';
+    await s.fill('#upisPolje', POPIS);
+    await s.press('#upisPolje', 'Enter');
+    await s.waitForSelector('.stavka');
+    const stavke = await s.locator('.stavka').allInnerTexts();
+    provjeri(stavke.length === 15, `15 stavki iz jedne rečenice (${stavke.length})`);
+    console.log('  ' + stavke.map((x) => x.replace(/\n+/g, ' ')).join('\n  '));
+    await snimi('popis-1');
+    await s.click('[data-akcija="zakljucaj"]');
+    await s.waitForSelector('.sazetak', { timeout: 30000 });
+    await s.click('[data-tab="A"]');
+    await s.waitForSelector('.ponuda');
+    const ponude = await s.locator('.ponuda').allInnerTexts();
+    console.log('  A – najjeftinije po stavci:');
+    for (const p of ponude) console.log('   • ' + p.replace(/\n+/g, ' | ').slice(0, 170));
+    await snimi('popis-2-a');
+    await s.click('[data-tab="B"]');
+    await s.waitForSelector('.sazetak');
+    console.log('  B: ' + (await s.locator('.sazetak').innerText()).replace(/\n+/g, ' | ').slice(0, 200));
+    await s.click('[data-tab="C"]');
+    await s.waitForSelector('.sazetak');
+    console.log('  C: ' + (await s.locator('.sazetak').innerText()).replace(/\n+/g, ' | ').slice(0, 200));
+  }
+
   if (korak('lokacija')) {
     console.log('Lokacija (jedan gumb na glavnom zaslonu)');
     await s.click('nav [data-idi="popis"]');

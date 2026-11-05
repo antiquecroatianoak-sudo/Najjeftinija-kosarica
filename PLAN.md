@@ -10,7 +10,7 @@ App: https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/
 
 ## Part 1 – Data
 - [x] Products and prices from all Croatian chains' official daily price lists – 26 chains, all status "ok" for 5 Nov 2026, 225,417 products, 1,520 stores (real published `meta.json`). Limit: Studenac publishes only 20 stores (checked on studenac.hr); store locations still filling (NTL 213/342, Stridon 1/41).
-- [~] Prices update automatically every day – scheduled 08:17 and 16:47 Zagreb time on the main branch; every publish today was green. Waiting to see the first scheduled run fire (15:47 UTC, 5 Nov).
+- [~] Prices update automatically every day – scheduled 08:17 and 16:47 Zagreb time on the main branch; every publish today was green (latest: data version 9418b45341, 224,435 products after merging duplicates). The old daily job ran every day by schedule (about 1 hour late, GitHub's delay); first scheduled run of the new job still to be confirmed.
 - [x] No duplicate products – no barcode twice; NEW: same brand + same name + same pack size under different barcodes is merged into one product (about 1,464 such duplicates in real data, e.g. "Šećer kristal Agragold 1 kg" ×2). Size in a name is ignored only when it IS the pack size (kettle 1,7 l ≠ 1,8 l; milk 2,8 % ≠ 3,5 %). Scanner still finds every barcode. Tests: `test_nema_duplikata`, `test_naziv_bez_kolicine`.
 - [x] On problems: retry, skip bad prices, keep the last good data – download retries; 0,00 / absurd / 4× off prices skipped; missing chain taken from up to 3 days older list; publish stopped if new data much weaker. Tests: `test_lose_cijene`, `test_stari_podaci_za_lanac_koji_nedostaje`, `test_zastita_objave`.
 - [x] Bigger problems create an error report that can be pasted into Claude Code – `izvjesce-greske.md` written by the import (test `test_zastita_objave` checks it); a failed daily run opens a GitHub issue "Dnevno ažuriranje cijena nije uspjelo" with the report; in the app: Više → Prijavi grešku.
@@ -26,10 +26,10 @@ Root causes found: (1) no location control on the main screen, only a separate m
 - [x] Location is optional (everything works without it) – "Bez lokacije (cijela Hrvatska)" in the panel; refused permission tested: clear message, app keeps working.
 
 ## Part 2 – Shopping list
-- [ ] Build the list by voice; typing also works
-- [ ] Groups with subgroups; "kruh" searches all kinds of bread
-- [ ] Default amount when none is said (milk 1 l, potatoes 1 kg), shown and changeable
-- [ ] Quantity, brand and type always shown next to the price
+- [x] Build the list by voice; typing also works – browser test speaks "kruh, mljeko i deset jaja" through a simulated recogniser → Kruh, Mlijeko 1 l, Jaja 10 kom, and shows "Razumio sam: …"; spelling variants (mljeko/mleko) and one wrong letter are understood; 15 s safety stop so the microphone can't stay stuck in "Slušam…"; typing tested with a 15-item sentence on real data. Not testable here: the real microphone on your phone.
+- [x] Groups with subgroups; "kruh" searches all kinds of bread – 68 groups with subgroups; "kruh" = "Kruh · sve vrste"; product grouping fixed for all groups (first type-word decides, non-food never in food groups). Fixed today on real data: polystyrene craft eggs → not eggs; chicken bones → not chicken; kids' rice meal → baby food; coffee drinks / 3-in-1 / cappuccino mixes → drinks, not coffee.
+- [x] Default amount when none is said (milk 1 l, potatoes 1 kg), shown and changeable – shown with "zadano", − and + change it (test). NEW: groups sold by weight now compare by kg/l around a typical pack (biscuits 200 g, jam 350 g, tea 40 g, sweets 100 g, ice cream 0,5 l, toilet paper 10 rolls) instead of "1 package", where the tiniest pack always won.
+- [x] Quantity, brand and type always shown next to the price – every result line: pack size, brand, type (subgroup), number of packs, price per kg/l/kom; "količina nije objavljena" when the store did not publish it. Root fix: 7,929 products had sizes like "0,415 kom" (weight written as pieces) – now read correctly from the name or marked unknown. NEW: "neobično niska cijena – provjeri u trgovini" next to prices below 1/8 of the normal price per kg/l (e.g. chicken legs 0,29 €/kg).
 
 ## Part 3 – Results (after the list is locked)
 - [ ] Cheapest item of each group and which store has it

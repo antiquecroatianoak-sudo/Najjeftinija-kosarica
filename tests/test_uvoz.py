@@ -54,6 +54,14 @@ class Kolicine(unittest.TestCase):
         # bez jedinične cijene, polje i naziv se ne slažu: nepoznato
         self.assertEqual(odaberi_kolicinu((31.0, "kg"), (0.31, "kg"), None, None), (None, "neslaganje"))
 
+    def test_komadi_nikad_u_razlomku(self):
+        from kolicina import odaberi_kolicinu
+        # stvarni primjeri 5.11.2026.: polje "0.415", jedinica "kom"
+        self.assertEqual(odaberi_kolicinu(iz_polja("0.415", "kom"), iz_teksta("Simba 415 g piletina konzerva"), None, None)[0], (0.415, "kg"))
+        self.assertEqual(odaberi_kolicinu(iz_polja("0.75", "kom"), iz_teksta("Tequila olmeca 0,70 (6)"), None, None)[0], None)
+        self.assertEqual(odaberi_kolicinu(iz_polja("0.3", "kom"), iz_teksta("Milka MMMax jagoda"), None, None)[0], None)
+        self.assertEqual(odaberi_kolicinu(iz_polja("12", "kom"), None, None, None)[0], (12.0, "kom"))
+
     def test_naziv_bez_kolicine(self):
         from kolicina import naziv_bez_kolicine as f
         kg1, l2 = (1.0, "kg"), (2.0, "l")
