@@ -84,5 +84,44 @@ class Pravila(unittest.TestCase):
         self.assertEqual(grupa("Jana voda 1,5 l"), "voda")
 
 
+class StvarniPobjedniciPoLancima(unittest.TestCase):
+    """Proizvodi koji su 5.11.2026. bili "najjeftiniji" u nekom lancu, a nisu ta namirnica (provjera svih lanaca)."""
+
+    def test_nisu_ta_namirnica(self):
+        krivo = {
+            "Jaja 6 kom 504402 offert.": "jaja", "JAJA stiropor 12 kom 5 cm OFFERTISSIMA": "jaja",
+            "Kavabon Bombon rolica": "kava", "Coffee creamer 150g": "kava", "Tres chic kava sa šlagom 180 g vindija": "kava",
+            "Instant Kava Ice Coffee": "kava", "Šumi trdi bon kava bombon 48g": "kava",
+            "Zamjes za ječmeni kruh": "kruh", "Bake rolls sir 80 g": "sir", "Tijes rezan dom šir jaj 400 g marodi": "sir",
+            "Sportness pr.ploč. 36% lim.-sir 40 g": "sir",
+            "Artu mp 1230 g piletina": "piletina", "Moustache mm 415 g piletina": "piletina", "Pileće kosti": "piletina",
+            "Pileća leđa s budget": "piletina", "Posebna pileća 1000 g to je to": "piletina", "Pileća jetra sa srcem 500g": "piletina",
+            "Svinjske kožice": "meso", "Meso junet kg loj": "meso", "Svinjski bubreg HR": "meso", "Svinjska glava": "meso",
+            "Wise cat 100 g govedina vrecica": "meso", "Svinjske nogice kg": "meso",
+            "Banan.čoko.per.150 g kraš": "banane", "Luk prženi": "luk", "Lukovice u octu": "luk", "Kapulica sjemenska žuta 1kg": "luk",
+            "Rajčica pasir 500 ml kuharela": "rajcica", "Tjes.kuk.riža alb go.bg.250 g": "riza",
+            "Karl Lagerfeld Classic edt 100 ml": "pivo", "Organic S.piling/tijPearl Rose 250 ml": "vino",
+            "Fentimans Rose Lemonade": "vino", "Uže za rublje 10m art:20280402 ntl": "deterdzent",
+            "Sušilo za rublje diciotto 18 m": "deterdzent", "Riblja utroba otpis": "riba", "Sv.kožice rfs pik": "riba",
+            "Mg mm gov grašak mrkva 85 g vr": "grah", "Pud.s-budget čokolada 3x40 g": "cokolada",
+            "Denkmit voda za glačalo 1 l": "voda", "Mivolis sol/kupanje iz Mrtvog mora 1,5kg": "sol",
+            "dmBio voćna kaš. egz.b.müsli, 8+mj,190g": "zitarice", "Oblatne 200g": "keksi",
+        }
+        for naziv, nije in krivo.items():
+            self.assertNotEqual(grupa(naziv), nije, naziv)
+
+    def test_prave_namirnice_ostaju(self):
+        dobro = {
+            "Jaja M razred": "jaja", "Kava Momento mljevena": "kava", "Jubilarna kava mljevena": "kava",
+            "Kruh polubijeli 500g tkz": "kruh", "Sir svježi posni Protein": "sir", "Svježe pile, cca. 1,5kg": "piletina",
+            "Pileći batak": "piletina", "Svinjski kare odresci sk, cca. 1kg": "meso", "Banane": "banane", "Luk crveni": "luk",
+            "Rajčica": "rajcica", "Riža dugo zrno": "riza", "Löwenbräu Svijetlo pivo": "pivo", "Graševina Ultra": "vino",
+            "Srdela cijela": "riba", "Grašak sušeni": "grah", "Kuhinjska sol": "sol", "Zobene pahuljice": "zitarice",
+            "Petit keksi": "keksi", "Persil deterdžent za rublje": "deterdzent",
+        }
+        for naziv, je in dobro.items():
+            self.assertEqual(grupa(naziv), je, naziv)
+
+
 if __name__ == "__main__":
     unittest.main()
