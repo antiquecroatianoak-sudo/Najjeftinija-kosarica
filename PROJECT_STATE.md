@@ -41,6 +41,8 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
 - **Grupe:** 9 novih grupa (žestoka pića, zimnica/masline, gotova jela, kakao napici, proteinski, kozmetika, kućanski potrošni, osvježivači/svijeće, protiv insekata) dodane na kraj popisa (postojeće razvrstavanje se ne mijenja), uz dopune riječi postojećim grupama. Na 29 684 stvarnih naziva iz enrichment: bez grupe 25,9 % → 14,6 %.
 - **Testirano lokalno (prije commita):** Python 27 testova OK (9 novih u `tests/test_lokacije.py`), Node 13/13, preglednik „SVE PROVJERE SU PROŠLE”; uvoz s lažnim Nominatimom: 30/30 poslovnica s koordinatama i zapisan `lokacije.json`.
 - **Nije provjereno:** stvarno popunjavanje koordinata dok ne prođe objava na zadanoj grani; točnost pojedinih OSM točaka na terenu.
+- **Spojeno i objavljeno** (provjereno 5.11.2026. ~11:55 CET): [PR #17](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/17), merge `f89f163`; [run 42012381262](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42012381262) `provjere` i `objava` uspješni. Prvi krug lokacija: 399 upita, 73 kućni broj + 71 ulica, 126 nije nađeno (ponovno za 30 dana), 401 odgođeno za sljedeća pokretanja. Na karti nakon toga: NTL 22/287, Gavranović 91/173, Boso 6/14, Ribola/Roto/Stridon još odgođeni. Studenac napomena vidljiva u `meta.json`.
+- **Nalaz:** provjera objave ispisala je istu verziju `0f2fb9242a` jer hash verzije nije uključivao koordinate; Pages deployment za `f89f163` je javio uspjeh, ali sama provjera verzije nije to dokazivala. Popravak: hash verzije sada uključuje broj koordinata po lancu (sljedeći commit).
 
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
