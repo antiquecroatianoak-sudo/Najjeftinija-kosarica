@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Ista boja kao theme_color u site/manifest.webmanifest -->
-    <color name="boja_trake">#EDF5FC</color>
-</resources>

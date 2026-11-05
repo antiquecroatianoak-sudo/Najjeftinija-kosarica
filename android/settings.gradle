@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "Najjeftinija-kosarica"
-include ":app"
+include ":app", ":jezgra"

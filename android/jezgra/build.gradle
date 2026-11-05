@@ -1,0 +1,20 @@
+// Jezgra: čista Kotlin logika (razumijevanje popisa, količine, izračun). Bez Androida, pa se testira na običnom JVM-u.
+plugins {
+    id "org.jetbrains.kotlin.jvm"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 }
+}
+
+dependencies {
+    // Android ima org.json ugrađen; na JVM-u (testovi) dolazi iz Maven Centrala.
+    compileOnly "org.json:json:20240303"
+    testImplementation "org.json:json:20240303"
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
+}

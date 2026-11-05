@@ -1,8 +1,8 @@
-plugins { id "com.android.application" }
-
-// Adresa web-aplikacije koju TWA otvara (ista kao GitHub Pages objava).
-def twaHost = "antiquecroatianoak-sudo.github.io"
-def twaUrl = "https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/"
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "org.jetbrains.kotlin.plugin.compose"
+}
 
 android {
     namespace "hr.najjeftinijakosarica.app"
@@ -11,11 +11,15 @@ android {
     defaultConfig {
         // ID aplikacije: nakon prvog uploada na Google Play više se ne može mijenjati.
         applicationId "hr.najjeftinijakosarica.app"
-        minSdk 21
+        minSdk 26
         targetSdk 36
         versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
-        versionName System.getenv("VERSION_NAME") ?: "0.1.0"
-        manifestPlaceholders = [twaHost: twaHost, twaUrl: twaUrl]
+        versionName System.getenv("VERSION_NAME") ?: "0.2.0"
+        // Dnevni katalog cijena (isti koji je ugrađen u aplikaciju kao početni).
+        buildConfigField "String", "KATALOG_URL",
+            "\"https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/releases/download/podaci/katalog.json.gz\""
+        buildConfigField "String", "PREUZIMANJE_URL",
+            "\"https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/releases/download/proba/najjeftinija-kosarica.apk\""
     }
 
     signingConfigs {
@@ -30,9 +34,16 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             signingConfig System.getenv("KEYSTORE_PATH") ? signingConfigs.release : null
         }
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig true
     }
 
     compileOptions {
@@ -41,6 +52,16 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 }
+}
+
 dependencies {
-    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+    implementation project(":jezgra")
+    implementation platform("androidx.compose:compose-bom:2025.05.00")
+    implementation "androidx.compose.material3:material3"
+    implementation "androidx.compose.foundation:foundation"
+    implementation "androidx.compose.ui:ui"
+    implementation "androidx.activity:activity-compose:1.10.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
 }

@@ -1,50 +1,47 @@
-# Plan: Najjeftinija košarica on Google Play
+# Plan: Najjeftinija košarica, a native Android app for Google Play
 
-Written: 5.11.2026. 10:08 CET (Europe/Zagreb). Status: **plan only**. Nothing in this file is built, tested or published yet.
+Written: 5.11.2026. (Europe/Zagreb). Source of requirements: the owner's document "Najjeftinija košarica – upute za Claude Code" (sections 1–14).
+Status: **plan**. What is built is recorded in `PROJECT_STATE.md`.
 
-## Where we start (checked in the repo)
-- The app already exists as a web app (PWA) in `site/`, published with GitHub Pages: https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/
-- Prices update every day for free through GitHub Actions (`.github/workflows/dnevno-azuriranje.yml`).
-- The price data already covers the big chains (Konzum, Lidl, Plodine, Kaufland, NTL, Eurospin, SPAR/INTERSPAR) and smaller ones listed in `docs/redoslijed-lanaca.md`.
-- Not confirmed on 5.11.2026: the live Pages version and today's price data. This session's network blocks github.io.
+Correction to the first plan (5.11.2026. 10:08): it proposed only a wrapper around the web app (TWA). The owner's document asks for a **native Android app**, so the TWA approach is replaced. The TWA test build was a misunderstanding.
 
-So steps 2 and 3 of the original list mostly exist already. The new work is turning the web app into an Android app for Google Play.
-
-## Approach
-Use a **Trusted Web Activity (TWA)**: a small Android app that opens our existing web app full screen, with no browser bar. We build it with Google's free tool Bubblewrap.
-- Pros: one codebase. Price updates keep working without new app releases. No server needed.
-- Cons: the phone needs Chrome (or another browser that supports TWA). It is not a "real" native app.
-- We would only switch to a native app if Google rejects the app as "just a website". That is a risk to watch, not something we expect.
+## The plan in simple words
+1. **Every day, a "robot" in the cloud** downloads the official price lists of all chains, cleans them, sorts products into groups and makes one small file for the phone.
+   - For now this robot is GitHub Actions: free, and it already runs daily for the current web app.
+2. **The phone app** (Kotlin + Jetpack Compose, Material 3) downloads only that small file.
+   - It works offline with the last prices and shows their date.
+   - It does all calculations on the phone (cheapest overall, cheapest in one shop, radius). Your location never leaves the phone.
+3. **A small server (about €4–5/month)** is needed only later, for premium features: login, shared family list, price alerts, wrong-price reports and the admin screen. Until then the cost is €0.
+4. **Multi-country ready:** the data file and the app carry country, currency and language fields. Launch is Croatia only.
 
 ## What you must do or pay for
 
-| Item | Cost | Who | When |
-|---|---|---|---|
-| Google Play developer account (personal) | **25 USD, once** | You (card, ID verification, phone number) | Before step 4 |
-| Server | **0 €**: GitHub Pages + GitHub Actions are enough | — | — |
-| Own domain (e.g. kosarica.hr) | Optional, ~10–20 €/year | You | Only if you want it |
-| Signing key for the app | 0 € | We make it, **you keep a backup** (if you lose it, you can't update the app) | Step 2 |
-| Privacy policy page | 0 € (hosted on Pages) | We write it, you approve it | Before step 4 |
-| 12+ testers for 14 days in a row | 0 € | You invite people (Gmail addresses) | Step 4 |
-| Store texts, screenshots, icon, feature graphic | 0 € | We prepare them, you approve | Step 5 |
-| Android phone with Chrome | — | You | Step 2 |
+| What | Cost | When |
+|---|---|---|
+| Google Play developer account | 25 USD, once (card, ID check) | Before the closed test (step 4) |
+| Server for premium features (e.g. Hetzner CX22 or similar) | ≈ €4–5/month | Step 3, when premium and the admin screen are built |
+| Domain (privacy policy, share links that open the app) | optional, ≈ €10–15/year | Recommended before step 4 |
+| AdMob account (banner ads) | free | Step 3 |
+| Google Play payments profile (premium subscription) | free; Google keeps 15% of subscriptions | Step 3 |
+| 12+ testers for 14 days (Google's current rule; plan for about 20) | free | Step 4 |
+| Tax/business registration for ad and subscription income | ask an accountant (e.g. paušalni obrt) | Before earning money |
 
-Note: Google now asks for **at least 12** testers, not 20. Check this in Play Console before the test, because Google changes these rules. About 20 people is still a good idea, because some people drop out.
+Notes:
+- With a personal Play account and in-app purchases, Google shows the developer's address on the store page. An organization account avoids the 14-day test rule, but it needs a D-U-N-S number.
+- Name check: no Google Play app called "Najjeftinija košarica" was found. An iOS app is called "Košarica", so the full name is used everywhere and not the short "Košarica". Re-check in Play Console when creating the app.
 
-## Steps
-
-1. **Plan (this file).** Done when you agree with the approach and the costs.
-2. **First Android version (TWA).**
-   - Pick the app ID (proposal: `hr.najjeftinijakosarica.app`, which can't be changed later).
-   - Add `.well-known/assetlinks.json` so Android trusts our site. This needs a check: GitHub Pages on a project URL (`…github.io/Najjeftinija-kosarica/`) can't serve the root `/.well-known/` file. Options are a user/organisation Pages site, a custom domain, or accepting a browser bar in the app.
-   - Build the APK/AAB with Bubblewrap, targeting API level 36 (required for new apps from 31.8.2026).
-   - You install the APK on your phone and test it (voice, list, comparison, offline).
-   - Done when the app runs on your phone and all existing tests (`tests/`) pass.
-3. **All chains and features.** Check which chains in the daily import are missing or weak. Finish the open fixes (e.g. draft PR #7: wrong quantities such as 310 g shown as 31 kg). Done when the coverage report and tests are green on the production branch.
-4. **Closed test on Google Play.** Create the account, upload the AAB to the closed test track and invite the testers. Run it 14+ days, then collect and fix problems. Done when Google accepts the production access request.
-5. **Publish.** Store listing, Data safety form (the app collects no personal data, location stays on the phone; to be confirmed against the code), content rating, then release. Done when the app is live on Google Play and installs from the store.
-
-## Open decisions for you
-- App ID and app name on the store.
-- Domain: free `github.io` or your own domain. This affects the assetlinks problem in step 2.
-- Who the 12–20 testers will be.
+## Steps (from the owner's document)
+1. **Plan and costs**: this file.
+2. **First working version** with a few big chains (Konzum, Lidl, Kaufland, Spar, Plodine): list by voice or typing, groups and amounts, cheapest overall, cheapest in one chain, chain choice, swap to next cheapest, share, offline. Test and install on your phone.
+   - Done when it runs on your phone and all tests pass.
+3. **All chains and features**:
+   - per-store prices and radius map (OpenStreetMap)
+   - opening hours
+   - sale end dates and card prices
+   - barcode scan, deals of the week, data status
+   - savings counter
+   - premium (two-shop mix, family list, alerts, history), ads with GDPR consent
+   - admin screen, wrong-price reports, privacy policy and terms
+   - widget and design polish
+4. **Closed test** on Google Play with about 20 people, then fix problems.
+5. **Publish** on Google Play.

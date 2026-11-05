@@ -1,21 +1,50 @@
-name: Android aplikacija (TWA)
+name: Android aplikacija
 
 on:
   push:
     paths:
       - "android/**"
+      - "scripts/app_katalog.cjs"
+      - "site/skupine.js"
+      - "tests/app-katalog.cjs"
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write   # za probnu objavu APK-a (GitHub Release "proba")
+  contents: write   # probna objava APK-a (release "proba") i kataloga cijena (release "podaci")
+
+concurrency:
+  group: android-${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test graditelja kataloga
+        run: |
+          node tests/app-katalog.cjs
+          node tests/skupine.cjs
+
+      # Katalog za aplikaciju iz objavljenog dnevnog cjenika (GitHub Pages) – isti izvor kao web-aplikacija.
+      - name: Katalog cijena za aplikaciju
+        run: |
+          curl -fsS --retry 4 --retry-delay 10 -o "$RUNNER_TEMP/proizvodi.json" \
+            https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/data/proizvodi.json
+          node scripts/app_katalog.cjs "$RUNNER_TEMP/proizvodi.json" "$RUNNER_TEMP/katalog.json" | tee "$RUNNER_TEMP/katalog-stat.json"
+          mkdir -p android/app/src/main/assets
+          cp "$RUNNER_TEMP/katalog.json.gz" android/app/src/main/assets/katalog.json.gz
+          {
+            echo "### Katalog cijena"
+            echo '```'; cat "$RUNNER_TEMP/katalog-stat.json"; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/setup-java@v4
         with:
@@ -49,16 +78,12 @@ jobs:
             echo "KEYSTORE_PATH=$KS"; echo "KEYSTORE_PASSWORD=$KS_PASS"
             echo "KEY_ALIAS=$K_ALIAS"; echo "KEY_PASSWORD=$K_PASS"
           } >> "$GITHUB_ENV"
-          SHA=$(keytool -list -v -keystore "$KS" -storepass "$KS_PASS" -alias "$K_ALIAS" | grep -m1 "SHA256:" | sed 's/.*SHA256: //')
-          {
-            echo "### Potpis: $VRSTA"
-            echo "SHA-256 otisak (za assetlinks.json): \`$SHA\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "### Potpis: $VRSTA" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Izgradnja APK i AAB
+      - name: Testovi jezgre i izgradnja APK/AAB
         env:
           VERSION_CODE: ${{ github.run_number }}
-        run: gradle -p android --no-daemon assembleRelease bundleRelease
+        run: gradle -p android --no-daemon :jezgra:test :app:assembleRelease :app:bundleRelease
 
       - uses: actions/upload-artifact@v4
         with:
@@ -69,9 +94,17 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # Jedna stalna poveznica za preuzimanje na mobitelu (bez prijave i bez zipa):
-      # https://github.com/<repo>/releases/download/proba/najjeftinija-kosarica.apk
-      - name: Probna objava APK-a
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: testovi-jezgre-${{ github.run_number }}
+          path: android/jezgra/build/reports/tests/
+          if-no-files-found: ignore
+
+      # Stalne poveznice (bez prijave i bez zipa):
+      #   APK:     .../releases/download/proba/najjeftinija-kosarica.apk
+      #   katalog: .../releases/download/podaci/katalog.json.gz  (aplikacija ga sama preuzima)
+      - name: Probna objava APK-a i kataloga
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -81,7 +114,11 @@ jobs:
           gh release create proba najjeftinija-kosarica.apk \
             --prerelease --target "$GITHUB_SHA" \
             --title "Probna Android verzija (izgradnja ${{ github.run_number }})" \
-            --notes "Samo za probu na mobitelu, nije s Google Playa. Prije instalacije nove verzije deinstaliraj staru (privremeni potpis). Upute: docs/android-instalacija.md"
-          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/proba/najjeftinija-kosarica.apk"
-          echo "### Preuzimanje na mobitelu" >> "$GITHUB_STEP_SUMMARY"
-          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
+            --notes "Izvorna Android aplikacija, prva verzija s nekoliko velikih lanaca. Samo za probu, nije s Google Playa. Prije instalacije nove verzije deinstaliraj staru (privremeni potpis). Upute: docs/android-instalacija.md"
+          gh release view podaci >/dev/null 2>&1 || gh release create podaci --prerelease --target "$GITHUB_SHA" \
+            --title "Katalog cijena za aplikaciju" --notes "Dnevni katalog cijena koji aplikacija preuzima. Izveden iz javnih službenih cjenika."
+          gh release upload podaci "$RUNNER_TEMP/katalog.json.gz" --clobber
+          {
+            echo "### Preuzimanje na mobitelu"
+            echo "${{ github.server_url }}/${{ github.repository }}/releases/download/proba/najjeftinija-kosarica.apk"
+          } >> "$GITHUB_STEP_SUMMARY"

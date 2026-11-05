@@ -406,7 +406,11 @@ torba|Torbe|torba`;
       vrstaProizvoda: (i) => vrstePoRedu[i],
       izvezi: () => ({ verzija: 1, brojProizvoda: proizvodi.length, otisak: otisak(proizvodi), katalog: [...katalog.values()] }) };
   }
-  const api = { pripremi, analiziraj, definicije: vrste.map(({id,naziv}) => ({id,naziv})) };
+  // Za izvornu Android aplikaciju: isti nazivi vrsta (korijeni riječi) i zamjene, bez ponovnog pisanja pravila.
+  const zaAplikaciju = () => ({ normalizacija: "skupine.js", prijedlozi: [...prijedlozi], nastavci: [...nastavci],
+    vrste: vrste.map(({id, naziv, aliases}) => ({id, naziv, aliasi: aliases})),
+    zamjene: Object.fromEntries([...overrides].map(([k, v]) => [k, [...v]])) });
+  const api = { pripremi, analiziraj, zaAplikaciju, definicije: vrste.map(({id,naziv}) => ({id,naziv})) };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Skupine = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
