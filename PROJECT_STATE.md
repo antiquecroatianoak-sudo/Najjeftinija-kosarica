@@ -31,6 +31,17 @@ Sačuvano iz starog: samo `AGENTS.md`, ovaj zapis (povijest) i radni tok `.githu
 - Grana sesije `claude/claude-code-app-issue-bhn89z` premotana na `19fe4d7` i gurnuta.
 - NIJE provjereno: otvaranje objavljene adrese na vlasnikovu Androidu (ova sesija nema pristup github.io), glas i kamera na uređaju, zamjena stare verzije u cacheu na vlasnikovu mobitelu (stari service worker koristio je `kosarica-v34`).
 
+### Popravci nakon prve objave (5.11.2026. ~12:00 CET, Europe/Zagreb)
+Nalog vlasnika: „Fix all the problems and continue with the app.”
+- Dijagnoza izvora u GitHub Actions ([run 42011274811](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42011274811), privremeni radni tok, uklonjen nakon nalaza):
+  - **Studenac:** i službeni `www.studenac.hr/cjenici/PROIZVODI-2026-11-05.zip` ima samo 20 datoteka poslovnica (kao arhiva cijene.dev). Nedostatak je na izvoru i ne može se popraviti uvozom; status podataka sad to navodi napomenom (`DJELOMICNO_OBJAVLJUJU`).
+  - **Koordinate:** enrichment `stores.csv` nema nijednu NTL koordinatu; bez koordinata su i Gavranović (179), Ribola (61), Stridon (41), Trgovina Krk (14), Boso (14), Roto (9) i manji lanci (~650 poslovnica). Nominatim iz GitHub Actions radi; uzorak: točni kućni brojevi rang 30, dio samo ulica (rang 26), dio bez rezultata zbog adresa bez dijakritika/razmaka.
+  - NTL je 5.11. imao 288 poslovnica, 4.11. 343 (razlika u izvoru; nije dalje istraženo).
+- **Implementirano:** `uvoz/lokacije.py` – koordinate preko Nominatima za poslovnice bez dopune; prihvaća kućni broj (rang ≥ 28) ili samo kratku lokalnu ulicu, nikad glavnu cestu ni razinu grada; čišćenje adresa („Nikole16A”, „A.Senoe”); najviše 400 upita po pokretanju, 1/s; predmemorija `data/hr/lokacije.json` objavljuje se i čita sljedećim pokretanjem (`--lokacije`); neuspjeh se ponovno traži nakon 30 dana; kvar 429/403 prekida traženje bez rušenja uvoza. `meta.json` dobiva `lokacije` statistiku.
+- **Grupe:** 9 novih grupa (žestoka pića, zimnica/masline, gotova jela, kakao napici, proteinski, kozmetika, kućanski potrošni, osvježivači/svijeće, protiv insekata) dodane na kraj popisa (postojeće razvrstavanje se ne mijenja), uz dopune riječi postojećim grupama. Na 29 684 stvarnih naziva iz enrichment: bez grupe 25,9 % → 14,6 %.
+- **Testirano lokalno (prije commita):** Python 27 testova OK (9 novih u `tests/test_lokacije.py`), Node 13/13, preglednik „SVE PROVJERE SU PROŠLE”; uvoz s lažnim Nominatimom: 30/30 poslovnica s koordinatama i zapisan `lokacije.json`.
+- **Nije provjereno:** stvarno popunjavanje koordinata dok ne prođe objava na zadanoj grani; točnost pojedinih OSM točaka na terenu.
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).

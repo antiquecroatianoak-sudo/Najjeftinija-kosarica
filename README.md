@@ -4,7 +4,7 @@ A phone app (works in Chrome on Android, can be installed like a normal app) tha
 prices in all Croatian supermarket chains and tells you where your shopping is cheapest.
 The app itself is in Croatian.
 
-**Address of the app (after it is published):**
+**Address of the app:**
 https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/
 
 ---
@@ -51,21 +51,13 @@ Honesty rule: stores never pay for position. Ranking depends only on price.
 
 ## What you need to do (step by step, from your Android phone)
 
-### Step 1 – Put the new app on the main branch
-The new app is on the branch `ccr-1c31c1df-63brmk`. It goes live when it is merged into the main
-branch `claude/dreamy-hopper-f6e4u0`.
+### Step 1 – Nothing to merge: the app is live
+The new app was merged on 5 November 2026 (pull request #16) and published the same day with real prices.
+Every day GitHub updates the prices by itself. To update them right now:
+**Actions → Cijene i objava → Run workflow → Run workflow** (green button), then wait about 10 minutes.
 
-1. Open https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pulls in Chrome.
-2. Open the pull request for the new app (Claude can create it for you – just ask).
-3. Wait for the green ✓ next to "Cijene i objava / provjere".
-4. Tap **Merge pull request** → **Confirm merge**.
-
-### Step 2 – Wait for the first publish (about 10–20 minutes)
-1. Open the **Actions** tab of the repository.
-2. Tap the newest run of **Cijene i objava**. When both steps (`provjere` and `objava`) have a green ✓,
-   the app is live.
-3. If you don't want to wait for tomorrow's automatic run: **Actions → Cijene i objava → Run workflow →
-   Run workflow** (green button).
+### Step 2 – Check that the prices are fresh
+In the app: **Više → Status podataka** shows the date of the prices for every chain.
 
 ### Step 3 – Open and install on your phone
 1. Open https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/ in **Chrome**.
@@ -95,6 +87,12 @@ branch `claude/dreamy-hopper-f6e4u0`.
   Now the family list works by sending a link.
 - **Google Play store** – the app is a web app you install from Chrome. A Play Store version is possible later.
 - **Other countries** – the settings already have the country choice; only Croatia has data.
+- **Studenac** publishes official prices for only about 20 of its stores (checked 5 Nov 2026 on
+  studenac.hr itself). The app shows those stores; prices of other Studenac stores are not public.
+- **Store locations**: most come from the cijene-api project; the rest are looked up once by address on
+  OpenStreetMap (© OpenStreetMap contributors). At most 400 lookups per run, so the first days fill the
+  map step by step. A store whose address cannot be found exactly stays off the map (better no pin than
+  a wrong pin). **Više → Status podataka** shows "N na karti" for every chain.
 - Product groups are sorted by keywords. Some products may land in the wrong group or in none;
   these can still be found by typing their name. Report such cases and they can be fixed in `uvoz/grupe.json`.
 
@@ -106,8 +104,9 @@ branch `claude/dreamy-hopper-f6e4u0`.
 |---|---|
 | `app/` | The whole web app (no build step). `js/usporedba.js` = results A/B/C, `js/popis.js` = voice/typed list, `sw.js` = offline cache (`kosarica-` prefix only) |
 | `uvoz/uvoz.py`, `uvoz/kolicina.py` | Daily import (Python 3.13, standard library only) |
+| `uvoz/lokacije.py` | Store coordinates from OpenStreetMap Nominatim (1 request/s, saved in `data/hr/lokacije.json`) |
 | `uvoz/grupe.json` | Product groups, subgroups, spoken words, default amounts |
-| `tests/` | `test_uvoz.py` (import), `logika.test.mjs` (app logic), `preglednik.cjs` (full app in a phone-size browser) |
+| `tests/` | `test_uvoz.py` (import), `test_lokacije.py` (store locations), `logika.test.mjs` (app logic), `preglednik.cjs` (full app in a phone-size browser) |
 | `.github/workflows/dnevno.yml` | Tests on every branch; daily import + publish on the main branch |
 
 Run all checks locally:
