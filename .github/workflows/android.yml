@@ -129,3 +129,46 @@ jobs:
             echo "### Preuzimanje na mobitelu"
             echo "${{ github.server_url }}/${{ github.repository }}/releases/download/proba/najjeftinija-kosarica.apk"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Proba na emulatoru: instalacija, pokretanje, upis popisa, snimke zaslona i provjera rušenja.
+  proba-na-emulatoru:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: kosarica-android-${{ github.run_number }}
+          path: apk
+
+      - name: KVM za emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Pokreni aplikaciju na emulatoru
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash .github/proba-emulator.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snimke-emulatora-${{ github.run_number }}
+          path: snimke/
+          if-no-files-found: ignore
+
+      - name: Objavi snimke uz probnu verziju
+        if: always() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls snimke/*.png >/dev/null 2>&1 && gh release upload proba snimke/*.png --clobber -R "${{ github.repository }}" || true
