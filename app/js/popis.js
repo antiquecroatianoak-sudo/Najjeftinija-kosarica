@@ -137,7 +137,13 @@ export function posebneRijeci(fraza, pogodak) {
   const g = rjecnik.grupe[pogodak.g];
   const opce = new Set();
   for (const t of [g.naziv, ...(g.pod || []).map((p) => p.naziv)]) for (const r of norm(t).split(' ')) if (r.length > 2) opce.add(korijen(r));
-  const jeOpca = (r) => [...opce].some((o) => o.startsWith(korijen(r)) || korijen(r).startsWith(o));
+  // opća je i riječ koja je samo drugi zapis imena grupe ("mljeko", "mleko", "mlieko" za Mlijeko) – nije marka/filtar
+  const opceKanon = new Set();
+  for (const t of [g.naziv, ...(g.pod || []).map((p) => p.naziv)]) {      // samo imena (riječi grupe sadrže i marke, npr. "jana")
+    for (const r of norm(t).split(' ')) if (r.length > 2) opceKanon.add(kanon(r));
+  }
+  const jeOpca = (r) => [...opce].some((o) => o.startsWith(korijen(r)) || korijen(r).startsWith(o))
+    || [...opceKanon].some((o) => { const k = kanon(r); return k === o || (k.length >= 5 && blizu(k, o)) || korijen(k) === korijen(o); });
   return norm(fraza).split(' ').filter((r) => r.length > 2 && !SUVISNO.has(r) && !/^\d/.test(r) && !jeOpca(r)).join(' ');
 }
 

@@ -22,3 +22,17 @@ class ServiceWorker(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VerzijaAplikacije(unittest.TestCase):
+    def test_verzija_u_aplikaciji_jednaka_verziji_service_workera(self):
+        """Prikazana verzija mora biti ona koju service worker instalira – inače kupac ne zna koju verziju ima."""
+        import re
+        korijen = Path(__file__).resolve().parent.parent / "app"
+        sw = re.search(r"const VERZIJA = '([^']+)'", (korijen / "sw.js").read_text()).group(1)
+        app = re.search(r"VERZIJA_APLIKACIJE = '([^']+)'", (korijen / "js" / "greske.js").read_text()).group(1)
+        self.assertEqual(sw, app)
+
+    def test_nova_verzija_uzima_svjeze_datoteke(self):
+        sw = (Path(__file__).resolve().parent.parent / "app" / "sw.js").read_text()
+        self.assertIn("cache: 'reload'", sw)

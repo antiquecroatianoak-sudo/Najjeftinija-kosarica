@@ -198,6 +198,8 @@ test('prepoznavanje govora: "mljeko", "mleko", jedno krivo slovo – ista grupa 
     assert.equal(grupe[rastavi(t)[0].g].id, 'mlijeko', t);
   }
   assert.equal(rastavi('mljeko')[0].jedinica, 'l');                     // ne "1 pakiranje"
+  for (const t of ['mljeko', 'mleko', 'mlieko', 'Mlijeka']) assert.equal(rastavi(t)[0].filtar, '', `${t}: drugi zapis imena grupe nije filtar marke`);
+  assert.equal(rastavi('Dukat mlijeko')[0].filtar, 'dukat');           // prava marka i dalje sužava
   assert.equal(id('beli kruh'), 'kruh');
   assert.equal(id('jogrut'), 'jogurt');
   assert.equal(id('salama'), 'suhomesnato');                            // slične riječi ostaju različite
