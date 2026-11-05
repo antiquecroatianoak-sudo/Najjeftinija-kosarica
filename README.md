@@ -94,6 +94,10 @@ In the app: **Više → Status podataka** shows the date of the prices for every
   street**, then the street itself (only short local streets). At most 400 lookups per run, so the first days fill the
   map step by step. A store whose address cannot be found exactly stays off the map (better no pin than
   a wrong pin). **Više → Status podataka** shows "N na karti" for every chain.
+- Product groups are sorted by the **first product-type word** in the name ("Jogurt s mlijekom" is yogurt).
+  Words after "za / s / od / i / bez" do not decide the type ("Posuda za mlijeko" is not milk), and non-food words
+  (jug, shower gel, SPF, shampoo, socks…) keep a product out of all food groups. Checked on all 220,769 real
+  products of 5 Nov 2026: the milk group went from 391 items (about half not milk) to 198 real milk products.
 - Product groups are sorted by keywords. Some products may land in the wrong group or in none;
   these can still be found by typing their name. Report such cases and they can be fixed in `uvoz/grupe.json`.
 
@@ -107,7 +111,7 @@ In the app: **Više → Status podataka** shows the date of the prices for every
 | `uvoz/uvoz.py`, `uvoz/kolicina.py` | Daily import (Python 3.13, standard library only) |
 | `uvoz/lokacije.py` | Store coordinates from OpenStreetMap Nominatim (1 request/s, saved in `data/hr/lokacije.json`) |
 | `uvoz/grupe.json` | Product groups, subgroups, spoken words, default amounts |
-| `tests/` | `test_uvoz.py` (import), `test_lokacije.py` (store locations), `logika.test.mjs` (app logic), `preglednik.cjs` (full app in a phone-size browser) |
+| `tests/` | `test_uvoz.py` (import), `test_lokacije.py` (store locations), `test_razvrstavanje.py` (product groups), `logika.test.mjs` (app logic), `preglednik.cjs` (full app in a phone-size browser) |
 | `.github/workflows/dnevno.yml` | Tests on every branch; daily import + publish on the main branch |
 
 Run all checks locally:
