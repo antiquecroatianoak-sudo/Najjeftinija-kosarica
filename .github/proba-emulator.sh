@@ -2,6 +2,10 @@
 # Proba aplikacije na emulatoru (poziva je .github/workflows/android.yml). Ne treba Google račun ni internet za cijene.
 set -u
 mkdir -p snimke
+tekst() {
+  adb shell uiautomator dump /sdcard/t.xml >/dev/null 2>&1 && adb pull /sdcard/t.xml t.xml >/dev/null 2>&1 &&
+  python3 -c "import re,html;print('--- zaslon $1:', ' | '.join(html.unescape(t) for t in re.findall(r' text=\"([^\"]+)\"', open('t.xml',encoding='utf-8').read())))"
+}
 PAKET=hr.najjeftinijakosarica.app
 APK=$(find apk -name '*.apk' | head -1)
 adb install -r "$APK" || exit 1
@@ -34,15 +38,19 @@ if [ -n "$POLJE" ]; then
   adb shell input keyevent 4   # sakrij tipkovnicu
   sleep 2
   adb exec-out screencap -p > snimke/2-popis.png
-  adb shell input swipe 540 1800 540 500 600
-  sleep 2
-  adb exec-out screencap -p > snimke/3-rezultati.png
-  adb shell input swipe 540 1800 540 500 600
-  sleep 2
-  adb exec-out screencap -p > snimke/4-ukupno.png
+  tekst 2
+  VELICINA=$(adb shell wm size | grep -o '[0-9]*x[0-9]*' | tail -1)
+  W=${VELICINA%x*}; H=${VELICINA#*x}
+  for n in 3 4 5 6 7; do
+    adb shell input swipe $((W / 2)) $((H * 8 / 10)) $((W / 2)) $((H * 3 / 10)) 500
+    sleep 2
+    adb exec-out screencap -p > snimke/$n-pomak.png
+    tekst $n
+  done
 fi
 
 adb logcat -d > snimke/logcat.txt
+grep -A 3 "Kosarica" snimke/logcat.txt | head -20
 if grep -q "FATAL EXCEPTION" snimke/logcat.txt; then
   echo "APLIKACIJA SE SRUŠILA:"; grep -A 30 "FATAL EXCEPTION" snimke/logcat.txt | head -60; exit 1
 fi

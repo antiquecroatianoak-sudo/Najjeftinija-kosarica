@@ -94,6 +94,7 @@ fun Ekran(podaci: Podaci, spremanje: Spremanje) {
         stanje = if (lokalni != null) StanjePodataka.SPREMNO else StanjePodataka.GRESKA
         provjera = "Provjeravam nove cijene…"
         val novi = withContext(Dispatchers.IO) { runCatching { podaci.osvjezi(lokalni) } }
+        novi.exceptionOrNull()?.let { android.util.Log.w("Kosarica", "Osvježavanje kataloga nije uspjelo", it) }
         provjera = when {
             novi.isFailure -> "Nema veze s internetom – prikazane su zadnje spremljene cijene."
             novi.getOrNull() != null -> { katalog = novi.getOrNull(); stanje = StanjePodataka.SPREMNO; "Cijene su upravo osvježene." }
