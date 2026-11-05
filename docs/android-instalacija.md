@@ -2,16 +2,15 @@
 
 Napisano 5.11.2026. (Europe/Zagreb). Ovo je **probna** verzija (korak 2 plana u `docs/google-play-plan.md`), nije s Google Playa.
 
-## Odakle dolazi
-GitHub sam izgradi aplikaciju nakon svake promjene u mapi `android/` (radni tijek **Android aplikacija (TWA)**).
+## Preuzimanje (jedna poveznica, bez prijave)
+Na mobitelu u Chromeu otvori:
 
-1. Na github.com otvori repozitorij → kartica **Actions** → lijevo **Android aplikacija (TWA)**.
-2. Otvori zadnje pokretanje sa zelenom kvačicom ✅.
-3. Dolje pod **Artifacts** preuzmi `kosarica-android-…` (zip).
-4. U zipu je `app-release.apk`. Prebaci ga na mobitel (ili zip preuzmi izravno na mobitelu i otvori ga u aplikaciji Datoteke).
+**https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/releases/download/proba/najjeftinija-kosarica.apk**
+
+Poveznica uvijek vodi na zadnju probnu verziju. GitHub je sam izgradi nakon svake promjene u mapi `android/` (radni tijek **Android aplikacija (TWA)**).
 
 ## Instalacija
-1. Na mobitelu dodirni `app-release.apk`.
+1. Kad preuzimanje završi, dodirni `najjeftinija-kosarica.apk` (obavijest ili Chrome → Preuzimanja).
 2. Android pita smije li ta aplikacija (npr. Chrome ili Datoteke) instalirati nepoznate aplikacije → **Postavke** → uključi **Dopusti iz ovog izvora** → natrag → **Instaliraj**.
 3. Ako Play Protect upozori na nepoznatog razvojnog programera → **Više pojedinosti** → **Ipak instaliraj**. To je očekivano za probnu verziju izvan Google Playa.
 4. Otvori **Najjeftinija košarica** s početnog zaslona.

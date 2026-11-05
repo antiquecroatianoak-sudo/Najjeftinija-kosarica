@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # za probnu objavu APK-a (GitHub Release "proba")
 
 jobs:
   build:
@@ -68,3 +68,20 @@ jobs:
             android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 30
+
+      # Jedna stalna poveznica za preuzimanje na mobitelu (bez prijave i bez zipa):
+      # https://github.com/<repo>/releases/download/proba/najjeftinija-kosarica.apk
+      - name: Probna objava APK-a
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk najjeftinija-kosarica.apk
+          gh release delete proba --yes --cleanup-tag 2>/dev/null || true
+          gh release create proba najjeftinija-kosarica.apk \
+            --prerelease --target "$GITHUB_SHA" \
+            --title "Probna Android verzija (izgradnja ${{ github.run_number }})" \
+            --notes "Samo za probu na mobitelu, nije s Google Playa. Prije instalacije nove verzije deinstaliraj staru (privremeni potpis). Upute: docs/android-instalacija.md"
+          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/proba/najjeftinija-kosarica.apk"
+          echo "### Preuzimanje na mobitelu" >> "$GITHUB_STEP_SUMMARY"
+          echo "$URL" >> "$GITHUB_STEP_SUMMARY"
