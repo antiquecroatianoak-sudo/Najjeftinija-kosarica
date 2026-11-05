@@ -650,7 +650,7 @@ def pokreni(argumenti) -> dict:
         log(f"  {lanac}: {len(L.poslovnice)} poslovnica, {ukupno} ponuda")
 
     # nedostaje li lanac koji je prije postojao? potraži ga u starijim arhivama
-    ocekivani = {l for l in prethodno if not l.startswith("__") and l != "interspar"} | set(lanci_u_arhivi(zf))
+    ocekivani = {l for l in prethodno if not l.startswith("__") and l != "interspar"} | set(lanci_u_arhivi(zf)) | set(GLAVNI)
     if "interspar" in prethodno:
         ocekivani.add("spar")
     nedostaju = sorted(ocekivani - dobri - PRESKOCI)

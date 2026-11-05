@@ -14,7 +14,7 @@ Sačuvano iz starog: samo `AGENTS.md`, ovaj zapis (povijest) i radni tok `.githu
 - Radni tok `.github/workflows/dnevno.yml`: provjere na svakoj grani i PR-u; na zadanoj grani dnevno 07:17 i 15:47 UTC uvoz → objava na Pages → provjera objavljene verzije; pri neuspjehu otvara/dopunjuje issue s oznakom `greška-objave`. Stari `dnevno-azuriranje.yml` obrisan.
 
 ### Testirano (lokalno, 5.11.2026., prije commita)
-- `python3 -m unittest discover -s tests -p "test_*.py"`: 18 testova OK (količine 310 g/31 kg, 6×1,5 l, duplikati, loše cijene, stari lanac, Interspar, grupe, koordinate, zaštita objave, service worker).
+- `python3 -m unittest discover -s tests -p "test_*.py"`: 18 testova OK; prvi CI na `b9abb0c`: Python i Node prošli, test u pregledniku pao na provjeri rada bez interneta (test nije čekao da se cijene spreme) – ispravljeno u sljedećem commitu (količine 310 g/31 kg, 6×1,5 l, duplikati, loše cijene, stari lanac, Interspar, grupe, koordinate, zaštita objave, service worker).
 - `node --test tests/logika.test.mjs`: 13/13 OK.
 - `node tests/preglednik.cjs app` (Chromium, Pixel 7) na velikom lokalnom primjeru (9 000 stvarnih naziva proizvoda iz enrichment, 338 stvarnih poslovnica, izmišljene cijene): sve provjere prošle, bez JS grešaka, bez vodoravnog pomicanja na 320/768 px, rad bez interneta iz spremljenih podataka.
 - Razvrstavanje provjereno uzorkom na ~29 700 stvarnih naziva (enrichment): ~26 % bez grupe; poznate preostale greške manjeg opsega.

@@ -141,13 +141,23 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(true, `barkod ${barkod} pronađen`);
 
   console.log('Bez interneta (zadnji dobri podaci)');
-  await s.waitForTimeout(1500);
+  // offline radi nakon što je aplikacija jednom otvorena s aktivnim service workerom i spremila cijene
+  const spremljeno = () => s.evaluate(async () => {
+    const c = await caches.open('kosarica-podaci');
+    return !!(await c.match(new URL('data/hr/meta.json', location.href).href)) && !!(await c.match(new URL('data/hr/proizvodi.json', location.href).href));
+  });
+  for (let i = 0; i < 20 && !(await spremljeno()); i++) {
+    await s.waitForTimeout(500);
+    if (i === 6) { await s.reload(); await s.waitForSelector('.izbornik'); }
+  }
+  provjeri(await spremljeno(), 'cijene su spremljene za rad bez interneta');
   await kontekst.setOffline(true);
   await s.reload();
   await s.waitForSelector('.izbornik');
   await s.waitForSelector('#obavijest:not([hidden]), .sadrzaj .zaslon', { timeout: 30000 });
+  await s.waitForTimeout(300);
   const ob = await s.locator('#obavijest').innerText().catch(() => '');
-  provjeri(/spremljene cijene/.test(ob), 'bez interneta prikazuju se spremljene cijene');
+  provjeri(/spremljene cijene/.test(ob), 'bez interneta prikazuju se spremljene cijene' + (/spremljene/.test(ob) ? '' : ` (obavijest: "${ob}", sadržaj: "${(await s.locator('#sadrzaj').innerText()).slice(0, 200)}")`));
   await kontekst.setOffline(false);
 
   console.log('Širine zaslona');
