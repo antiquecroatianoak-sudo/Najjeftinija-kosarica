@@ -50,3 +50,11 @@ Pregledati PR #7 i usporediti ga s aktualnom produkcijskom granom. Provjeriti st
 ## Zapis nastavka
 - 28.10.2026.: uspostavljen zaseban glavni zapis na zahtjev vlasnika. Provjereni su identitet/grana, aktualni README, sw.js i stanja PR-ova; aplikacijski kod, cjenici i objava nisu mijenjani ovim zadatkom.
 - Sljedeća cjelina dodaje odluku, implementaciju, točan dokaz testiranja, objavljenu verziju ili izričito „nije objavljeno”, otvoreno i sljedeći korak.
+
+## Zapis 5.11.2026. 10:08 CET (Europe/Zagreb) — plan za Google Play
+- Zahtjev vlasnika: plan u 5 koraka (plan i troškovi → prva verzija na mobitelu → svi lanci i funkcije → zatvoreni test na Google Playu → objava).
+- Izrađen samo plan: `docs/google-play-plan.md`. Predloženi pristup je TWA (Bubblewrap) oko postojećeg PWA-a, bez poslužitelja. Status: **planirano**; ništa nije implementirano, testirano ni objavljeno.
+- Troškovi: Google Play račun 25 USD jednokratno; poslužitelj 0 € (Pages + Actions); domena opcionalna. Zahtjev zatvorenog testa za nove osobne račune je prema sekundarnim izvorima 12 testera kroz 14 dana; prije testa provjeriti u Play Consoleu. Nove aplikacije moraju ciljati API 36 od 31.8.2026. (developer.android.com).
+- Zapreka: TWA traži `/.well-known/assetlinks.json` u korijenu domene; projektni Pages URL to ne pokriva. Potrebna je odluka (korisnička Pages stranica ili vlastita domena).
+- Nije provjereno: mreža ove sesije blokira github.io (403), pa živa verzija i datum cjenika nisu potvrđeni.
+- Sljedeći korak: vlasnik potvrđuje pristup, ID aplikacije i domenu. Zatim slijedi korak 2 (TWA build + assetlinks). Gotovo kad APK radi na vlasnikovu mobitelu i testovi u `tests/` prolaze.
