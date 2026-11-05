@@ -8,8 +8,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { norm, korijen, prikazPakiranja, eur, uOsnovnu } from '../app/js/tekst.js';
-import { pripremiGrupe, rastavi, prepoznaj } from '../app/js/popis.js';
-import { Baza, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
+import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu } from '../app/js/popis.js';
+import { Baza, pragPoslovnica, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
 
 const KORIJEN = join(dirname(fileURLToPath(import.meta.url)), '..');
 let baza; let grupe; let poslovnice; let izlaz;
@@ -188,4 +188,39 @@ test('ne nudi pakiranje mnogo veće od traženog kad postoji primjereno', () => 
   // samo veliko pakiranje: ipak se nudi
   const velika = { id: 'v2', g: gid('voda'), pg: -1, kolicina: 9, jedinica: 'l' };
   assert.ok(nacinKupnje(baza, velika).opcije.some((o) => baza.p[o.i][2] === 9));
+});
+
+test('prepoznavanje govora: "mljeko", "mleko", jedno krivo slovo – ista grupa kao "mlijeko" (prijava vlasnika)', () => {
+  const grupe = JSON.parse(readFileSync(join(KORIJEN, 'uvoz', 'grupe.json'), 'utf8')).grupe;
+  pripremiGrupe(grupe);
+  const id = (t) => { const p = prepoznaj(t); return p ? grupe[p.g].id : null; };
+  for (const t of ['mlijeko', 'mljeko', 'mleko', 'Mljeko.', 'mlieko', 'dvije litre mljeka']) {
+    assert.equal(grupe[rastavi(t)[0].g].id, 'mlijeko', t);
+  }
+  assert.equal(rastavi('mljeko')[0].jedinica, 'l');                     // ne "1 pakiranje"
+  assert.equal(id('beli kruh'), 'kruh');
+  assert.equal(id('jogrut'), 'jogurt');
+  assert.equal(id('salama'), 'suhomesnato');                            // slične riječi ostaju različite
+  assert.equal(id('salata'), 'salata');
+  assert.equal(id('sirup'), 'sok');
+  assert.equal(id('xyzabc'), null);
+  assert.equal(kanon('mlijeko'), kanon('mljeko'));
+  assert.ok(blizu('mlieko', 'mleko') && blizu('jogrut', 'jogurt') && !blizu('sir', 'sirup'));
+});
+
+test('procjena po lancu: proizvod iz samo jedne poslovnice velikog lanca nije cijena lanca', () => {
+  assert.equal(pragPoslovnica(188), 2);
+  assert.equal(pragPoslovnica(3), 1);
+  const proizvodi = {
+    p: [['Vino Arabella Merlot', 'Arabella', 0.75, 'l', -1, -1, ''], ['Vino crno 0,75 l', '', 0.75, 'l', -1, -1, '']],
+    l: {
+      veliki: { i: [0, 1], t: [20, 399], n: [0, 0], x: [0, 0], r: [0, 0], s: [1, 188] },
+      mali: { i: [0], t: [25], n: [0], x: [0], r: [0], s: [1] },
+    },
+  };
+  const b = new Baza(proizvodi, []);
+  assert.equal(b.lanci.veliki.procjena[0], 0);                          // 1 od 188 poslovnica: nije u procjeni
+  assert.equal(b.lanci.veliki.procjena[1], 399);
+  assert.equal(b.lanci.veliki.cijena[0], 20);                           // stvarna poslovnica i dalje ima cijenu
+  assert.equal(b.lanci.mali.procjena[0], 25);                           // mali lanac: svaki proizvod vrijedi
 });

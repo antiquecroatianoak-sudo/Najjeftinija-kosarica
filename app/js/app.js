@@ -370,7 +370,7 @@ function poslovniceUKrugu() {
 async function prodavaci() {
   const lanci = odabraniLanci();
   if (!(S.lokacija.ukljucena && S.lokacija.lat != null)) {
-    return { nacin: 'lanci', popis: lanci.map((id) => ({ id, lanac: id, naziv: nazivLanca(id), cijena: P.baza.lanci[id].cijena })) };
+    return { nacin: 'lanci', popis: lanci.map((id) => ({ id, lanac: id, naziv: nazivLanca(id), cijena: P.baza.lanci[id].procjena })) };
   }
   const krug = poslovniceUKrugu();
   const odabrane = krug.slice(0, NAJVISE_POSLOVNICA);

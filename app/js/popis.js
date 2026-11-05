@@ -6,13 +6,35 @@ const SUVISNO = new Set(['molim', 'trebam', 'treba', 'kupiti', 'kupi', 'kupit', 
 
 let rjecnik = null;   // fraza -> {g, pg}
 
+// Ijekavski/ekavski i zapis prepoznavanja govora: "mlijeko", "mljeko", "mleko" -> "mleko"; "bijeli kruh" -> "beli kruh".
+export function kanon(tekst) {
+  return norm(tekst).replace(/ije/g, 'e').replace(/je/g, 'e');
+}
+
+// Udaljenost uređivanja najviše 1 (zamjena, umetanje, brisanje, zamjena susjednih slova).
+export function blizu(a, b) {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  if (a.length === b.length) {
+    const r = [];
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) r.push(i);
+    return r.length === 1 || (r.length === 2 && r[1] === r[0] + 1 && a[r[0]] === b[r[1]] && a[r[1]] === b[r[0]]);
+  }
+  const [k, d] = a.length < b.length ? [a, b] : [b, a];
+  let i = 0;
+  while (i < k.length && k[i] === d[i]) i++;
+  return k.slice(i) === d.slice(i + 1);
+}
+
 export function pripremiGrupe(grupe) {
-  rjecnik = { fraze: new Map(), korijeni: new Map(), grupe };
+  rjecnik = { fraze: new Map(), kanoni: new Map(), korijeni: new Map(), grupe };
   grupe.forEach((g, gi) => {
     const dodaj = (fraza, pg) => {
       const n = norm(fraza);
       if (!n) return;
       if (!rjecnik.fraze.has(n) || pg >= 0) rjecnik.fraze.set(n, { g: gi, pg });
+      const k = kanon(n);
+      if (!rjecnik.kanoni.has(k) || pg >= 0) rjecnik.kanoni.set(k, { g: gi, pg });
       if (!n.includes(' ') && pg < 0 && !rjecnik.korijeni.has(korijen(n))) rjecnik.korijeni.set(korijen(n), { g: gi, pg: -1 });
     };
     dodaj(g.naziv, -1);
@@ -33,12 +55,14 @@ export function prepoznaj(fraza) {
   const rijeci = n.split(' ').filter((r) => !SUVISNO.has(r));
   const cisto = rijeci.join(' ');
   if (rjecnik.fraze.has(cisto)) return rjecnik.fraze.get(cisto);
+  // isti izraz napisan ijekavski/ekavski ili kako ga je zapisalo prepoznavanje govora ("mljeko")
+  if (rjecnik.kanoni.has(kanon(cisto))) return rjecnik.kanoni.get(kanon(cisto));
   // najduža poznata fraza unutar teksta ("jeftini bijeli kruh" -> "bijeli kruh")
   let najbolje = null;
   for (let duljina = Math.min(4, rijeci.length); duljina >= 1 && !najbolje; duljina--) {
     for (let i = 0; i + duljina <= rijeci.length; i++) {
       const dio = rijeci.slice(i, i + duljina).join(' ');
-      const pogodak = rjecnik.fraze.get(dio);
+      const pogodak = rjecnik.fraze.get(dio) || rjecnik.kanoni.get(kanon(dio));
       if (pogodak && (!najbolje || pogodak.pg >= 0)) najbolje = pogodak;
     }
   }
@@ -58,6 +82,15 @@ export function prepoznaj(fraza) {
     for (const r of rijeci) {
       const k = rjecnik.korijeni.get(korijen(r));
       if (k) return k;
+    }
+    // jedno krivo slovo ("mlieko", "jogrut"): samo za riječi od 5+ slova i samo ako je pogodak jednoznačan
+    for (const r of rijeci) {
+      if (r.length < 5) continue;
+      const pogodci = new Map();
+      for (const [f, v] of rjecnik.kanoni) {
+        if (!f.includes(' ') && f.length >= 5 && blizu(kanon(r), f)) pogodci.set(`${v.g}/${v.pg}`, v);
+      }
+      if (pogodci.size === 1) return [...pogodci.values()][0];
     }
   }
   return null;
