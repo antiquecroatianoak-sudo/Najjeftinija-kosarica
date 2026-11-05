@@ -2,7 +2,7 @@
 import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm } from './tekst.js';
 import { pripremiGrupe, rastavi, novaStavkaId } from './popis.js';
 import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost } from './usporedba.js';
-import { ucitajPodatke, ucitajPoslovnice, DRZAVE } from './podaci.js';
+import { ucitajPodatke, ucitajPoslovnice, pripremiPoslovnice, DRZAVE } from './podaci.js';
 import { ukljuciHvatanje, zabiljezi, izvjesce, obrisiGreske, VERZIJA_APLIKACIJE } from './greske.js';
 
 ukljuciHvatanje();
@@ -132,7 +132,7 @@ function prikazi() {
   const sadrzaj = $('#sadrzaj');
   osvjeziUstedu();
   if (!P) return;
-  if (karta && S.zaslon !== 'karta') { karta.remove(); karta = null; }
+  if (karta && S.zaslon !== 'karta') { const k = karta; karta = null; import('./karta.js').then((m) => m.ukloniKartu(k)); }
   try {
     const zasloni = { popis: zaslonPopis, rezultati: zaslonRezultati, akcije: zaslonAkcije, karta: zaslonKarta, vise: zaslonVise,
       usteda: zaslonUsteda, obitelj: zaslonObitelj, skener: zaslonSkener, status: zaslonStatus, trgovine: zaslonTrgovine,
@@ -187,6 +187,7 @@ function zaslonPopis(el) {
   const brze = ['kruh', 'mlijeko', 'jaja', 'krumpir', 'banane', 'kava', 'piletina', 'toaletni-papir', 'sir', 'jogurt']
     .map((id) => P.grupe.findIndex((g) => g.id === id)).filter((i) => i >= 0);
   el.innerHTML = `<div class="zaslon">
+    ${gumbLokacije()}
     ${S.zakljucano ? `<div class="zakljucano">${IKONE.lokot}<span class="razmak">Popis je zaključan. Rezultati su spremni.</span><button class="gumb mali" data-akcija="otkljucaj">Uredi</button></div>` : `
     <section class="kartica glas">
       <h2>Što trebaš kupiti?</h2>
@@ -374,13 +375,21 @@ async function prodavaci() {
   }
   const krug = poslovniceUKrugu();
   const odabrane = krug.slice(0, NAJVISE_POSLOVNICA);
-  const { datoteke, neuspjele } = await ucitajPoslovnice(S.drzava, odabrane.map((x) => x.p[7]));
+  const { datoteke, neuspjele } = await ucitajPoslovnice(S.drzava, odabrane.map((x) => x.p[7]), {
+    napredak: (n, ukupno) => { const el = $('#napredakPoslovnica'); if (el) el.textContent = `Učitavam cijene trgovina u krugu: ${n} od ${ukupno}`; },
+  });
   const popis = [];
   for (const { p, km } of odabrane) {
     const d = datoteke.get(p[7]);
     if (!d || !P.baza.lanci[p[0]]) continue;
     popis.push({ id: `${p[0]}:${p[1]}`, lanac: p[0], naziv: nazivLanca(p[0]), adresa: [p[2], p[3]].filter(Boolean).join(', '), km,
       cijena: P.baza.cijenePoslovnice(p[0], d) });
+  }
+  if (!popis.length && odabrane.length) {
+    // nijedna trgovina u krugu se nije učitala na vrijeme (slaba veza): ne ostavljaj prazan zaslon –
+    // pokaži uobičajene cijene lanaca i jasno reci zašto, uz "Pokušaj ponovno"
+    return { nacin: 'lanci', popis: lanci.map((id) => ({ id, lanac: id, naziv: nazivLanca(id), cijena: P.baza.lanci[id].procjena })),
+      krugNijeUcitan: odabrane.length };
   }
   return { nacin: 'poslovnice', popis, uKrugu: krug.length, odrezano: Math.max(0, krug.length - NAJVISE_POSLOVNICA), neuspjele: neuspjele.length };
 }
@@ -452,7 +461,7 @@ async function zaslonRezultati(el) {
       <button class="gumb glavni" style="margin-top:14px" data-idi="popis">Na popis</button></div></div>`;
     return;
   }
-  el.innerHTML = `<div class="zaslon"><div class="ucitavanje"><div class="vrtuljak"></div><p>Uspoređujem cijene…</p></div></div>`;
+  el.innerHTML = `<div class="zaslon"><div class="ucitavanje"><div class="vrtuljak"></div><p>Uspoređujem cijene…</p><p class="sitno" id="napredakPoslovnica"></p></div></div>`;
   let r;
   try {
     r = await izracunaj();
@@ -465,7 +474,9 @@ async function zaslonRezultati(el) {
   const { pr, a, b, c } = r;
   const tab = S.rezTab;
   const lanciTekst = `${odabraniLanci().length} od ${sviLanci().length} lanaca`;
-  const mjesto = pr.nacin === 'poslovnice'
+  const mjesto = pr.krugNijeUcitan
+    ? `Cijene trgovina u krugu ${S.lokacija.radijus} km nisu se učitale na vrijeme (slaba veza) – prikazujem uobičajene cijene lanaca za cijelu Hrvatsku`
+    : pr.nacin === 'poslovnice'
     ? `U krugu ${S.lokacija.radijus} km: ${pr.popis.length} poslovnica${pr.odrezano ? ` (najbližih ${NAJVISE_POSLOVNICA} od ${pr.uKrugu})` : ''}`
     : 'Cijela Hrvatska · uobičajene cijene lanaca';
   let tijelo = '';
@@ -485,9 +496,9 @@ async function zaslonRezultati(el) {
     </div>
     <div class="redak sitno" style="flex-wrap:wrap">
       <button class="cip" data-idi="trgovine">${IKONE.trgovina} ${lanciTekst}</button>
-      <button class="cip" data-idi="karta">${IKONE.lokacija} ${S.lokacija.ukljucena ? `${S.lokacija.radijus} km` : 'Cijela HR'}</button>
+      <button class="cip" data-akcija="lokacija">${IKONE.lokacija} ${S.lokacija.ukljucena ? `${S.lokacija.radijus} km` : 'Cijela HR'}</button>
     </div>
-    <p class="sitno">${esc(mjesto)}${pr.neuspjele ? ` · ${pr.neuspjele} poslovnica se nije učitalo` : ''}</p>
+    <p class="sitno">${esc(mjesto)}${pr.krugNijeUcitan ? ' <button class="gumb mali" data-akcija="ponovno-poslovnice">Pokušaj ponovno</button>' : ''}${pr.neuspjele ? ` · <span class="upozorenje">${pr.neuspjele} trgovina se nije učitalo na vrijeme (slaba veza) i nisu u usporedbi</span> <button class="gumb mali" data-akcija="ponovno-poslovnice">Pokušaj ponovno</button>` : ''}</p>
     ${tijelo}
     ${pr.popis.length ? `<p class="savjet">${IKONE.zamijeni}<span>Dodirni proizvod za <b>sljedeći najjeftiniji</b> iz iste grupe. ${pr.nacin === 'lanci' ? 'Cijene su uobičajene cijene lanca (najčešća cijena u poslovnicama). Uključi lokaciju na karti za cijene stvarnih poslovnica blizu tebe.' : 'Cijene su iz cjenika svake pojedine poslovnice.'}</span></p>` : ''}
     ${oglas()}
@@ -730,17 +741,113 @@ async function zaslonKarta(el) {
   }
 }
 
-function mojaLokacija() {
-  if (!navigator.geolocation) { poruka('Ovaj uređaj ne podržava lokaciju.'); return; }
-  poruka('Tražim lokaciju…');
-  navigator.geolocation.getCurrentPosition((pos) => {
-    S.lokacija = { ...S.lokacija, ukljucena: true, lat: pos.coords.latitude, lon: pos.coords.longitude, izvor: 'gps' };
-    zadnjiIzracun = null; spremi(); prikazi();
-    poruka('Lokacija postavljena.');
-  }, (e) => {
-    const p = { 1: 'Lokacija nije dopuštena. U Chromeu: lokot pokraj adrese → Dopuštenja → Lokacija.', 2: 'Lokacija trenutno nije dostupna.', 3: 'Traženje lokacije je predugo trajalo.' };
-    poruka(p[e.code] || 'Lokacija nije dostupna.');
+// ---------------------------------------------------------------- LOKACIJA (jedan gumb na glavnom zaslonu)
+// Dodir -> odmah traži lokaciju i otvara izbor kruga 2/5/10/20 km -> odabir kruga -> natrag na popis.
+// Karta i rezultati koriste iste poslovnice u krugu. Lokacija nije obavezna ("Bez lokacije").
+let lokStanje = { traziSe: false, greska: '' };
+let lokSat = null;
+
+function krugoviPoBroju() {
+  const { lat, lon } = S.lokacija;
+  const lanci = new Set(odabraniLanci());
+  const broj = Object.fromEntries(RADIJUSI.map((r) => [r, 0]));
+  if (lat == null) return broj;
+  for (const p of P.poslovnice) {
+    if (!lanci.has(p[0]) || p[5] == null) continue;
+    const km = udaljenost(lat, lon, p[5], p[6]);
+    for (const r of RADIJUSI) if (km <= r) broj[r]++;
+  }
+  return broj;
+}
+
+function gumbLokacije() {
+  const L0 = S.lokacija;
+  const ukljucena = L0.ukljucena && L0.lat != null;
+  const n = ukljucena ? poslovniceUKrugu().length : 0;
+  return `<button class="lokacija-gumb ${ukljucena ? 'aktivna' : ''}" data-akcija="lokacija" aria-label="Lokacija i krug trgovina">
+    <span class="lok-ikona">${IKONE.lokacija}</span>
+    <span class="razmak"><b>${ukljucena ? `U krugu ${L0.radijus} km · ${n} ${n === 1 ? 'trgovina' : n >= 2 && n <= 4 ? 'trgovine' : 'trgovina'}` : 'Trgovine u blizini'}</b>
+    <span class="sitno">${ukljucena ? (L0.izvor === 'karta' ? 'oko odabrane točke na karti' : 'oko tvoje lokacije') + ' · dodirni za promjenu' : 'Cijela Hrvatska · dodirni za lokaciju'}</span></span>
+  </button>`;
+}
+
+function htmlLokacije() {
+  const L0 = S.lokacija;
+  const broj = krugoviPoBroju();
+  const stanje = lokStanje.traziSe
+    ? '<p class="lok-stanje"><span class="vrtuljak malo"></span> Tražim tvoju lokaciju…</p>'
+    : lokStanje.greska
+      ? `<p class="lok-stanje upozorenje">${esc(lokStanje.greska)}</p><button class="gumb mali" data-akcija="lok-trazi">Pokušaj ponovno</button>`
+      : L0.lat != null ? `<p class="lok-stanje">${L0.izvor === 'karta' ? 'Odabrana točka na karti.' : 'Lokacija pronađena.'} Odaberi krug:</p>` : '';
+  const mozeOdabrati = L0.lat != null && !lokStanje.traziSe;
+  return `<div class="lok-ploca"><h3>${IKONE.lokacija} Trgovine u blizini</h3>
+    ${stanje}
+    <div class="lok-krugovi" role="group" aria-label="Krug">${RADIJUSI.map((r) => `<button class="lok-krug" data-akcija="lok-r" data-r="${r}" ${mozeOdabrati ? '' : 'disabled'} aria-pressed="${L0.ukljucena && L0.radijus === r}">
+      <b>${r} km</b><span>${mozeOdabrati ? `${broj[r]} ${broj[r] === 1 ? 'trgovina' : broj[r] >= 2 && broj[r] <= 4 ? 'trgovine' : 'trgovina'}` : '…'}</span></button>`).join('')}</div>
+    <div class="redak" style="margin-top:12px;flex-wrap:wrap">
+      <button class="gumb mali" data-akcija="lok-iskljuci">Bez lokacije (cijela Hrvatska)</button>
+      ${L0.lat != null ? '<button class="gumb mali" data-akcija="lok-karta">Pogledaj na karti</button>' : ''}
+    </div>
+    <p class="sitno" style="margin-top:10px">Lokacija nije obavezna. Koristi se samo u ovom pregledniku za izbor najbližih trgovina.</p></div>`;
+}
+
+function osvjeziPlocuLokacije() {
+  const sadrzaj = $('#ploca .ploca-sadrzaj');
+  if (!$('#ploca').hidden && sadrzaj && sadrzaj.querySelector('.lok-ploca')) sadrzaj.innerHTML = htmlLokacije();
+}
+
+function traziLokaciju() {
+  clearTimeout(lokSat);
+  if (!navigator.geolocation) { lokStanje = { traziSe: false, greska: 'Ovaj uređaj ne podržava lokaciju. Možeš odabrati točku na karti.' }; osvjeziPlocuLokacije(); return; }
+  lokStanje = { traziSe: true, greska: '' };
+  osvjeziPlocuLokacije();
+  let gotovo = false;
+  const zavrsi = (greska, pos) => {
+    if (gotovo) return;
+    gotovo = true;
+    clearTimeout(lokSat);
+    if (pos) {
+      S.lokacija = { ...S.lokacija, lat: pos.coords.latitude, lon: pos.coords.longitude, izvor: 'gps' };
+      spremi();
+    }
+    lokStanje = { traziSe: false, greska };
+    osvjeziPlocuLokacije();
+    if (!$('#ploca').hidden) return;
+    prikazi();
+  };
+  // vlastiti sat: neki preglednici nikad ne pozovu ni uspjeh ni grešku (npr. zatvoren upit za dopuštenje)
+  lokSat = setTimeout(() => zavrsi('Traženje lokacije je predugo trajalo. Provjeri je li lokacija uključena na mobitelu.'), 20000);
+  navigator.geolocation.getCurrentPosition((pos) => zavrsi('', pos), (e) => {
+    const p = { 1: 'Lokacija nije dopuštena. U Chromeu: lokot pokraj adrese → Dopuštenja → Lokacija → Dopusti.', 2: 'Lokacija trenutno nije dostupna. Uključi lokaciju na mobitelu.', 3: 'Traženje lokacije je predugo trajalo.' };
+    zavrsi(p[e.code] || 'Lokacija nije dostupna.');
   }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+}
+
+function otvoriLokaciju() {
+  lokStanje = { traziSe: false, greska: '' };
+  otvoriPlocu(htmlLokacije());
+  traziLokaciju();          // jedan dodir = traži lokaciju
+}
+
+function postaviKrug(r) {
+  S.lokacija = { ...S.lokacija, radijus: r, ukljucena: true };
+  zadnjiIzracun = null;
+  spremi();
+  zatvoriPlocu();
+  const krug = poslovniceUKrugu();
+  pripremiPoslovnice(S.drzava, krug.slice(0, NAJVISE_POSLOVNICA).map((x) => x.p[7]));   // rezultati odmah spremni
+  if (S.zaslon !== 'rezultati') S.zaslon = 'popis';                                         // natrag na popis
+  prikazi();
+  poruka(krug.length ? `Koristim ${krug.length} ${krug.length === 1 ? 'trgovinu' : krug.length <= 4 ? 'trgovine' : 'trgovina'} u krugu ${r} km.` : `U krugu ${r} km nema trgovina s poznatom lokacijom – odaberi veći krug.`);
+}
+
+function iskljuciLokaciju() {
+  S.lokacija = { ...S.lokacija, ukljucena: false };
+  zadnjiIzracun = null;
+  spremi();
+  zatvoriPlocu();
+  prikazi();
+  poruka('Lokacija isključena: uspoređujem cijene za cijelu Hrvatsku.');
 }
 
 // ---------------------------------------------------------------- VIŠE i podzasloni
@@ -974,7 +1081,7 @@ document.addEventListener('click', (e) => {
     idi(navEl.dataset.idi);
     return;
   }
-  if (e.target.closest('[data-zatvori]')) { zatvoriPlocu(); return; }
+  if (e.target.closest('[data-zatvori]')) { const lok = !!$('#ploca .lok-ploca'); zatvoriPlocu(); if (lok) prikazi(); return; }
   const a = e.target.closest('[data-akcija]');
   if (!a) return;
   const id = a.dataset.id;
@@ -1061,12 +1168,19 @@ document.addEventListener('click', (e) => {
       uveziPopis(v.includes('#popis=') ? v.split('#popis=')[1] : v);
       break;
     }
-    case 'moja-lokacija': mojaLokacija(); break;
-    case 'iskljuci-lokaciju': S.lokacija.ukljucena = false; zadnjiIzracun = null; spremi(); prikazi(); break;
+    case 'lokacija': otvoriLokaciju(); break;
+    case 'lok-trazi': traziLokaciju(); break;
+    case 'lok-r': postaviKrug(Number(a.dataset.r)); break;
+    case 'lok-iskljuci': iskljuciLokaciju(); break;
+    case 'lok-karta': zatvoriPlocu(); S.zaslon = 'karta'; prikazi(); break;
+    case 'ponovno-poslovnice': zadnjiIzracun = null; prikazi(); break;
+    case 'moja-lokacija': otvoriLokaciju(); break;
+    case 'iskljuci-lokaciju': iskljuciLokaciju(); break;
     case 'radijus':
-      S.lokacija.radijus = Number(a.dataset.r);
-      if (S.lokacija.lat == null) { mojaLokacija(); } else { S.lokacija.ukljucena = true; }
-      zadnjiIzracun = null; spremi(); prikazi();
+      // na karti: s poznatom lokacijom krug se odmah primjenjuje, inače isti izbor kao na glavnom zaslonu
+      if (S.lokacija.lat == null) { S.lokacija.radijus = Number(a.dataset.r); otvoriLokaciju(); } else {
+        S.lokacija = { ...S.lokacija, radijus: Number(a.dataset.r), ukljucena: true }; zadnjiIzracun = null; spremi(); prikazi();
+      }
       break;
     case 'lanci-svi': S.lanci = null; zadnjiIzracun = null; spremi(); prikazi(); break;
     case 'lanci-nijedan': S.lanci = []; zadnjiIzracun = null; spremi(); prikazi(); break;

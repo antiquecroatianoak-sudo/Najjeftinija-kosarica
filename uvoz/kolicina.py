@@ -187,3 +187,20 @@ def lijep_naziv(naziv: str) -> str:
         n = n.lower()
         n = n[:1].upper() + n[1:]
     return n
+
+
+_KOLICINA_U_NAZIVU = re.compile(
+    r"\d+(?:[.,]\d+)?\s*(?:x\s*\d+(?:[.,]\d+)?\s*)?(?:kg|kgr|g|gr|dag|dkg|mg|l|lit|litra|ml|cl|dl|kom|pak)(?![a-z])",
+    re.IGNORECASE)
+
+
+def naziv_bez_kolicine(naziv: str, kol: tuple[float, str] | None = None) -> str:
+    """Naziv za usporedbu istih proizvoda. Uklanja se samo količina koja JEST količina pakiranja ("Šećer 1 kg" =
+    "Secer, 1kg"); ostali brojevi ostaju jer razlikuju proizvode (mlijeko 2,8 % ≠ 3,5 %, brašno T-400 ≠ T-850,
+    kuhalo 1,7 l ≠ 1,8 l kad je pakiranje "1 kom")."""
+    def zamjena(m):
+        procitano = iz_teksta(m.group(0))
+        if kol and procitano and procitano[1] == kol[1] and abs(procitano[0] - kol[0]) <= 0.01 * kol[0]:
+            return " "
+        return m.group(0)
+    return norm(_KOLICINA_U_NAZIVU.sub(zamjena, naziv or ""))

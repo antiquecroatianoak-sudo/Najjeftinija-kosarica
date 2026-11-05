@@ -265,3 +265,27 @@ select.polje { appearance: none; background-image: linear-gradient(45deg, transp
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Lokacija: jedan gumb na glavnom zaslonu i ploča s izborom kruga */
+.lokacija-gumb { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--kartica); border: 1.5px solid var(--rub);
+  border-radius: var(--radijus); padding: 12px 14px; box-shadow: var(--sjena); color: var(--tekst); font: inherit; cursor: pointer; }
+.lokacija-gumb .razmak { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lokacija-gumb b { font-size: 1rem; }
+.lokacija-gumb.aktivna { border-color: var(--glavna); background: var(--glavna-svijetla); }
+.lok-ikona { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--glavna); color: #fff; }
+.lok-ikona svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; }
+.lokacija-gumb:active { transform: scale(.99); }
+.lok-ploca h3 { display: flex; align-items: center; gap: 8px; }
+.lok-ploca h3 svg { width: 22px; height: 22px; stroke: var(--glavna); fill: none; stroke-width: 2; }
+.lok-stanje { margin: 10px 0 4px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.lok-stanje.upozorenje { color: var(--opasnost); }
+.lok-krugovi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.lok-krug { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 64px; justify-content: center; border-radius: 14px;
+  border: 1.5px solid var(--rub); background: var(--kartica-2); color: var(--tekst); font: inherit; cursor: pointer; }
+.lok-krug b { font-size: 1.15rem; }
+.lok-krug span { font-size: .85rem; color: var(--tekst-2); }
+.lok-krug[aria-pressed="true"] { background: var(--glavna); border-color: var(--glavna); color: #fff; }
+.lok-krug[aria-pressed="true"] span { color: rgba(255, 255, 255, .85); }
+.lok-krug:disabled { opacity: .5; cursor: default; }
+.vrtuljak.malo { width: 18px; height: 18px; border-width: 3px; margin: 0; display: inline-block; }
+.upozorenje { color: var(--opasnost); }

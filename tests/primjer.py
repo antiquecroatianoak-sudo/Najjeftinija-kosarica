@@ -135,6 +135,16 @@ def napravi_arhivu(put: Path, datum: str, bez=(), pomak=0.0):
                     c = round(cijena * faktor, 2)
                     cijene.append({"store_id": s["store_id"], "product_id": pid, "price": f"{c:.2f}", "unit_price": f"{c / osn:.2f}",
                                    "best_price_30": "", "anchor_price": "", "special_price": "", "available": "", "special_sale_type": "", "anchor_price_date": ""})
+        # isti proizvod pod dva barkoda (stvarni primjer 5.11.2026.): treba postati jedan proizvod s oba barkoda
+        if lanac in ("konzum", "kaufland"):
+            bk2 = {"konzum": "9007829021019", "kaufland": "9007829025017"}[lanac]
+            pid = f"{lanac[:1]}-dva-bk"
+            proizvodi.append({"product_id": pid, "barcode": bk2, "name": "Šećer kristal Agragold 1 kg" if lanac == "konzum"
+                              else "Secer kristal, Agragold 1kg", "brand": "Agragold", "category": "", "unit": "kg", "quantity": "1"})
+            for s in st:
+                c = 1.15 if lanac == "konzum" else 1.09
+                cijene.append({"store_id": s["store_id"], "product_id": pid, "price": f"{c:.2f}", "unit_price": f"{c:.2f}",
+                               "best_price_30": "", "anchor_price": "", "special_price": "", "available": "", "special_sale_type": "", "anchor_price_date": ""})
         if lanac == "lidl":
             rnd.shuffle(cijene)        # nije složeno po poslovnici
         else:
