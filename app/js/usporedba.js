@@ -25,7 +25,7 @@ export function pragPoslovnica(ukupnoPoslovnica) {
 
 export class Baza {
   constructor(proizvodi, grupe) {
-    this.p = proizvodi.p;               // [naziv, marka, količina, vrsta, grupa, podgrupa, barkod]
+    this.p = proizvodi.p;               // [naziv, marka, količina, vrsta, grupa, podgrupa, barkod, (ostali barkodovi)]
     this.grupe = grupe;
     this.n = this.p.length;
     this.trazilica = this.p.map((r) => ' ' + norm(`${r[0]} ${r[1]}`) + ' ');
@@ -37,6 +37,8 @@ export class Baza {
         this.poGrupi.get(r[4]).push(i);
       }
       if (r[6]) this.poBarkodu.set(r[6], i);
+      // isti proizvod pod više barkodova (spojen u uvozu): skener nalazi svaki
+      if (r[7]) for (const b of String(r[7]).split(',')) if (b && !this.poBarkodu.has(b)) this.poBarkodu.set(b, i);
     });
     this.lanci = {};
     for (const [id, d] of Object.entries(proizvodi.l)) {

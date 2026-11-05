@@ -36,8 +36,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from kolicina import (barkod, broj, iz_polja, iz_teksta, lijep_naziv, norm, norm_pojam,  # noqa: E402
-                      odaberi_kolicinu, sadrzi, vrsta_jedinice)
+from kolicina import (barkod, broj, iz_polja, iz_teksta, lijep_naziv, naziv_bez_kolicine, norm,  # noqa: E402
+                      norm_pojam, odaberi_kolicinu, sadrzi, vrsta_jedinice)
 from lokacije import Lokacije  # noqa: E402
 
 csv.field_size_limit(10_000_000)
@@ -412,8 +412,7 @@ class Uvoz:
                 if b:
                     kljuc = "b:" + b
                 elif kol and marka:
-                    bez_kolicine = " ".join(t for t in norm(naziv).split() if not any(z.isdigit() for z in t))
-                    kljuc = f"n:{norm(marka)}|{bez_kolicine}|{kol[0]:g}{kol[1]}"
+                    kljuc = f"n:{norm(marka)}|{naziv_bez_kolicine(naziv, kol)}|{kol[0]:g}{kol[1]}"
                 else:
                     kljuc = f"l:{L.lanac}:{pid}"
                 gi = globalni.get(kljuc)
@@ -428,6 +427,34 @@ class Uvoz:
                 if kol:
                     p["kol"][kol] += 1
                 veza[(L.lanac, pid)] = gi
+
+        # 1b) isti proizvod pod više barkodova (nova ambalaža, uvoznik): ista marka, isti naziv bez količine i ista
+        #     količina -> jedan proizvod; svi barkodovi ostaju za skener
+        kanonski: dict[str, int] = {}
+        spoj: dict[int, int] = {}
+        for gi, p in enumerate(info):
+            kol = p["kol"].most_common(1)[0][0] if p["kol"] else None
+            marka = p["marke"].most_common(1)[0][0] if p["marke"] else ""
+            if not kol or not marka:
+                continue
+            naziv = p["imena"].most_common(1)[0][0]
+            k = f"{norm(marka)}|{naziv_bez_kolicine(naziv, kol)}|{kol[0]:g}{kol[1]}"
+            if k in kanonski:
+                spoj[gi] = kanonski[k]
+            else:
+                kanonski[k] = gi
+        for gi, cilj in spoj.items():
+            p, c = info[gi], info[cilj]
+            for polje in ("imena", "marke", "kol", "kat"):
+                c[polje].update(p[polje])
+            c.setdefault("barkodovi", set())
+            if p["b"]:
+                c["barkodovi"].add(p["b"])
+            if c["dop"] is None:
+                c["dop"] = p["dop"]
+        if spoj:
+            veza = {k: spoj.get(gi, gi) for k, gi in veza.items()}
+            statistika["spojeno: isti proizvod pod više barkodova"] += len(spoj)
 
         # 2) uobičajene cijene po lancu (podlancu)
         ponude: dict[str, dict[int, list]] = defaultdict(dict)    # lanac -> gi -> [t, min, max, redovna, broj]
@@ -482,7 +509,9 @@ class Uvoz:
             naziv = lijep_naziv(naziv)
             g, pg = self.raz.razvrstaj(naziv, marka)
             grupirano["s grupom" if g >= 0 else "bez grupe"] += 1
-            proizvodi.append([naziv, marka, round(kol[0], 4) if kol else 0, kol[1] if kol else "", g, pg, p["b"]])
+            ostali = sorted(p.get("barkodovi", set()) - {p["b"]})
+            proizvodi.append([naziv, marka, round(kol[0], 4) if kol else 0, kol[1] if kol else "", g, pg, p["b"] or
+                              (ostali.pop(0) if ostali else "")] + ([",".join(ostali)] if ostali else []))
 
         lanci_izlaz = {}
         for pl in sorted(ponude):

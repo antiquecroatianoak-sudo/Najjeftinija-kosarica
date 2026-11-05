@@ -54,11 +54,30 @@ class Kolicine(unittest.TestCase):
         # bez jedinične cijene, polje i naziv se ne slažu: nepoznato
         self.assertEqual(odaberi_kolicinu((31.0, "kg"), (0.31, "kg"), None, None), (None, "neslaganje"))
 
+    def test_naziv_bez_kolicine(self):
+        from kolicina import naziv_bez_kolicine as f
+        kg1, l2 = (1.0, "kg"), (2.0, "l")
+        self.assertEqual(f("Šećer kristal Agragold 1 kg", kg1), f("Secer kristal, Agragold 1kg", kg1))
+        self.assertEqual(f("Coca-Cola 2L", l2), f("Coca cola 2l", l2))
+        self.assertEqual(f("Voda 6x1,5 l Jana", (9.0, "l")), "voda jana")
+        self.assertNotEqual(f("Mlijeko 2,8% m.m. 1 l", (1.0, "l")), f("Mlijeko 3,5% m.m. 1l", (1.0, "l")))
+        self.assertNotEqual(f("Brašno T-400 1kg", kg1), f("Brašno T-850 1 kg", kg1))
+        # količina u nazivu koja NIJE količina pakiranja ostaje (kuhalo 1,7 l i 1,8 l, pakiranje 1 kom)
+        self.assertNotEqual(f("Kuhalo za vodu 1,8 l", (1.0, "kom")), f("Kuhalo za vodu 1,7 l", (1.0, "kom")))
+
     def test_barkod(self):
         self.assertEqual(barkod("385010400001"), "0385010400001")
         self.assertIsNone(barkod("konzum:123"))
         self.assertIsNone(barkod("0000000000000"))
         self.assertIsNone(barkod("123"))
+
+
+def _indeksi(d):
+    i, out = 0, set()
+    for delta in d["i"]:
+        i += delta
+        out.add(i)
+    return out
 
 
 class Uvoz(unittest.TestCase):
@@ -105,6 +124,13 @@ class Uvoz(unittest.TestCase):
         self.assertEqual(len(barkodovi), len(set(barkodovi)))
         bez = [p for p in self.pr["p"] if p[0].startswith("Domaći kruh")]
         self.assertEqual(len(bez), 1, "isti proizvod bez barkoda u dva lanca treba biti jedan")
+        # isti proizvod pod dva barkoda u dva lanca: jedan proizvod, oba barkoda, cijene oba lanca
+        agr = [p for p in self.pr["p"] if "Agragold" in p[1]]
+        self.assertEqual(len(agr), 1, agr)
+        self.assertEqual({agr[0][6], *agr[0][7].split(",")}, {"9007829021019", "9007829025017"})
+        gi = self.pr["p"].index(agr[0])
+        u_lancima = [l for l, d in self.pr["l"].items() if gi in _indeksi(d)]
+        self.assertEqual(sorted(u_lancima), ["kaufland", "konzum"])
         lanci = [l for l, m in self.cijene.items() if "Domaći kruh 600 g" in m]
         self.assertIn("plodine", lanci)
         self.assertIn("spar", lanci)
