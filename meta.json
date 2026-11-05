@@ -1,0 +1,302 @@
+{
+ "format": 1,
+ "drzava": "HR",
+ "verzija": "c9348b8457",
+ "datum": "2026-11-05",
+ "generirano": "2026-11-05T16:41:06+00:00",
+ "izvor": "Javni cjenici trgovačkih lanaca (NN 75/2025), preuzeti preko arhive cijene.dev",
+ "proizvoda": 224461,
+ "poslovnica": 1520,
+ "lanci": [
+  {
+   "id": "eurospin",
+   "naziv": "Eurospin",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 3861,
+   "poslovnica": 45,
+   "s_koordinatama": 40
+  },
+  {
+   "id": "ktc",
+   "naziv": "KTC",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 15789,
+   "poslovnica": 34,
+   "s_koordinatama": 34
+  },
+  {
+   "id": "kaufland",
+   "naziv": "Kaufland",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 19376,
+   "poslovnica": 53,
+   "s_koordinatama": 51
+  },
+  {
+   "id": "konzum",
+   "naziv": "Konzum",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 22004,
+   "poslovnica": 188,
+   "s_koordinatama": 186
+  },
+  {
+   "id": "lidl",
+   "naziv": "Lidl",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 6913,
+   "poslovnica": 116,
+   "s_koordinatama": 116
+  },
+  {
+   "id": "ntl",
+   "naziv": "NTL",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 15595,
+   "poslovnica": 342,
+   "s_koordinatama": 214
+  },
+  {
+   "id": "plodine",
+   "naziv": "Plodine",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 61848,
+   "poslovnica": 154,
+   "s_koordinatama": 151
+  },
+  {
+   "id": "spar",
+   "naziv": "Spar",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 16656,
+   "poslovnica": 119,
+   "s_koordinatama": 115
+  },
+  {
+   "id": "studenac",
+   "naziv": "Studenac",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "Studenac javno objavljuje cjenik samo za 20 poslovnica; za ostale poslovnice službene cijene nisu dostupne.",
+   "proizvoda": 19595,
+   "poslovnica": 20,
+   "s_koordinatama": 20
+  },
+  {
+   "id": "tommy",
+   "naziv": "Tommy",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 19824,
+   "poslovnica": 87,
+   "s_koordinatama": 86
+  },
+  {
+   "id": "boso",
+   "naziv": "Boso",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 9073,
+   "poslovnica": 14,
+   "s_koordinatama": 7
+  },
+  {
+   "id": "bure",
+   "naziv": "Bure",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 17155,
+   "poslovnica": 3,
+   "s_koordinatama": 1
+  },
+  {
+   "id": "djelo_vodice",
+   "naziv": "Djelo Vodice",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 10737,
+   "poslovnica": 1,
+   "s_koordinatama": 0
+  },
+  {
+   "id": "dukat",
+   "naziv": "Dukat",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 294,
+   "poslovnica": 6,
+   "s_koordinatama": 6
+  },
+  {
+   "id": "gavranovic",
+   "naziv": "Gavranović",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 11130,
+   "poslovnica": 173,
+   "s_koordinatama": 108
+  },
+  {
+   "id": "interspar",
+   "naziv": "Interspar",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 22212,
+   "poslovnica": 25,
+   "s_koordinatama": 25
+  },
+  {
+   "id": "jadranka_trgovina",
+   "naziv": "Jadranka",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 12641,
+   "poslovnica": 1,
+   "s_koordinatama": 1
+  },
+  {
+   "id": "lorenco",
+   "naziv": "Lorenco",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 17398,
+   "poslovnica": 1,
+   "s_koordinatama": 0
+  },
+  {
+   "id": "ribola",
+   "naziv": "Ribola",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 29069,
+   "poslovnica": 61,
+   "s_koordinatama": 51
+  },
+  {
+   "id": "roto",
+   "naziv": "Roto",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 8988,
+   "poslovnica": 9,
+   "s_koordinatama": 9
+  },
+  {
+   "id": "stridon",
+   "naziv": "Stridon",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 31646,
+   "poslovnica": 41,
+   "s_koordinatama": 25
+  },
+  {
+   "id": "trgocentar",
+   "naziv": "Trgocentar",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 10280,
+   "poslovnica": 6,
+   "s_koordinatama": 4
+  },
+  {
+   "id": "trgovina-krk",
+   "naziv": "Trgovina Krk",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 16628,
+   "poslovnica": 14,
+   "s_koordinatama": 11
+  },
+  {
+   "id": "vrutak",
+   "naziv": "Vrutak",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 14379,
+   "poslovnica": 4,
+   "s_koordinatama": 2
+  },
+  {
+   "id": "dm",
+   "naziv": "dm",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 21931,
+   "poslovnica": 1,
+   "s_koordinatama": 0
+  },
+  {
+   "id": "zabac",
+   "naziv": "Žabac",
+   "status": "ok",
+   "datum": "2026-11-05",
+   "napomena": "",
+   "proizvoda": 3323,
+   "poslovnica": 2,
+   "s_koordinatama": 2
+  }
+ ],
+ "preskoceno": {
+  "nije dostupno": 10714798,
+  "neispravna cijena": 13740,
+  "cijena odstupa od uobičajene": 3206,
+  "cijena odstupa od drugih lanaca": 802
+ },
+ "kolicine": {
+  "količina: dopuna": 174600,
+  "količina: neslaganje": 53350,
+  "količina: polje": 168524,
+  "količina: nema": 59851,
+  "količina: naziv": 9465,
+  "spojeno: isti proizvod pod više barkodova": 1659,
+  "količina: neslaganje lanaca": 2287
+ },
+ "grupirano": {
+  "s grupom": 104514,
+  "bez grupe": 119947
+ },
+ "upozorenja": [],
+ "lokacije": {
+  "iz_predmemorije": 727,
+  "novo_adresa": 0,
+  "novo_trgovina": 0,
+  "novo_ulica": 0,
+  "nije_nadeno": 0,
+  "odgodeno": 0,
+  "greska": 0,
+  "upita": 0
+ }
+}
