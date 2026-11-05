@@ -70,3 +70,8 @@ Pregledati PR #7 i usporediti ga s aktualnom produkcijskom granom. Provjeriti st
 - Vlasnik javlja da trenutačni način preuzimanja/pokretanja „nije dobar” (artefakt traži prijavu na GitHub i zip). Točan neuspjeli korak još nije poznat.
 - Pripremljena, ali **nije spojena ni gurnuta**: GitHub Release `proba` sa stalnom javnom poveznicom na APK. Zaustavljena jer otvara javni pristup bez izričitog odobrenja vlasnika (AGENTS.md). Zakrpa postoji samo u privremenom spremniku sesije; ako nestane, promjenu treba ponovno napisati.
 - Sljedeći korak: vlasnik bira javnu poveznicu ili privatni put, i navodi što točno ne radi (preuzimanje, instalacija ili sama aplikacija).
+
+## Zapis 5.11.2026. 10:25 CET (Europe/Zagreb) — javna poveznica za probni APK
+- Vlasnik je izričito odobrio javnu poveznicu. Commit `13ac171`, run [42001605523](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42001605523) success.
+- Objavljeno: GitHub prerelease `proba` s `najjeftinija-kosarica.apk` (458 379 B). Bez prijave preuzeto i provjereno: HTTP 200, potpisan APK. Poveznica: https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/releases/download/proba/najjeftinija-kosarica.apk
+- Nije testirano: instalacija i rad na vlasnikovu mobitelu.
