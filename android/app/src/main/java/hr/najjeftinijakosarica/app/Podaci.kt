@@ -12,6 +12,11 @@ import java.util.zip.GZIPInputStream
  * Lokacija korisnika se nikamo ne šalje; preuzima se samo zajednički katalog.
  */
 class Podaci(private val ctx: Context) {
+    companion object {
+        /** Ugrađeni katalog (gzip). Namjerno bez nastavka .gz: alat za pakiranje inače sam raspakira takve datoteke. */
+        const val UGRADJENI = "katalog.gzdat"
+    }
+
     private val spremljeni = File(ctx.filesDir, "katalog.json.gz")
 
     private fun procitaj(bajtovi: ByteArray): Katalog =
@@ -23,7 +28,7 @@ class Podaci(private val ctx: Context) {
             runCatching { return procitaj(spremljeni.readBytes()) }
             spremljeni.delete()
         }
-        return procitaj(ctx.assets.open("katalog.json.gz").use { it.readBytes() })
+        return procitaj(ctx.assets.open(UGRADJENI).use { it.readBytes() })
     }
 
     /** Novi katalog s interneta, samo ako nije stariji od trenutnog (zaštita od starijeg cjenika). */

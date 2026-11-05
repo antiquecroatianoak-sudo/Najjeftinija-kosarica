@@ -40,7 +40,7 @@ jobs:
             https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/data/proizvodi.json
           node scripts/app_katalog.cjs "$RUNNER_TEMP/proizvodi.json" "$RUNNER_TEMP/katalog.json" | tee "$RUNNER_TEMP/katalog-stat.json"
           mkdir -p android/app/src/main/assets
-          cp "$RUNNER_TEMP/katalog.json.gz" android/app/src/main/assets/katalog.json.gz
+          cp "$RUNNER_TEMP/katalog.json.gz" android/app/src/main/assets/katalog.gzdat
           {
             echo "### Katalog cijena"
             echo '```'; cat "$RUNNER_TEMP/katalog-stat.json"; echo '```'
@@ -84,6 +84,13 @@ jobs:
         env:
           VERSION_CODE: ${{ github.run_number }}
         run: gradle -p android --no-daemon :jezgra:test :app:assembleRelease :app:bundleRelease
+
+      # Ugrađeni katalog mora biti u APK-u pod imenom koje aplikacija čita (inače nema cijena bez interneta).
+      - name: Provjera APK-a
+        run: |
+          unzip -l android/app/build/outputs/apk/release/app-release.apk | grep -q "assets/katalog.gzdat"
+          unzip -p android/app/build/outputs/apk/release/app-release.apk assets/katalog.gzdat | gzip -t
+          echo "Ugrađeni katalog je u APK-u i ispravan gzip."
 
       - uses: actions/upload-artifact@v4
         with:

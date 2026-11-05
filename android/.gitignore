@@ -4,4 +4,4 @@ app/build/
 local.properties
 *.jks
 *.keystore
-app/src/main/assets/katalog.json.gz
+app/src/main/assets/katalog.gzdat
