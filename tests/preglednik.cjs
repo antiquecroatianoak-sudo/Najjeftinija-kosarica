@@ -10,9 +10,11 @@ const KORIJEN = path.resolve(process.argv[2] || path.join(__dirname, '..', 'app'
 const SNIMKE = process.argv[3] ? path.resolve(process.argv[3]) : null;
 const VRSTE = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 
+let bezMreze = false;   // simulira prekid veze: poslužitelj ne odgovara (vrijedi i za service worker)
 function posluzitelj() {
   return new Promise((ok) => {
     const s = http.createServer((req, res) => {
+      if (bezMreze) { req.socket.destroy(); return; }
       let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
       if (p.endsWith('/')) p += 'index.html';
       const f = path.join(KORIJEN, p);
@@ -151,14 +153,14 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     if (i === 6) { await s.reload(); await s.waitForSelector('.izbornik'); }
   }
   provjeri(await spremljeno(), 'cijene su spremljene za rad bez interneta');
-  await kontekst.setOffline(true);
+  bezMreze = true;
   await s.reload();
   await s.waitForSelector('.izbornik');
   await s.waitForSelector('#obavijest:not([hidden]), .sadrzaj .zaslon', { timeout: 30000 });
   await s.waitForTimeout(300);
   const ob = await s.locator('#obavijest').innerText().catch(() => '');
   provjeri(/spremljene cijene/.test(ob), 'bez interneta prikazuju se spremljene cijene' + (/spremljene/.test(ob) ? '' : ` (obavijest: "${ob}", sadržaj: "${(await s.locator('#sadrzaj').innerText()).slice(0, 200)}")`));
-  await kontekst.setOffline(false);
+  bezMreze = false;
 
   console.log('Širine zaslona');
   for (const w of [320, 768]) {
