@@ -16,6 +16,13 @@ import { norm, korijen, uOsnovnu } from './tekst.js';
 export const NAJVISE_PAKIRANJA = 40;
 export const NAJVISE_VISKA = 2.5;
 
+// Procjena po lancu (bez odabrane lokacije): kod velikog lanca (20+ poslovnica) proizvod koji prodaje samo jedna
+// poslovnica nije cijena lanca (npr. vino za 0,20 € u 1 od 188 Konzuma). U krugu oko lokacije svaka stvarna
+// poslovnica i dalje ima svoje cijene. Za male lance vrijedi svaki proizvod.
+export function pragPoslovnica(ukupnoPoslovnica) {
+  return ukupnoPoslovnica >= 20 ? 2 : 1;
+}
+
 export class Baza {
   constructor(proizvodi, grupe) {
     this.p = proizvodi.p;               // [naziv, marka, količina, vrsta, grupa, podgrupa, barkod]
@@ -41,7 +48,15 @@ export class Baza {
         cijena[i] = d.t[k];
         lokalno[i] = k + 1;
       });
-      this.lanci[id] = { id, cijena, lokalno, t: d.t, n: d.n, x: d.x, r: d.r, s: d.s, indeksi: null };
+      let ukupno = 1;
+      for (const s of d.s || []) if (s > ukupno) ukupno = s;
+      const prag = pragPoslovnica(ukupno);
+      const procjena = new Int32Array(cijena);
+      if (d.s) {
+        let j = 0;
+        d.i.forEach((delta, k) => { j += delta; if (d.s[k] < prag) procjena[j] = 0; });
+      }
+      this.lanci[id] = { id, cijena, procjena, lokalno, t: d.t, n: d.n, x: d.x, r: d.r, s: d.s, indeksi: null };
     }
   }
 
