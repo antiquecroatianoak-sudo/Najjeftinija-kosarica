@@ -461,7 +461,7 @@ class Uvoz:
                 pbr = (r.get("zipcode") or "").strip()
                 koord = self.dpo.get((L.lanac, kljuc_poslovnice(sid))) or self.dpo.get((L.lanac, "a:" + norm(f"{adresa} {grad}")))
                 if koord is None and self.lok is not None:
-                    koord = self.lok.trazi(adresa, grad, pbr)
+                    koord = self.lok.trazi(adresa, grad, pbr, IMENA.get(L.lanac, L.lanac))
                 poslovnice.append([pl, sid, adresa, grad, pbr,
                                    koord[0] if koord else None, koord[1] if koord else None, ime, len(lokalni)])
         for stara in mapa_s.glob("*.json"):

@@ -8,6 +8,7 @@ postavlja najviše NAJVISE_UPITA upita, ostatak dolazi idućih dana.
 
 Što se prihvaća (bolje bez točke nego s pogrešnom točkom):
   - "adresa": rezultat razine kućnog broja (place_rank >= 30);
+  - "trgovina": trgovina istog lanca na OSM-u u istoj ulici kao poslovnica (sam grad nije dovoljan);
   - "ulica": samo kratke lokalne ulice (stambena, neklasificirana, pješačka...), nikad glavne ceste,
     jer duga cesta može biti kilometrima od poslovnice;
   - sve izvan Hrvatske ili grublje od ulice se odbija.
@@ -32,6 +33,11 @@ PONOVI_NEUSPJELE_NAKON = 30    # dana
 LOKALNE_ULICE = {"residential", "unclassified", "living_street", "pedestrian", "service", "tertiary", "road",
                  "footway", "tertiary_link"}
 HR = (42.0, 46.7, 13.0, 19.6)
+PRETRAGA = 2                   # verzija načina traženja; neuspjesi starije verzije traže se ponovno odmah
+OPCE_RIJECI = {"ulica", "ul", "cesta", "trg", "sv", "sveti", "svetog", "svete", "sveta", "kralja", "kneza", "bana",
+               "brace", "nas", "naselje", "put", "setaliste", "vijenac", "prilaz", "odvojak", "dr", "bb", "i", "od",
+               "hrvatskih", "hrvatske", "domovinskog", "rata", "nova", "novi", "stara", "stari", "gornja", "donja",
+               "mala", "velika", "obala", "park", "avenija"}
 
 
 def ocisti_adresu(adresa: str) -> str:
@@ -44,6 +50,42 @@ def ocisti_adresu(adresa: str) -> str:
 
 def kljuc(adresa: str, grad: str) -> str:
     return f"{norm(ocisti_adresu(adresa))}|{norm(grad)}"
+
+
+def bez_kucnog_broja(adresa: str) -> str:
+    """'K.TOMISLAVA 18 A' -> 'K. TOMISLAVA'; 'Marijana Celjaka bb' -> 'Marijana Celjaka'."""
+    a = ocisti_adresu(adresa).split(",")[0]
+    return re.sub(r"\s+(\d+\s*[^\W\d_]?(\s*[-/_]\s*\d*[^\W\d_]?)?|bb|b\.\s*b\.?)\s*$", "", a, flags=re.I).strip()
+
+
+def kljucna_rijec(adresa: str) -> str:
+    """Zadnja značajna riječ ulice (npr. 'gupca', 'lederera', 'tomislava') za usporedbu s ulicom trgovine na OSM-u."""
+    rijeci = [r for r in norm(bez_kucnog_broja(adresa)).split() if len(r) >= 4 and r not in OPCE_RIJECI and not r.isdigit()]
+    return rijeci[-1] if rijeci else ""
+
+
+def ista_ulica(adresa: str, rez: dict) -> bool:
+    k = kljucna_rijec(adresa)
+    a = rez.get("address") or {}
+    ulica = norm(" ".join(str(a.get(x, "")) for x in ("road", "pedestrian", "square", "place")))
+    return bool(k) and k in ulica.split()
+
+
+def prihvati_trgovinu(rez: dict, lanac: str, adresa: str) -> str | None:
+    """Trgovina istog lanca na OSM-u, ali samo ako je u istoj ulici kao poslovnica (isti lanac u gradu nije dovoljan)."""
+    if rez.get("category") != "shop" or not prihvati(rez):
+        return None
+    ime = norm(f"{rez.get('name', '')} {(rez.get('extratags') or {}).get('brand', '')}")
+    if not lanac or norm(lanac) not in ime:
+        return None
+    return "trgovina" if ista_ulica(adresa, rez) else None
+
+
+def prihvati_ulicu(rez: dict) -> str | None:
+    """Traženje bez kućnog broja: prihvaća se samo kratka lokalna ulica, nikad zgrada (benzinska, pošta, škola...)."""
+    if rez.get("category") == "highway" and prihvati(rez) == "ulica":
+        return "ulica"
+    return None
 
 
 def prihvati(rez: dict) -> str | None:
@@ -74,13 +116,16 @@ class Lokacije:
     def __init__(self, predmemorija: dict | None, korisnik: str, najvise: int = NAJVISE_UPITA, pauza: float = PAUZA,
                  dohvati: Callable[[str], list] | None = None, danas: date | None = None):
         self.p = dict((predmemorija or {}).get("a", {}))
+        if (predmemorija or {}).get("pretraga", 1) < PRETRAGA:
+            self.p = {k: v for k, v in self.p.items() if v[0] is not None}
         self.korisnik = korisnik
         self.najvise, self.pauza = najvise, pauza
         self.dohvati = dohvati or (lambda url: _dohvati_json(url, korisnik))
         self.danas = danas or date.today()
         self.upita = 0
         self.zadnji = 0.0
-        self.stat = {"iz_predmemorije": 0, "novo_adresa": 0, "novo_ulica": 0, "nije_nadeno": 0, "odgodeno": 0, "greska": 0}
+        self.stat = {"iz_predmemorije": 0, "novo_adresa": 0, "novo_trgovina": 0, "novo_ulica": 0, "nije_nadeno": 0,
+                     "odgodeno": 0, "greska": 0}
         self.prekid = False
 
     def _upit(self, parametri: dict) -> list:
@@ -89,10 +134,10 @@ class Lokacije:
             time.sleep(cekaj)
         self.zadnji = time.monotonic()
         self.upita += 1
-        p = {**parametri, "format": "jsonv2", "addressdetails": "1", "limit": "3", "countrycodes": "hr"}
+        p = {"format": "jsonv2", "addressdetails": "1", "limit": "3", "countrycodes": "hr", **parametri}
         return self.dohvati(NOMINATIM + "?" + urllib.parse.urlencode({k: v for k, v in p.items() if v}))
 
-    def trazi(self, adresa: str, grad: str, pbr: str = "") -> tuple[float, float] | None:
+    def trazi(self, adresa: str, grad: str, pbr: str = "", lanac: str = "") -> tuple[float, float] | None:
         if not (adresa or "").strip() or not (grad or "").strip():
             return None
         k = kljuc(adresa, grad)
@@ -109,14 +154,22 @@ class Lokacije:
             if svjez:
                 self.stat["iz_predmemorije"] += 1
                 return None
-        if self.prekid or self.upita + 2 > self.najvise:
+        if self.prekid or self.upita + 4 > self.najvise:
             self.stat["odgodeno"] += 1
             return None
+        grad = grad.strip()
         cista = ocisti_adresu(adresa)
         ulica = cista.split(",")[0].strip()
-        upiti = [{"street": ulica, "city": grad.strip(), "postalcode": (pbr or "").strip()},
-                 {"q": f"{cista}, {grad.strip()}"}]
-        for upit in upiti:
+        # redom: točna adresa; trgovina istog lanca u istoj ulici; ulica bez broja (samo lokalna); slobodni tekst
+        upiti = [({"street": ulica, "city": grad, "postalcode": (pbr or "").strip()}, prihvati)]
+        if lanac:
+            upiti.append(({"q": f"{lanac}, {grad}", "limit": "10", "extratags": "1"},
+                          lambda r: prihvati_trgovinu(r, lanac, adresa)))
+        bez_broja = bez_kucnog_broja(adresa)
+        if bez_broja and bez_broja != ulica:
+            upiti.append(({"street": bez_broja, "city": grad}, prihvati_ulicu))
+        upiti.append(({"q": f"{cista}, {grad}"}, prihvati))
+        for upit, provjera in upiti:
             try:
                 rezultati = self._upit(upit)
             except Exception as e:  # noqa: BLE001 - Nominatim nedostupan: stani za danas, zadrži dosadašnje
@@ -125,7 +178,7 @@ class Lokacije:
                     self.prekid = True
                 return None
             for rez in rezultati or []:
-                kval = prihvati(rez)
+                kval = provjera(rez)
                 if kval:
                     lat, lon = round(float(rez["lat"]), 6), round(float(rez["lon"]), 6)
                     self.p[k] = [lat, lon, kval, self.danas.isoformat()]
@@ -136,5 +189,5 @@ class Lokacije:
         return None
 
     def za_objavu(self) -> dict:
-        return {"format": 1, "izvor": "OpenStreetMap Nominatim (© OpenStreetMap suradnici, ODbL)",
+        return {"format": 1, "pretraga": PRETRAGA, "izvor": "OpenStreetMap Nominatim (© OpenStreetMap suradnici, ODbL)",
                 "polja": ["lat", "lon", "kvaliteta", "datum"], "a": dict(sorted(self.p.items()))}
