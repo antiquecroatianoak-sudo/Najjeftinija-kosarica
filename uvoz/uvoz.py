@@ -24,6 +24,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import statistics
 import sys
 import time
@@ -147,13 +148,30 @@ def kljuc_poslovnice(kod) -> str:
 
 # ---------------------------------------------------------------- grupe
 class Razvrstavanje:
+    """Razvrstavanje proizvoda u grupe po nazivu – jednaka pravila za sve grupe.
+
+    1. Vrsta proizvoda je PRVA riječ vrste u nazivu ("Jogurt s mlijekom" je jogurt, "Mlijeko čokoladno" mlijeko).
+    2. Riječ iza "za", "s", "sa", "od", "i", "u", "na", "bez", "okus"... (i iza "&" ili "/") opisuje nešto drugo i ne
+       određuje vrstu: "Posuda za mlijeko", "Gel med i mlijeko", "Čaj bez šećera".
+    3. Neprehrambena riječ (posuda, gel za tuširanje, SPF, šampon...) isključuje sve prehrambene grupe, pa kozmetika ili
+       posuđe nikad ne postanu mlijeko, med ili kruh (grupe s "hrana": false ostaju dopuštene).
+    4. Riječi iz "marke" vrijede tek kad u nazivu nema riječi vrste ("Milka čokolada" je čokolada, "Milka Oreo" slatkiš).
+    5. "isk" isključuje grupu, "pocetak" traži riječ na početku naziva; jednak položaj odlučuje redoslijed u grupe.json.
+    """
+
+    OVISNE = {"za", "s", "sa", "od", "i", "u", "na", "uz", "bez", "okus", "okusom", "aroma", "aromom", "punjen", "punjeni",
+              "punjena", "punjene", "punjenjem", "nadjev", "nadjevom", "preljev", "preljevom", "with", "ili"}
+
     def __init__(self, put: Path = GRUPE):
-        self.grupe = json.loads(put.read_text(encoding="utf-8"))["grupe"]
+        podaci = json.loads(put.read_text(encoding="utf-8"))
+        self.grupe = podaci["grupe"]
+        self.neprehrambeno = [norm_pojam(t) for t in podaci.get("neprehrambeno", [])]
         self.pravila = []
         for gi, g in enumerate(self.grupe):
             pod = [(pi, [norm_pojam(t) for t in p.get("uk", [])]) for pi, p in enumerate(g.get("pod", []))]
-            self.pravila.append((gi, [norm_pojam(t) for t in g["uk"]], [norm_pojam(t) for t in g.get("isk", [])], pod,
-                                 bool(g.get("pocetak"))))
+            self.pravila.append((gi, self._uzorak([norm_pojam(t) for t in g["uk"]]),
+                                 [norm_pojam(t) for t in g.get("isk", [])], pod, bool(g.get("pocetak")),
+                                 g.get("hrana", True), self._uzorak([norm_pojam(t) for t in g.get("marke", [])])))
 
     def razvrstaj(self, naziv: str, marka: str = "") -> tuple[int, int]:
         """Prvo po nazivu; marka se dodaje samo ako sam naziv ne odgovara nijednoj grupi."""
@@ -162,16 +180,57 @@ class Razvrstavanje:
             g = self._razvrstaj(f"{naziv} {marka}")
         return g
 
+    @staticmethod
+    def _stog(naziv: str) -> str:
+        # "med&mlijeko", "pilet./mlijeko" -> "med i mlijeko"; "1/2" ostaje
+        n = re.sub(r"(?<=[^\W\d_])\.?\s*[&/]\s*(?=[^\W\d_])", " i ", naziv or "")
+        n = re.sub(r"(?<=[^\W\d_])[\u2019'`]s\b", "s", n)          # "Frank's" -> "Franks", ne "Frank s"
+        return " " + norm(n) + " "
+
+    @staticmethod
+    def _uzorak(termini: list[str]):
+        termini = [t for t in termini if t]
+        if not termini:
+            return None
+        # (?= ...) dopušta preklapanje; najdulji termin prvi
+        return re.compile(r"(?= (?:" + "|".join(re.escape(t) for t in sorted(termini, key=len, reverse=True)) + "))")
+
+    def _polozaj(self, stog: str, uzorak, pocetak: bool) -> int | None:
+        """Indeks riječi prvog valjanog pogotka (ne iza ovisne riječi) ili None."""
+        if uzorak is None:
+            return None
+        for m in uzorak.finditer(stog):
+            k = m.start()
+            rijec = stog.count(" ", 1, k + 1) if k else 0       # 0 = prva riječ
+            if pocetak and rijec:
+                return None
+            prije = stog[:k].rsplit(" ", 1)[-1] if k else ""
+            # ovisna riječ na samom početku naziva je kratica ("S.kruh", "I.krafna"), ne "s"/"i"
+            if prije not in self.OVISNE or rijec == 1:
+                return rijec
+        return None
+
     def _razvrstaj(self, naziv: str) -> tuple[int, int]:
-        stog = " " + norm(naziv) + " "
-        for gi, uk, isk, pod, pocetak in self.pravila:
-            ima = any(stog.startswith(" " + t) for t in uk) if pocetak else any(sadrzi(stog, t) for t in uk)
-            if ima and not any(sadrzi(stog, t) for t in isk):
-                for pi, puk in pod:
-                    if any(sadrzi(stog, t) for t in puk):
-                        return gi, pi
-                return gi, -1
-        return -1, -1
+        stog = self._stog(naziv)
+        neprehrambeno = any(sadrzi(stog, t) for t in self.neprehrambeno)
+        najbolje = None      # (prioritet, položaj, redoslijed)
+        for gi, uk, isk, pod, pocetak, hrana, marke in self.pravila:
+            if (neprehrambeno and hrana) or any(sadrzi(stog, t) for t in isk):
+                continue
+            p = self._polozaj(stog, uk, pocetak)
+            kljuc = (0, p, gi) if p is not None else None
+            if kljuc is None and marke is not None:
+                pm = self._polozaj(stog, marke, False)
+                kljuc = (1, pm, gi) if pm is not None else None
+            if kljuc and (najbolje is None or kljuc < najbolje):
+                najbolje = kljuc
+        if najbolje is None:
+            return -1, -1
+        gi = najbolje[2]
+        for pi, puk in self.pravila[gi][3]:
+            if any(sadrzi(stog, t) for t in puk):
+                return gi, pi
+        return gi, -1
 
     def za_aplikaciju(self) -> list[dict]:
         out = []
