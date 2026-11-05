@@ -11,6 +11,8 @@ const JEDINICE = ["kg", "l", "kom"];
 // Zadane količine iz vlasnikovih uputa; ostale skupine dobivaju najčešće pakiranje.
 const ZADANO = { kruh: [0.5, "kg"], mlijeko: [1, "l"], krumpir: [1, "kg"], jaja: [10, "kom"] };
 const PRVI_LANCI = ["konzum", "lidl", "kaufland", "spar", "plodine"];
+// Granice prema medijanu jedinične cijene skupine (samo kad skupina ima dovoljno ponuda za pouzdan medijan).
+const DONJA_GRANICA = 0.3, GORNJA_GRANICA = 10, MIN_ZA_MEDIJAN = 8;
 
 function izgradi(podaci, trazeniLanci = PRVI_LANCI) {
   if (podaci.verzija !== 2 || !Array.isArray(podaci.proizvodi)) throw new Error("Nepoznat oblik cjenika");
@@ -25,9 +27,9 @@ function izgradi(podaci, trazeniLanci = PRVI_LANCI) {
   const grupe = z.vrste.map((v) => ({ id: v.id, naziv: v.naziv, aliasi: v.aliasi }));
   const indeksGrupe = new Map(grupe.map((g, i) => [g.id, i]));
   const marke = [], indeksMarke = new Map();
-  const proizvodi = [];
+  const proizvodi = [], redovi = [];
   const pakiranja = new Map();
-  const stat = { ulaz: podaci.proizvodi.length, bezSkupine: 0, bezKolicine: 0, bezOdabranihLanaca: 0, sumnjivaCijena: 0 };
+  const stat = { ulaz: podaci.proizvodi.length, bezSkupine: 0, bezKolicine: 0, bezOdabranihLanaca: 0, sumnjivaCijena: 0, sumnjivaUOdnosuNaSkupinu: 0 };
 
   podaci.proizvodi.forEach((p, i) => {
     const vrsta = s.vrstaProizvoda(i);
@@ -56,10 +58,40 @@ function izgradi(podaci, trazeniLanci = PRVI_LANCI) {
     }
     const rijeci = Skupine.analiziraj(p[0], p[4]).rijeci.join(" ");
     const g = indeksGrupe.get(vrsta);
-    proizvodi.push([p[0], m, p[2], jed, g, rijeci, cijene]);
-    const kl = g + "|" + jed;
-    pakiranja.set(kl, (pakiranja.get(kl) || []).concat(p[2]));
+    redovi.push([p[0], m, p[2], jed, g, rijeci, cijene]);
   });
+
+  // Sumnjive cijene u odnosu na skupinu: jedinična cijena (po kg/l/kom) daleko ispod ili iznad uobičajene
+  // za tu vrstu (npr. 600 g tosta za 0,21 €) ne ulazi u usporedbu. Uobičajena = medijan svih ponuda skupine.
+  const jedinicne = new Map();
+  for (const r of redovi) for (let k = 0; k < r[6].length; k += 3) {
+    const kl = r[4] + "|" + r[3];
+    if (!jedinicne.has(kl)) jedinicne.set(kl, []);
+    jedinicne.get(kl).push(r[6][k + 1] / r[2]);
+  }
+  const medijan = new Map();
+  for (const [kl, v] of jedinicne) if (v.length >= MIN_ZA_MEDIJAN) {
+    v.sort((a, b) => a - b);
+    medijan.set(kl, v[Math.floor(v.length / 2)]);
+  }
+  for (const r of redovi) {
+    const med = medijan.get(r[4] + "|" + r[3]);
+    let cijene = r[6];
+    if (med) {
+      const ostaju = [];
+      for (let k = 0; k < cijene.length; k += 3) {
+        const j = cijene[k + 1] / r[2];
+        if (j < med * DONJA_GRANICA || j > med * GORNJA_GRANICA) { stat.sumnjivaUOdnosuNaSkupinu++; continue; }
+        ostaju.push(cijene[k], cijene[k + 1], cijene[k + 2]);
+      }
+      cijene = ostaju;
+    }
+    if (!cijene.length) { stat.bezOdabranihLanaca++; continue; }
+    r[6] = cijene;
+    proizvodi.push(r);
+    const kl = r[4] + "|" + r[3];
+    pakiranja.set(kl, (pakiranja.get(kl) || []).concat(r[2]));
+  }
 
   // Zadana količina: iz uputa ili najčešće pakiranje u najčešćoj jedinici skupine.
   grupe.forEach((gr, gi) => {

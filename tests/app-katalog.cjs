@@ -16,6 +16,10 @@ const podaci = {
     ["Riža 1 kg", "1 kg", 1, "kg", 0, [1, 1.5, 0, 1.6], [[3, 1, 1.5, 0], [1, 1, 1.6, 0]], -1],
     ["Riža 1 kg dugo zrno", "1 kg", 1, "kg", 0, [0, 1.7], [[2, 1, 1.7, 0]], -1],
     ["Riža 500 g", "500 g", 0.5, "kg", 0, [0, 0.9], [[2, 1, 0.9, 0]], -1],
+    // Tjestenina: 9 uobičajenih ponuda (≈ 2 €/kg) i jedna nemoguće niska (0,05 € za 500 g) i jedna ekstremno visoka.
+    ...Array.from({ length: 9 }, (_, i) => [`Tjestenina špageti ${i} 500 g`, "500 g", 0.5, "kg", 0, [0, 0.9 + i * 0.05], [[2, 1, 0.9 + i * 0.05, 0]], -1]),
+    ["Tjestenina penne greška 500 g", "500 g", 0.5, "kg", 0, [0, 0.05, 1, 1.1], [[2, 1, 0.05, 0], [3, 1, 1.1, 0]], -1],
+    ["Tjestenina fusilli greška 500 g", "500 g", 0.5, "kg", 0, [0, 25], [[2, 1, 25, 0]], -1],
   ],
 };
 
@@ -52,6 +56,12 @@ assert.deepEqual(grupa("jaja").zadano, [10, 2]);
 assert.deepEqual(grupa("riza").zadano, [1, 0]);
 assert.ok(Array.isArray(grupa("mlijeko").aliasi[0]));
 assert.ok(katalog.prijedlozi.includes("za"));
+
+// Sumnjiva cijena u odnosu na skupinu: Konzumova 0,05 € ispada, Lidlova 1,10 € ostaje; 25 € za 500 g ispada cijeli proizvod.
+const penne = katalog.proizvodi.find((p) => p[0].startsWith("Tjestenina penne"));
+assert.deepEqual(penne[6], [1, 110, 0]);
+assert.ok(!katalog.proizvodi.some((p) => p[0].startsWith("Tjestenina fusilli")));
+assert.equal(stat.sumnjivaUOdnosuNaSkupinu, 2);
 
 assert.throws(() => izgradi(podaci, ["nepostojeci"]), /Nijedan/);
 console.log("app-katalog: sve provjere prošle");
