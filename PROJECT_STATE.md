@@ -94,3 +94,9 @@ Pregledati PR #7 i usporediti ga s aktualnom produkcijskom granom. Provjeriti st
 - Nije testirano: vlasnikov mobitel; glasovni unos na stvarnom uređaju. Na emulatoru je osvježavanje kataloga javilo „nema veze”; razlog se istražuje.
 - Nije spojeno ni objavljeno na Google Play. Dnevno osvježavanje kataloga za aplikaciju tek nakon spajanja u produkcijsku granu (raspored radi samo na zadanoj grani).
 - Sljedeći korak: vlasnik instalira APK i javi što ne valja. Zatim korak 3 prema planu. Gotovo kad aplikacija radi na vlasnikovu mobitelu.
+
+## Zapis 5.11.2026. 11:20 CET (Europe/Zagreb) — proba na emulatoru i sumnjive cijene
+- Na emulatoru su se kao najjeftinije pojavile nemoguće cijene (Kaufland: tost 600 g 0,21 €, mlijeko 0,27 €/l). Katalog sad izbacuje ponude ispod 30 % ili iznad 10× medijana jedinične cijene skupine (min. 8 ponuda); test u `tests/app-katalog.cjs`.
+- CI [42008408730](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42008408730) na `4fd3804`: build, testovi jezgre i proba na emulatoru uspješni, bez rušenja. Osvježavanje kataloga s interneta radi. Katalog: 24.434 proizvoda.
+- Upis „kruh, 2 litre mlijeka, 6 jaja, pola kile sira, xyzzy” daje tost 500 g 0,70 €, 2 × 1 l mlijeka 1,08 €, 6 jaja 1,59 € (akcija) i 2 × 250 g svježeg sira 2,58 €. Ukupno 5,95 €; „xyzzy” je označen kao nepronađen, nije tiho preskočen.
+- Nije testirano: vlasnikov mobitel, glasovni unos na stvarnom uređaju, slanje preko Vibera/WhatsAppa.
