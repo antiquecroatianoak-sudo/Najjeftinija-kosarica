@@ -879,6 +879,7 @@ function zaslonVise(el) {
     <div class="velika-usteda" data-idi="usteda" role="button"><div class="sitno" style="color:inherit;opacity:.75;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Ukupno ušteđeno</div><div class="iznos">${eur(Math.round(S.usteda.ukupno))}</div><div>${S.usteda.kupnje.length} ${S.usteda.kupnje.length === 1 ? 'kupnja' : 'kupnji'} zabilježeno</div></div>
     ${instalacija ? `<button class="gumb glavni puni" data-akcija="instaliraj">${IKONE.plus} Instaliraj aplikaciju na mobitel</button>` : ''}
     <div class="izbor">${kartice.map(([id, ik, n, o]) => `<button data-idi="${id}"><span class="ik">${ik}</span><b>${esc(n)}</b><span>${esc(o)}</span></button>`).join('')}</div>
+    <p class="sitno" style="text-align:center;margin-top:14px">Verzija aplikacije ${VERZIJA_APLIKACIJE} · podaci ${esc(P.meta.verzija)} (${datumHR(P.meta.datum)})</p>
   </div>`;
 }
 

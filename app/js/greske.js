@@ -1,5 +1,5 @@
 // Bilježenje grešaka i izvješće koje vlasnik može kopirati u Claude Code.
-export const VERZIJA_APLIKACIJE = '1.0.0';
+export const VERZIJA_APLIKACIJE = '1.2.0';   // mora biti ista kao VERZIJA u sw.js (tests/test_sw.py)
 const KLJUC = 'kosarica-greske';
 const NAJVISE = 30;
 

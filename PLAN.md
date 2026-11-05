@@ -8,6 +8,8 @@ Every ticked line says how it was checked. "Live" means checked on the published
 
 App: https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/
 
+Live (5 Nov 2026, 17:42 Zagreb): everything below is published – PR #22 (Parts 1 and 4) and PR #23 (Parts 2, 3, 5, 6, 7); publish run 42064404881 green, live data version c9348b8457.
+
 ## Part 1 – Data
 - [x] Products and prices from all Croatian chains' official daily price lists – 26 chains, all status "ok" for 5 Nov 2026, 225,417 products, 1,520 stores (real published `meta.json`). Limit: Studenac publishes only 20 stores (checked on studenac.hr); store locations still filling (NTL 213/342, Stridon 1/41).
 - [~] Prices update automatically every day – scheduled 08:17 and 16:47 Zagreb time on the main branch; every publish today was green (latest: data version 9418b45341, 224,435 products after merging duplicates). The old daily job ran every day by schedule (about 1 hour late, GitHub's delay); first scheduled run of the new job still to be confirmed.

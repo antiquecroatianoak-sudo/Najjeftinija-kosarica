@@ -1,6 +1,6 @@
 // Service worker aplikacije Najjeftinija košarica.
 // Upravlja samo vlastitim opsegom (mapa aplikacije) i samo cacheovima s prefiksom "kosarica-".
-const VERZIJA = '1.1.0';
+const VERZIJA = '1.2.0';
 const PREFIKS = 'kosarica-';
 const APLIKACIJA = `${PREFIKS}aplikacija-${VERZIJA}`;
 const PODACI = `${PREFIKS}podaci`;
@@ -14,7 +14,9 @@ const LJUSKA = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(APLIKACIJA).then((c) => c.addAll(LJUSKA)).then(() => self.skipWaiting()));
+  // cache: 'reload' – nova verzija uvijek uzima svježe datoteke s poslužitelja, nikad stare kopije iz HTTP spremišta
+  // preglednika (GitHub Pages dopušta do 10 min); inače bi nova verzija mogla spremiti stari kod
+  e.waitUntil(caches.open(APLIKACIJA).then((c) => c.addAll(LJUSKA.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -82,7 +84,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     const c = await caches.open(APLIKACIJA);
     const spremljeno = await c.match(e.request, { ignoreSearch: true });
-    const mreza = fetch(e.request).then((o) => { if (o.ok && url.pathname.match(/\.(js|css|html|svg|png|webmanifest)$|\/$/)) c.put(e.request, o.clone()); return o; });
+    const mreza = fetch(e.request, { cache: 'no-cache' }).then((o) => { if (o.ok && url.pathname.match(/\.(js|css|html|svg|png|webmanifest)$|\/$/)) c.put(e.request, o.clone()); return o; });
     if (spremljeno) { mreza.catch(() => {}); return spremljeno; }
     try { return await mreza; } catch {
       return (await c.match('index.html')) || Response.error();
