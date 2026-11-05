@@ -153,6 +153,8 @@ const t0 = () => Date.now();
   if (korak('lokacija')) {
     console.log('Lokacija (jedan gumb na glavnom zaslonu)');
     await s.click('nav [data-idi="popis"]');
+    if (await s.locator('[data-akcija="otkljucaj"]').count()) await s.click('[data-akcija="otkljucaj"]');
+    if (await s.locator('[data-akcija="isprazni"]').count()) { s.once('dialog', (d) => d.accept()); await s.click('[data-akcija="isprazni"]'); await s.waitForTimeout(200); }
     await s.waitForSelector('#upisPolje');
     await s.fill('#upisPolje', 'mlijeko, kruh, jaja, banane, kava');
     await s.press('#upisPolje', 'Enter');

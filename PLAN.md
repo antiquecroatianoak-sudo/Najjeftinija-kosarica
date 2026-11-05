@@ -53,5 +53,5 @@ Root causes found: (1) no location control on the main screen, only a separate m
 - [x] Stores can never pay to look cheaper – ranking uses only price; stated in the app next to the ad place and in Postavke; no code path changes order for ads or Premium.
 
 ## Part 7 – Final check
-- [ ] Every part tested together as a normal customer would use it (real data, phone size)
-- [ ] PLAN.md updated and final report given
+- [x] Every part tested together as a normal customer would use it (real data, phone size) – one session on the real published data (224k+ products, 1,520 stores): status → 15-item list → A/B/C → only Konzum+Lidl → savings → deals → barcode → report button → family list → location 5 km → results → map; no JavaScript errors. Automated: Python tests OK, Node 16/16, browser test 38 checks incl. voice, refused location and slow network.
+- [x] PLAN.md updated and final report given
