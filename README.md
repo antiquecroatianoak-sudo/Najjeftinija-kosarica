@@ -89,8 +89,9 @@ In the app: **Više → Status podataka** shows the date of the prices for every
 - **Other countries** – the settings already have the country choice; only Croatia has data.
 - **Studenac** publishes official prices for only about 20 of its stores (checked 5 Nov 2026 on
   studenac.hr itself). The app shows those stores; prices of other Studenac stores are not public.
-- **Store locations**: most come from the cijene-api project; the rest are looked up once by address on
-  OpenStreetMap (© OpenStreetMap contributors). At most 400 lookups per run, so the first days fill the
+- **Store locations**: most come from the cijene-api project; the rest are looked up once on OpenStreetMap
+  (© OpenStreetMap contributors): first the exact address, then a shop of the same chain **on the same
+  street**, then the street itself (only short local streets). At most 400 lookups per run, so the first days fill the
   map step by step. A store whose address cannot be found exactly stays off the map (better no pin than
   a wrong pin). **Više → Status podataka** shows "N na karti" for every chain.
 - Product groups are sorted by keywords. Some products may land in the wrong group or in none;
