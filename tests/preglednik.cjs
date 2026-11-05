@@ -204,7 +204,8 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     provjeri(await s2.locator('#ploca').isHidden() && /Cijela Hrvatska/.test(await s2.locator('.lokacija-gumb').innerText()), 'bez lokacije aplikacija radi dalje (cijela HR)');
     await k2.close();
 
-    const k3 = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR', geolocation: { latitude: 45.8130, longitude: 15.9770 }, permissions: ['geolocation'] });
+    // serviceWorkers: 'block' – inače service worker sam dohvaća datoteke i zaobilazi simulaciju spore veze
+    const k3 = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR', serviceWorkers: 'block', geolocation: { latitude: 45.8130, longitude: 15.9770 }, permissions: ['geolocation'] });
     await k3.route(/tile\.openstreetmap\.org/, (r) => r.abort());
     await k3.route(/\/data\/hr\/s\//, async (r) => { await new Promise((z) => setTimeout(z, 60000)); try { await r.continue(); } catch { /* prekinuto */ } });
     const s3 = await k3.newPage();
@@ -220,7 +221,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     const t0 = Date.now();
     await s3.waitForSelector('.sazetak', { timeout: 25000 });
     const sek = (Date.now() - t0) / 1000;
-    provjeri(sek < 20, `spora veza: rezultati za ${sek.toFixed(1)} s (rok 15 s), zaslon se ne zaglavi`);
+    provjeri(sek > 10 && sek < 20, `spora veza: rezultati za ${sek.toFixed(1)} s (rok 15 s), zaslon se ne zaglavi`);
     provjeri(/nisu se učitale na vrijeme/.test(await s3.locator('.zaslon').innerText()) && await s3.locator('[data-akcija="ponovno-poslovnice"]').count() === 1, 'spora veza: umjesto praznog zaslona cijene lanaca, jasno objašnjenje i „Pokušaj ponovno”');
     await k3.close();
   }
