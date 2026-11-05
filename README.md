@@ -1,85 +1,119 @@
 # 🛒 Najjeftinija košarica
 
-Jednostavna web aplikacija za Android mobitel:
+A phone app (works in Chrome on Android, can be installed like a normal app) that compares grocery
+prices in all Croatian supermarket chains and tells you where your shopping is cheapest.
+The app itself is in Croatian.
 
-1. **Glasom složiš popis** za kupovinu (npr. „kruh, mlijeko i jaja”).
-2. **Zaključaš popis** – aplikacija za svaku stavku pokaže **najjeftiniji proizvod**
-   iz svih hrvatskih trgovačkih lanaca, s **trgovinom, cijenom i količinom**.
-3. **Dodirom na proizvod** vidiš sljedeći najjeftiniji iz iste grupe
-   (strelica ◀ vraća na prethodni).
-
-Cijene se **svaki dan automatski** preuzimaju iz javnih cjenika koje trgovine po
-zakonu moraju objavljivati (NN 75/2025), preko besplatnog projekta
-[cijene.dev](https://cijene.dev). Isti proizvod (isti barkod) prodaje se u više
-lanaca, ali u aplikaciji se pojavljuje **samo jednom** – s najnižom cijenom.
+**Address of the app (after it is published):**
+https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/
 
 ---
 
-## Kako je pokrenuti (jednom, ~5 minuta, bez programiranja)
+## What the app does (version 1)
 
-Sve se radi na stranici **github.com**, može i s mobitela, ali je lakše s računala.
-
-### Korak 1 – Repozitorij mora biti javan
-Besplatno objavljivanje radi samo za javne repozitorije.
-`Settings` (Postavke) → skroz dolje `Danger Zone` → `Change visibility` → **Public**.
-(Ako je već javan, preskoči.)
-
-### Korak 2 – Uključi GitHub Pages
-`Settings` → u lijevom izborniku `Pages` → pod **Source** odaberi **GitHub Actions**.
-
-### Korak 3 – Pokreni prvo ažuriranje
-Gore klikni karticu `Actions` → lijevo **Dnevno ažuriranje cijena** →
-desno gumb **Run workflow** → zeleni **Run workflow**.
-Pričekaj par minuta da se pojavi zelena kvačica ✅.
-
-### Korak 4 – Otvori aplikaciju na mobitelu
-U **Google Chromeu** na Androidu otvori:
-
-**https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/**
-
-### Korak 5 – Dodaj je na početni zaslon
-U Chromeu: izbornik **⋮** (gore desno) → **Dodaj na početni zaslon** / **Instaliraj aplikaciju**.
-Sad je otvaraš kao svaku drugu aplikaciju.
-
-Kad prvi put dodirneš 🎤, Chrome će pitati smiješ li koristiti mikrofon – odaberi **Dopusti**.
-
----
-
-## Svakodnevno korištenje
-
-- Dodirni **🎤 Reci što trebaš kupiti** i izgovori stvari. Može više odjednom:
-  „kruh, 2 mlijeka, deset jaja i banane”.
-- Količinu mijenjaš gumbima **−** i **+**, a pogrešnu stavku makneš crvenim **✕**.
-- Dodirni **🔒 Zaključaj popis** – vidiš najisplativije proizvode i ukupnu cijenu.
-- Ne sviđa ti se proizvod? **Dodirni ga** za sljedeći iz iste grupe.
-- U trgovini **kružićem** označi što si već stavio u košaricu.
-- Pod **Sve u jednoj trgovini** vidiš koliko bi platio da sve kupiš na jednom mjestu.
-  Dodirni trgovinu da vidiš samo njezine proizvode.
-- **🔓 Otključaj** ako želiš dodati ili maknuti stavke.
-- Popis ostaje spremljen u mobitelu i kad zatvoriš aplikaciju.
-
-### ⚙️ Postavke
-- **Uspoređuj po cijeni po kg / l** (zadano): bira ono što je stvarno najisplativije,
-  pa ti za „mlijeko” neće ponuditi malo pakiranje od 0,2 l samo zato što je jeftino.
-  Ako ti je važnija što niža cijena na blagajni, odaberi **cijeni pakiranja**.
-- **Trgovine u koje ideš**: makni kvačicu s lanaca koji ti nisu blizu.
-
-Savjet: koristi jednostavne nazive kakvi pišu na proizvodima (npr. „mlijeko”,
-„toaletni papir”, „maslinovo ulje”). Ako nešto ne nađe, probaj drugu riječ.
-
----
-
-## Što je gdje (za znatiželjne)
-
-| Datoteka | Čemu služi |
+| Feature | Where in the app |
 |---|---|
-| `site/index.html`, `site/stil.css`, `site/aplikacija.js` | Sama aplikacija (izgled i ponašanje) |
-| `scripts/azuriraj_cijene.py` | Preuzima cijene i miče duplikate |
-| `.github/workflows/dnevno-azuriranje.yml` | Svaki dan u ~7 h pokrene preuzimanje i objavi aplikaciju |
+| Speak your list in Croatian (or type it). "kruh" searches all kinds of bread. No amount said → normal amount (milk 1 l, potatoes 1 kg), which you can change with − and + | **Popis** |
+| Lock the list, then see: **A** cheapest item everywhere, **B** cheapest single store, **C** best pair of two stores | **Rezultati** |
+| Every result shows price, pack size, number of packs, price per kg/l, brand and type | **Rezultati** |
+| Tap a product → next cheapest of the same kind (with "Vrati" to undo) | **Rezultati** |
+| Choose which chains to search | **Više → Moje trgovine** |
+| Map of stores, your location, circle of 2 / 5 / 10 / 20 km (then prices of the real stores in the circle are used) | **Karta** |
+| Savings counter (top right, always visible) | header, **Više → Moja ušteda** |
+| Weekly deals | **Akcije** |
+| Family list (send a link; it opens the list on their phone) | **Više → Obiteljski popis** |
+| Send list and result via WhatsApp, Viber, SMS | **Pošalji** button |
+| "Report wrong price" | ⓘ next to each product |
+| Data status per chain (date, fresh / older / missing) | **Više → Status podataka** |
+| Barcode scan in the store | **Više → Skeniraj barkod** |
+| Error report you can copy and paste into Claude Code | **Više → Prijavi grešku** |
+| Country choice (only Croatia active now) | **Više → Postavke** |
 
-Napomene:
-- Cijena lanca je najniža valjana cijena jedne stvarne poslovnice i prikazuje se uz tu poslovnicu (adresa, akcija, viša cijena u drugim poslovnicama kao oznaka za provjeru); vrijedi količina koju potvrđuje jedinična cijena lanca za redovnu ili akcijsku cijenu, a ponuda bez takve potvrde prikazuje se bez poretka. "Sve u jednom dućanu" zbraja cijeli popis samo unutar odabrane stvarne poslovnice (data/poslovnice/); procjena po lancu jasno je označena kao zbroj različitih poslovnica. Izvor je arhiva cijene.dev (sekundarni izvor); pokrivenost po lancu i broj ponuda provjerenih prema službenom izvoru (zasad 0) su u data/pokrivenost.json
-  (uključujući akcijske cijene). U tvojoj poslovnici cijena može biti malo drukčija.
-- Cijena po kg/l računa se iz količine koju objavljuju trgovine. Kad je ona
-  pogrešno upisana, takav proizvod se slaže iza onih s poznatom količinom.
-- Metro je izostavljen jer je veleprodaja (treba poslovna kartica).
+Honesty rule: stores never pay for position. Ranking depends only on price.
+
+## How the prices get in (automatic, every day)
+
+1. Every day at about 8:17 and again in the afternoon, GitHub runs `uvoz/uvoz.py` for free.
+2. It downloads the official daily price lists of all chains (the ones the law NN 75/2025 requires),
+   collected by the free public project cijene.dev.
+3. It removes bad prices (0,00 €, prices 4× too high or low), merges the same product from different
+   chains (barcode, otherwise brand + name + size) and sorts products into groups (Kruh, Mlijeko…).
+4. If a chain is missing today, it uses that chain's price list from up to 3 days ago and marks it
+   "stariji cjenik". If today's data is much worse than yesterday's, it **does not publish** – the app
+   keeps showing the last good prices.
+5. It runs all tests, then publishes the app with the new prices.
+6. If something fails, GitHub opens an **issue** called "Dnevno ažuriranje cijena nije uspjelo" with
+   a ready error report. You get an email. Copy the report into Claude Code and ask it to fix it.
+
+**Cost: 0 € per month** (GitHub Pages and GitHub Actions are free for a public repository).
+
+---
+
+## What you need to do (step by step, from your Android phone)
+
+### Step 1 – Put the new app on the main branch
+The new app is on the branch `ccr-1c31c1df-63brmk`. It goes live when it is merged into the main
+branch `claude/dreamy-hopper-f6e4u0`.
+
+1. Open https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pulls in Chrome.
+2. Open the pull request for the new app (Claude can create it for you – just ask).
+3. Wait for the green ✓ next to "Cijene i objava / provjere".
+4. Tap **Merge pull request** → **Confirm merge**.
+
+### Step 2 – Wait for the first publish (about 10–20 minutes)
+1. Open the **Actions** tab of the repository.
+2. Tap the newest run of **Cijene i objava**. When both steps (`provjere` and `objava`) have a green ✓,
+   the app is live.
+3. If you don't want to wait for tomorrow's automatic run: **Actions → Cijene i objava → Run workflow →
+   Run workflow** (green button).
+
+### Step 3 – Open and install on your phone
+1. Open https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/ in **Chrome**.
+2. If you see the old app, close the tab and open it again (the new version replaces the old one).
+3. Chrome menu **⋮** → **Add to Home screen** / **Install app**.
+4. The first time you tap the microphone, Chrome asks for permission → **Allow**.
+
+### Step 4 – Try it
+1. Tap the microphone and say: *„kruh, dvije litre mlijeka, jaja i pola kile krumpira”*.
+2. Tap **Zaključaj popis i usporedi cijene**.
+3. Switch between **A**, **B** and **C**. Tap a product to see the next cheapest.
+4. Open **Karta**, tap **5 km** → allow location → back to **Rezultati**: now you see real stores near you.
+5. Tap **Kupio/la sam – zabilježi uštedu** and watch the counter at the top.
+
+### If something is wrong
+- In the app: **Više → Prijavi grešku → Kopiraj izvješće**, paste it into Claude Code.
+- For a wrong price: tap ⓘ next to the product → **Prijavi pogrešnu cijenu**.
+
+---
+
+## Not done yet (honest list)
+
+- **Ads and Premium (1,99 €/month)** – the places for them are ready in the app, but no ad network
+  and no payment system are connected. Both need accounts in your name (for example Google AdSense
+  and a payment provider). Claude can guide you when you want to start.
+- **Family list in real time** (everyone sees changes instantly) – needs a small online database.
+  Now the family list works by sending a link.
+- **Google Play store** – the app is a web app you install from Chrome. A Play Store version is possible later.
+- **Other countries** – the settings already have the country choice; only Croatia has data.
+- Product groups are sorted by keywords. Some products may land in the wrong group or in none;
+  these can still be found by typing their name. Report such cases and they can be fixed in `uvoz/grupe.json`.
+
+---
+
+## For developers
+
+| Path | What it is |
+|---|---|
+| `app/` | The whole web app (no build step). `js/usporedba.js` = results A/B/C, `js/popis.js` = voice/typed list, `sw.js` = offline cache (`kosarica-` prefix only) |
+| `uvoz/uvoz.py`, `uvoz/kolicina.py` | Daily import (Python 3.13, standard library only) |
+| `uvoz/grupe.json` | Product groups, subgroups, spoken words, default amounts |
+| `tests/` | `test_uvoz.py` (import), `logika.test.mjs` (app logic), `preglednik.cjs` (full app in a phone-size browser) |
+| `.github/workflows/dnevno.yml` | Tests on every branch; daily import + publish on the main branch |
+
+Run all checks locally:
+```
+python3 -m unittest discover -s tests -p "test_*.py"
+node --test tests/logika.test.mjs
+python3 tests/primjer.py /tmp/p && python3 uvoz/uvoz.py --arhiva /tmp/p/2026-11-05.zip /tmp/p/2026-11-04.zip --izlaz app/data/hr --bez-dopune
+node tests/preglednik.cjs app
+```

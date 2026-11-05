@@ -1,8 +1,7 @@
-# Ovu datoteku svaki dan napravi GitHub automatski - ne sprema se ovdje.
-site/data/proizvodi.json
+# Podatke svaki dan izradi GitHub (uvoz/uvoz.py) – ne spremaju se u repozitorij.
+app/data/
 __pycache__/
-site/data/poslovnice/
-site/data/pokrivenost.json
-site/data/skupine.json
-site/data/dijagnoza.json
-site/data/revizija-cijena.json
+node_modules/
+package-lock.json
+izvjesce-greske.md
+prijava.md

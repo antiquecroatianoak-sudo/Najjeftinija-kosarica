@@ -1,5 +1,39 @@
 # Najjeftinija košarica — glavni zapis stanja
 
+## AKTUALNO: nova aplikacija od nule (5.11.2026.)
+
+Provjereno: 5.11.2026. ~11:15 CET (Europe/Zagreb). Ovaj odjeljak je aktualan; odjeljak „Povijesno” niže opisuje obrisanu staru aplikaciju i ostaje samo kao trag.
+
+### Odluka vlasnika (5.11.2026.)
+Obrisati sav stari kod i napraviti novu aplikaciju od nule, bez ponovne upotrebe stare. Android-prijateljska (i u pregledniku), hrvatski jezik, spremna za više država (izbor u postavkama), pokretanje samo za Hrvatsku. Prvo mala radna verzija (baza cijena glavnih lanaca, glasovni popis, rezultati A i B, zamjena), zatim ostale funkcije. Trošak ≤ ~5 €/mj. Vlasnik ne programira i radi s Android mobitela; upute na jednostavnom engleskom.
+Sačuvano iz starog: samo `AGENTS.md`, ovaj zapis (povijest) i radni tok `.github/workflows/claude-task.yml` (most za zadatke, nije kod aplikacije).
+
+### Implementirano na grani `ccr-1c31c1df-63brmk` (nije spojeno, nije objavljeno)
+- Uvoz (`uvoz/`): dnevne arhive cijene.dev (službeni cjenici NN 75/2025), ponovni pokušaji preuzimanja, odbacivanje loših cijena (0/apsurdne/>4× od uobičajene u lancu i među lancima), spajanje po barkodu pa marka+naziv+količina, količina samo ako je potvrđena jediničnom cijenom, ~55 grupa s podgrupama, Interspar odvojen od Spara (pretpostavka: vrsta poslovnice „hiper”), lanac koji danas nedostaje ili je <50 % jučerašnjeg uzima se iz arhive do 3 dana unatrag (status „stari”), zaštita objave ako je novi cjenik <60 % objavljenoga, izvješće o grešci (`izvjesce-greske.md`). Cijene stvarnih poslovnica kao razlike od uobičajene cijene lanca (datoteke po sadržaju u `data/hr/s/`), koordinate iz `senko/cijene-api` enrichment/stores.csv.
+- Aplikacija (`app/`): glasovni (hr-HR) i upisani popis, zadane količine po grupi, zaključavanje, rezultati A/B/C, izbor lanaca, zamjena (odbijeni proizvod se preskače u A/B/C, „Vrati”), marka u izgovoru sužava grupu („Dukat mlijeko”, „nutella”), ne nudi pakiranje >2,5× tražene količine ako postoji primjereno, karta (Leaflet 1.9.4 iz npm-a, OSM pločice), lokacija i krug 2/5/10/20 km s cijenama stvarnih poslovnica (najbližih 60), ušteda (prosjek trgovina koje imaju sve stavke minus plaćeno), akcije, obiteljski popis poveznicom, slanje WhatsApp/Viber/SMS, prijava pogrešne cijene (GitHub issue ili kopiranje), status podataka, skener barkoda (BarcodeDetector + ručni unos), izvješće o grešci, izbor države, mjesto za oglas i opis Premiuma (bez naplate).
+- Radni tok `.github/workflows/dnevno.yml`: provjere na svakoj grani i PR-u; na zadanoj grani dnevno 07:17 i 15:47 UTC uvoz → objava na Pages → provjera objavljene verzije; pri neuspjehu otvara/dopunjuje issue s oznakom `greška-objave`. Stari `dnevno-azuriranje.yml` obrisan.
+
+### Testirano (lokalno, 5.11.2026., prije commita)
+- `python3 -m unittest discover -s tests -p "test_*.py"`: 18 testova OK; prvi CI na `b9abb0c`: Python i Node prošli, test u pregledniku pao na provjeri rada bez interneta (test nije čekao da se cijene spreme); drugi CI pokazao da Playwright offline ne vrijedi za service worker – test sada simulira prekid isključivanjem poslužitelja (količine 310 g/31 kg, 6×1,5 l, duplikati, loše cijene, stari lanac, Interspar, grupe, koordinate, zaštita objave, service worker).
+- `node --test tests/logika.test.mjs`: 13/13 OK.
+- `node tests/preglednik.cjs app` (Chromium, Pixel 7) na velikom lokalnom primjeru (9 000 stvarnih naziva proizvoda iz enrichment, 338 stvarnih poslovnica, izmišljene cijene): sve provjere prošle, bez JS grešaka, bez vodoravnog pomicanja na 320/768 px, rad bez interneta iz spremljenih podataka.
+- Razvrstavanje provjereno uzorkom na ~29 700 stvarnih naziva (enrichment): ~26 % bez grupe; poznate preostale greške manjeg opsega.
+- GitHub Actions „Cijene i objava” na `daeeffe`: posao `provjere` USPJEŠAN (run 42008484834: Python, Node, preglednik na primjeru); `objava` preskočena jer grana nije zadana (ispravno).
+- NIJE provjereno: stvarni uvoz s api.cijene.dev (mreža ove sesije ga blokira – prvi stvarni uvoz bit će u GitHub Actions), stvarni glasovni unos na Android uređaju, kamera/skener na uređaju, OSM pločice, objava na Pages.
+
+### Otvoreno / zapreke
+- Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0` (PR još nije otvoren – čeka nalog vlasnika).
+- Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Ta grana i ova nova aplikacija se međusobno isključuju; vlasnik treba odlučiti koji smjer ide na glavnu granu.
+- Draft PR #7 i #4 odnose se na obrisanu staru aplikaciju; nakon spajanja nove aplikacije postaju zastarjeli (ne zatvarati bez vlasnika).
+- Oglasi, Premium naplata i obiteljski popis u stvarnom vremenu nisu povezani (trebaju vlasnikove račune/uslugu).
+
+### Sljedeći konkretni korak
+Nakon spajanja: ručno pokrenuti „Cijene i objava” i provjeriti zapis uvoza (broj proizvoda po lancu, udio bez grupe, koordinate, veličina `data/hr/s/`), zatim otvoriti objavljenu adresu na Androidu. Gotovo kad: posao `objava` zelen, korak „Provjeri objavljenu verziju” ispiše verziju podataka, i A/B/C rade na mobitelu sa stvarnim cijenama.
+
+---
+
+## Povijesno: stara aplikacija (obrisana 5.11.2026.)
+
 Provjereno: 28.10.2026. 14:36 CET (Europe/Zagreb). Prije nastavka ponovno provjeriti autoritativnu granu i objavu. Ovaj zapis zamjenjuje stare sažetke samo za činjenice ovdje potvrđene.
 
 ## Identitet i odvajanje
@@ -50,3 +84,4 @@ Pregledati PR #7 i usporediti ga s aktualnom produkcijskom granom. Provjeriti st
 ## Zapis nastavka
 - 28.10.2026.: uspostavljen zaseban glavni zapis na zahtjev vlasnika. Provjereni su identitet/grana, aktualni README, sw.js i stanja PR-ova; aplikacijski kod, cjenici i objava nisu mijenjani ovim zadatkom.
 - Sljedeća cjelina dodaje odluku, implementaciju, točan dokaz testiranja, objavljenu verziju ili izričito „nije objavljeno”, otvoreno i sljedeći korak.
+- 5.11.2026.: na zahtjev vlasnika stara aplikacija obrisana na grani `ccr-1c31c1df-63brmk`; nova aplikacija opisana u odjeljku „AKTUALNO”.

@@ -1,0 +1,9 @@
+{
+  "name": "najjeftinija-kosarica",
+  "private": true,
+  "type": "module",
+  "description": "Najjeftinija košarica – usporedba cijena hrvatskih trgovačkih lanaca",
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -p 'test_*.py' && node --test tests/logika.test.mjs"
+  }
+}
