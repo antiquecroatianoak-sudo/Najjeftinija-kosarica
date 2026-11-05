@@ -18,6 +18,7 @@ Sačuvano iz starog: samo `AGENTS.md`, ovaj zapis (povijest) i radni tok `.githu
 - `node --test tests/logika.test.mjs`: 13/13 OK.
 - `node tests/preglednik.cjs app` (Chromium, Pixel 7) na velikom lokalnom primjeru (9 000 stvarnih naziva proizvoda iz enrichment, 338 stvarnih poslovnica, izmišljene cijene): sve provjere prošle, bez JS grešaka, bez vodoravnog pomicanja na 320/768 px, rad bez interneta iz spremljenih podataka.
 - Razvrstavanje provjereno uzorkom na ~29 700 stvarnih naziva (enrichment): ~26 % bez grupe; poznate preostale greške manjeg opsega.
+- GitHub Actions „Cijene i objava” na `daeeffe`: posao `provjere` USPJEŠAN (run 42008484834: Python, Node, preglednik na primjeru); `objava` preskočena jer grana nije zadana (ispravno).
 - NIJE provjereno: stvarni uvoz s api.cijene.dev (mreža ove sesije ga blokira – prvi stvarni uvoz bit će u GitHub Actions), stvarni glasovni unos na Android uređaju, kamera/skener na uređaju, OSM pločice, objava na Pages.
 
 ### Otvoreno / zapreke
