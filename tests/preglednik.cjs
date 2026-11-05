@@ -83,6 +83,28 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     await kg.close();
   }
 
+  console.log('Novo: prijedlozi, često kupuješ, kvačica u košarici');
+  await s.fill('#upisPolje', 'mli');
+  await s.dispatchEvent('#upisPolje', 'input');
+  await s.waitForSelector('.prijedlog', { timeout: 3000 });
+  const prijedlozi = await s.locator('.prijedlog').allInnerTexts();
+  provjeri(prijedlozi.some((x) => /Mlijeko/.test(x)), 'prijedlozi dok tipkaš: „mli” → ' + prijedlozi.slice(0, 3).map((x) => x.replace(/\n/g, ' ')).join(' | '));
+  const prije = await s.locator('.stavka').count();
+  await s.click('.prijedlog >> nth=0');
+  await s.waitForTimeout(200);
+  provjeri(await s.locator('.stavka').count() >= prije, 'dodir na prijedlog dodaje stavku');
+  provjeri(/Često kupuješ/i.test(await s.locator('.brze-naslov').innerText()), 'naslov „Često kupuješ” nakon prvih stavki');
+  const prvaBrza = await s.locator('.cipovi.vodoravno .cip >> nth=0').innerText();
+  await s.click('[data-akcija="u-kosaru"] >> nth=0');
+  await s.waitForTimeout(200);
+  const nakonKvacice = await s.locator('.zaslon').innerText();
+  const zadnja = await s.locator('.stavka').last().getAttribute('class');
+  provjeri(/1 od \d+ u košarici/i.test(nakonKvacice) && /u-kosari/.test(zadnja), 'kvačica: „1 od N u košarici”, stavka ide na dno');
+  await s.click('.u-kosari [data-akcija="u-kosaru"]');
+  await s.waitForTimeout(200);
+  provjeri(!/od \d+ u košarici/i.test(await s.locator('.zaslon').innerText()), 'kvačica se može maknuti (' + prvaBrza.replace(/\n/g, ' ') + ')');
+  await snimi('2b-popis-novo');
+
   console.log('Rezultati');
   await s.click('[data-akcija="zakljucaj"]');
   await s.waitForSelector('.sazetak');
@@ -114,6 +136,9 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForSelector('.ploca-sadrzaj .tablica');
   provjeri(await s.locator('.ploca-sadrzaj [data-akcija="prijavi"]').count() === 1, 'detalji proizvoda i gumb „Prijavi pogrešnu cijenu”');
   await snimi('6-proizvod');
+  await s.click('.ploca-sadrzaj [data-akcija="favorit"]');
+  await s.waitForTimeout(150);
+  provjeri(/U favoritima/.test(await s.locator('.ploca-sadrzaj [data-akcija="favorit"]').innerText()), 'favorit: „☆ Prati cijenu” → „★ U favoritima”');
   await s.click('.ploca-pozadina', { position: { x: 10, y: 10 } });
 
   console.log('Lokacija: jedan gumb na glavnom zaslonu');
@@ -149,6 +174,10 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForSelector('.akcija, .prazno');
   provjeri(await s.locator('.akcija').count() > 0, 'akcije se prikazuju');
   await snimi('9-akcije');
+  await s.click('nav [data-idi="vise"]');
+  await s.click('[data-idi="favoriti"]');
+  await s.waitForSelector('.naslov-zaslona');
+  provjeri(await s.locator('.zaslon .akcija').count() === 1, 'Više → Moji favoriti: 1 proizvod s cijenom');
   await s.click('nav [data-idi="vise"]');
   await s.click('[data-idi="status"]');
   await s.waitForSelector('.tablica');

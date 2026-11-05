@@ -289,3 +289,35 @@ select.polje { appearance: none; background-image: linear-gradient(45deg, transp
 .lok-krug:disabled { opacity: .5; cursor: default; }
 .vrtuljak.malo { width: 18px; height: 18px; border-width: 3px; margin: 0; display: inline-block; }
 .upozorenje { color: var(--opasnost); }
+
+/* Popis: sažeti unos, koraci, prijedlozi, "Često kupuješ", način kupnje (kvačica u košarici) */
+.koraci { list-style: none; padding: 0; margin: 10px 0 0; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; font-size: .82rem; color: var(--tekst-2); }
+.koraci li { display: flex; align-items: center; gap: 5px; background: var(--kartica-2); border: 1px solid var(--rub); border-radius: 999px; padding: 4px 10px 4px 4px; }
+.koraci b { width: 20px; height: 20px; border-radius: 50%; background: var(--glavna); color: #fff; display: grid; place-items: center; font-size: .75rem; }
+.glas-red { display: flex; flex-direction: column; align-items: center; }
+.glas.sazeto { text-align: left; padding: 14px; }
+.glas.sazeto .glas-red { flex-direction: row; gap: 12px; }
+.glas.sazeto .mikrofon { width: 56px; height: 56px; margin: 0; flex: none; }
+.glas.sazeto .mikrofon svg { width: 26px; height: 26px; }
+.glas.sazeto .upis { margin-top: 10px; }
+.glas-tekst { min-width: 0; }
+.prijedlozi { margin-top: 6px; border: 1px solid var(--rub); border-radius: 14px; overflow: hidden; background: var(--kartica); text-align: left; }
+.prijedlog { display: flex; gap: 10px; align-items: center; width: 100%; padding: 11px 12px; border: 0; border-top: 1px solid var(--rub); background: none; color: var(--tekst); font: inherit; }
+.prijedlog:first-child { border-top: 0; }
+.prijedlog:active { background: var(--glavna-svijetla); }
+.brze-naslov { margin-top: 14px; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tekst-3); text-align: left; }
+.cipovi.vodoravno { flex-wrap: nowrap; overflow-x: auto; margin: 8px -16px 0; padding: 0 16px 4px; scrollbar-width: none; }
+.cipovi.vodoravno::-webkit-scrollbar { display: none; }
+.cipovi.vodoravno .cip { flex: none; }
+.kvacica-kosara { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--rub); background: var(--kartica); display: grid; place-items: center; padding: 0; color: #fff; }
+.kvacica-kosara svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 3; }
+.u-kosari .kvacica-kosara { background: var(--uspjeh); border-color: var(--uspjeh); }
+.u-kosari .stavka-naziv { text-decoration: line-through; color: var(--tekst-3); }
+.u-kosari .stavka-ikona { opacity: .5; }
+.oznaka.zelena { background: var(--uspjeh-svijetli); color: var(--uspjeh); border-color: transparent; }
+.oznaka.zelena svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 3; }
+
+/* Favoriti */
+.zvjezdica { white-space: nowrap; }
+.zvjezdica.aktivna { background: var(--naglasak-svijetli); border-color: var(--naglasak); color: #7a4d00; }
+.favoriti-akcija { border: 1.5px solid var(--naglasak); }
