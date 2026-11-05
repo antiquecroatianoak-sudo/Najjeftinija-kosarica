@@ -37,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from kolicina import (barkod, broj, iz_polja, iz_teksta, lijep_naziv, norm, norm_pojam,  # noqa: E402
                       odaberi_kolicinu, sadrzi, vrsta_jedinice)
+from lokacije import Lokacije  # noqa: E402
 
 csv.field_size_limit(10_000_000)
 
@@ -57,6 +58,11 @@ IMENA = {
     "roto": "Roto", "jadranka_trgovina": "Jadranka", "jadranka": "Jadranka", "gavranovic": "Gavranović",
     "branka": "Branka", "djelo_vodice": "Djelo Vodice", "bure": "Bure", "dukat": "Dukat", "stanic": "Stanić",
     "stridon": "Stridon", "trgocentar": "Trgocentar", "metro": "Metro",
+}
+# Lanci koji službeno objavljuju cjenik samo za dio poslovnica (provjereno 5.11.2026.: službeni ZIP Studenca
+# www.studenac.hr/cjenici/PROIZVODI-<datum>.zip ima 20 datoteka poslovnica, kao i arhiva cijene.dev).
+DJELOMICNO_OBJAVLJUJU = {
+    "studenac": "Studenac javno objavljuje cjenik samo za {n} poslovnica; za ostale poslovnice službene cijene nisu dostupne.",
 }
 # Glavni lanci: njihov izostanak je upozorenje u izvješću.
 GLAVNI = ["konzum", "lidl", "kaufland", "plodine", "tommy", "studenac", "spar", "eurospin", "ntl", "ktc"]
@@ -313,6 +319,7 @@ class Uvoz:
         self.lanci: list[Lanac] = []
         self.status: dict[str, dict] = {}
         self.upozorenja: list[str] = []
+        self.lok: Lokacije | None = None
 
     def dodaj(self, lanac: Lanac, status: str, napomena: str = ""):
         self.lanci.append(lanac)
@@ -451,8 +458,11 @@ class Uvoz:
                     datoteke.add(ime)
                 adresa = " ".join((r.get("address") or "").split())
                 grad = " ".join((r.get("city") or "").split())
+                pbr = (r.get("zipcode") or "").strip()
                 koord = self.dpo.get((L.lanac, kljuc_poslovnice(sid))) or self.dpo.get((L.lanac, "a:" + norm(f"{adresa} {grad}")))
-                poslovnice.append([pl, sid, adresa, grad, (r.get("zipcode") or "").strip(),
+                if koord is None and self.lok is not None:
+                    koord = self.lok.trazi(adresa, grad, pbr)
+                poslovnice.append([pl, sid, adresa, grad, pbr,
                                    koord[0] if koord else None, koord[1] if koord else None, ime, len(lokalni)])
         for stara in mapa_s.glob("*.json"):
             if stara.stem not in datoteke:
@@ -490,6 +500,8 @@ class Uvoz:
         for pl in sorted(set(self.status) | set(lanci_izlaz), key=lambda x: (x not in GLAVNI, IMENA.get(x, x))):
             st = self.status.get(pl, {"status": "ok", "datum": datum_arhive, "napomena": ""})
             pos = [p for p in poslovnice if p[0] == pl]
+            if st["status"] == "ok" and not st["napomena"] and pl in DJELOMICNO_OBJAVLJUJU:
+                st = dict(st, napomena=DJELOMICNO_OBJAVLJUJU[pl].format(n=len(pos)))
             lanci_meta.append({
                 "id": pl, "naziv": IMENA.get(pl, pl.replace("_", " ").title()),
                 "status": st["status"] if pl in lanci_izlaz else "nema",
@@ -513,6 +525,10 @@ class Uvoz:
         zapisi_json(izlaz / "proizvodi.json", {"verzija": verzija, "p": proizvodi, "l": lanci_izlaz})
         zapisi_json(izlaz / "poslovnice.json", {"verzija": verzija, "polja": ["lanac", "id", "adresa", "grad", "pbr", "lat", "lon", "datoteka", "proizvoda"], "p": poslovnice})
         zapisi_json(izlaz / "grupe.json", {"verzija": verzija, "grupe": self.raz.za_aplikaciju()})
+        if self.lok is not None:
+            zapisi_json(izlaz / "lokacije.json", self.lok.za_objavu())
+            meta["lokacije"] = dict(self.lok.stat, upita=self.lok.upita)
+            log(f"Lokacije poslovnica (OpenStreetMap): {meta['lokacije']}")
         zapisi_json(izlaz / "meta.json", meta, lijepo=True)
         self.meta = meta
 
@@ -611,6 +627,17 @@ def pokreni(argumenti) -> dict:
             raise RuntimeError("Popis arhiva cjenika je prazan.")
 
     uvoz = Uvoz(dp, dpo, raz)
+    if not argumenti.bez_dopune and not argumenti.bez_lokacija:
+        predmemorija = {}
+        if argumenti.lokacije:
+            try:
+                izvor = argumenti.lokacije
+                predmemorija = json.loads(preuzmi(izvor, pokusaja=2, timeout=30) if izvor.startswith("http")
+                                          else Path(izvor).read_bytes())
+                log(f"Spremljene lokacije poslovnica: {len(predmemorija.get('a', {}))}")
+            except Exception as e:  # noqa: BLE001 - prvi put ili stranica nedostupna: kreće se od nule
+                log(f"Spremljene lokacije nisu dostupne ({e}); tražim ispočetka")
+        uvoz.lok = Lokacije(predmemorija, KORISNIK)
     privremeno = Path(argumenti.privremeno)
     privremeno.mkdir(parents=True, exist_ok=True)
     otvorene = []
@@ -723,6 +750,8 @@ def main(argv=None):
     ap.add_argument("--bez-dopune", action="store_true")
     ap.add_argument("--dopuna-proizvoda", default=DOPUNA_PROIZVODA, help="URL ili put do provjerenih količina")
     ap.add_argument("--dopuna-poslovnica", default=DOPUNA_POSLOVNICA, help="URL ili put do koordinata poslovnica")
+    ap.add_argument("--lokacije", help="URL ili put do prethodno objavljenog lokacije.json (spremljene koordinate)")
+    ap.add_argument("--bez-lokacija", action="store_true", help="ne traži koordinate poslovnica na OpenStreetMapu")
     ap.add_argument("--prisilno", action="store_true", help="objavi i ako je novi cjenik bitno slabiji")
     ap.add_argument("--izvjesce", default="izvjesce-greske.md")
     argumenti = ap.parse_args(argv)

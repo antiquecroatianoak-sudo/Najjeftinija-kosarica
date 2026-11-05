@@ -78,6 +78,7 @@ jobs:
         run: |
           python uvoz/uvoz.py --izlaz app/data/hr \
             --prethodni "${{ steps.pages.outputs.base_url }}/data/hr/meta.json" \
+            --lokacije "${{ steps.pages.outputs.base_url }}/data/hr/lokacije.json" \
             ${{ inputs.prisilno && '--prisilno' || '' }}
           cat app/data/hr/meta.json | head -c 4000
       - uses: actions/upload-pages-artifact@v3
