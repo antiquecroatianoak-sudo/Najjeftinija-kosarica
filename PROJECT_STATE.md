@@ -75,3 +75,8 @@ Pregledati PR #7 i usporediti ga s aktualnom produkcijskom granom. Provjeriti st
 - Vlasnik je izričito odobrio javnu poveznicu. Commit `13ac171`, run [42001605523](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42001605523) success.
 - Objavljeno: GitHub prerelease `proba` s `najjeftinija-kosarica.apk` (458 379 B). Bez prijave preuzeto i provjereno: HTTP 200, potpisan APK. Poveznica: https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/releases/download/proba/najjeftinija-kosarica.apk
 - Nije testirano: instalacija i rad na vlasnikovu mobitelu.
+
+## Zapis 5.11.2026. (Europe/Zagreb) — nesporazum: vlasnik traži novu aplikaciju
+- Vlasnik javlja da probni APK nije „nova aplikacija” prema uputama koje je poslao „iz oblaka”. U ovom razgovoru primljen je samo odjeljak „14. Steps” (koraci 1–5); odjeljci 1–13 nisu primljeni. U repozitoriju, issueima i PR-ovima nije nađena nova specifikacija.
+- Ono što je izgrađeno (TWA u `android/`, release `proba`) samo omata **postojeću** web-aplikaciju. To je pretpostavka iz ovog razgovora, ne vlasnikova specifikacija.
+- Sljedeći korak: vlasnik dostavlja potpune upute (odjeljke 1–13). Zatim slijedi usporedba sa zatečenim stanjem i odluka o tome što se zadržava. Release `proba` ostaje javan dok vlasnik ne odluči drukčije.
