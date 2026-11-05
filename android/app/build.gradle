@@ -1,0 +1,46 @@
+plugins { id "com.android.application" }
+
+// Adresa web-aplikacije koju TWA otvara (ista kao GitHub Pages objava).
+def twaHost = "antiquecroatianoak-sudo.github.io"
+def twaUrl = "https://antiquecroatianoak-sudo.github.io/Najjeftinija-kosarica/"
+
+android {
+    namespace "hr.najjeftinijakosarica.app"
+    compileSdk 36
+
+    defaultConfig {
+        // ID aplikacije: nakon prvog uploada na Google Play više se ne može mijenjati.
+        applicationId "hr.najjeftinijakosarica.app"
+        minSdk 21
+        targetSdk 36
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
+        versionName System.getenv("VERSION_NAME") ?: "0.1.0"
+        manifestPlaceholders = [twaHost: twaHost, twaUrl: twaUrl]
+    }
+
+    signingConfigs {
+        release {
+            // Ključ dolazi iz CI-a (tajne ili privremeni ključ); nikad se ne sprema u repozitorij.
+            storeFile System.getenv("KEYSTORE_PATH") ? file(System.getenv("KEYSTORE_PATH")) : null
+            storePassword System.getenv("KEYSTORE_PASSWORD")
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv("KEYSTORE_PATH") ? signingConfigs.release : null
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}

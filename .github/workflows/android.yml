@@ -1,0 +1,70 @@
+name: Android aplikacija (TWA)
+
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      # Trajni ključ iz tajni repozitorija ako postoji; inače privremeni ključ samo za probnu instalaciju.
+      - name: Ključ za potpis
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          K_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          K_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          KS="$RUNNER_TEMP/kljuc.jks"
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$KS"
+            VRSTA="trajni ključ iz tajni"
+          else
+            KS_PASS="$(openssl rand -hex 16)"; K_PASS="$KS_PASS"; K_ALIAS="privremeni"
+            echo "::add-mask::$KS_PASS"
+            keytool -genkeypair -keystore "$KS" -storepass "$KS_PASS" -keypass "$K_PASS" -alias "$K_ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 365 -dname "CN=Najjeftinija kosarica proba" -noprompt
+            VRSTA="PRIVREMENI ključ (samo za probu na mobitelu, nije za Google Play)"
+          fi
+          {
+            echo "KEYSTORE_PATH=$KS"; echo "KEYSTORE_PASSWORD=$KS_PASS"
+            echo "KEY_ALIAS=$K_ALIAS"; echo "KEY_PASSWORD=$K_PASS"
+          } >> "$GITHUB_ENV"
+          SHA=$(keytool -list -v -keystore "$KS" -storepass "$KS_PASS" -alias "$K_ALIAS" | grep -m1 "SHA256:" | sed 's/.*SHA256: //')
+          {
+            echo "### Potpis: $VRSTA"
+            echo "SHA-256 otisak (za assetlinks.json): \`$SHA\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Izgradnja APK i AAB
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: gradle -p android --no-daemon assembleRelease bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kosarica-android-${{ github.run_number }}
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30
