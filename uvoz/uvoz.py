@@ -514,7 +514,8 @@ class Uvoz:
                 self.upozorenja.append(f"Glavni lanac {IMENA.get(g, g)} nema podataka u ovom uvozu.")
 
         sad = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        verzija = hashlib.sha1(json.dumps([datum_arhive, len(proizvodi), [l["proizvoda"] for l in lanci_meta]]).encode()).hexdigest()[:10]
+        verzija = hashlib.sha1(json.dumps([datum_arhive, len(proizvodi), [l["proizvoda"] for l in lanci_meta],
+                                        [l["s_koordinatama"] for l in lanci_meta]]).encode()).hexdigest()[:10]
         meta = {
             "format": 1, "drzava": "HR", "verzija": verzija, "datum": datum_arhive, "generirano": sad,
             "izvor": "Javni cjenici trgovačkih lanaca (NN 75/2025), preuzeti preko arhive cijene.dev",
