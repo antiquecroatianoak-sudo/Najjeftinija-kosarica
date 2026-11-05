@@ -110,9 +110,10 @@ fun Ekran(podaci: Podaci, spremanje: Spremanje) {
             val s = Upit.razumi(dio, k)
             // Ista stavka dvaput: količine se zbrajaju (mlijeko dvaput = 2 l).
             val i = novi.indexOfFirst { stavka(it, k).kljuc == s.kljuc && s.grupa != null }
-            novi = if (i >= 0 && s.kolicina != null) {
-                val stara = stavka(novi[i], k).kolicina ?: s.kolicina
-                novi.toMutableList().also { it[i] = it[i].copy(kolicina = Kolicina(stara.iznos + s.kolicina.iznos, stara.jedinica)) }
+            val dodatna = s.kolicina
+            novi = if (i >= 0 && dodatna != null) {
+                val stara = stavka(novi[i], k).kolicina ?: dodatna
+                novi.toMutableList().also { it[i] = it[i].copy(kolicina = Kolicina(stara.iznos + dodatna.iznos, stara.jedinica)) }
             } else novi + Unos(System.nanoTime(), dio)
         }
         spremiPopis(novi)
