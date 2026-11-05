@@ -1,0 +1,18 @@
+# PRIVREMENO: jednokratna dijagnoza izvora (Studenac, koordinate). Ništa ne objavljuje. Ukloniti nakon nalaza.
+name: Dijagnoza izvora
+on:
+  push:
+    branches: [claude/claude-code-app-issue-bhn89z]
+    paths: [.github/workflows/dijagnoza.yml, tests/dijagnoza_izvora.py]
+permissions:
+  contents: read
+jobs:
+  dijagnoza:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python tests/dijagnoza_izvora.py "$RUNNER_TEMP/d"
