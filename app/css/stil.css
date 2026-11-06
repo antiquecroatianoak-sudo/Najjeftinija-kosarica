@@ -572,3 +572,5 @@ body.ima-traku .sadrzaj { padding-bottom: calc(var(--izbornik) + 104px + env(saf
 .stavka .stavka-trgovina { grid-column: 2 / -1; grid-row: 2; max-width: calc(100% - 52px); flex-wrap: nowrap; }
 .stavka .ukloni-stavku { grid-column: -2 / -1; grid-row: 2; }
 @media (max-width: 360px) { .stavka .stavka-trgovina { grid-column: 1 / -1; } }
+.pregled-poruke { min-height: 150px; max-height: 32vh; font-size: .82rem; line-height: 1.4; margin-bottom: 12px; }
+.pregled-poruke { font-family: inherit; white-space: pre-wrap; }
