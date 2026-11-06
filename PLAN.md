@@ -124,3 +124,9 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Messages ("Dodano…", "Vrati") appear above the bottom buttons instead of covering them.
 - [~] Store locations: NTL and Gavranović about 62 % found on OpenStreetMap; the rest can't be shown inside the circle yet (decision needed: approximate town location?).
 - [x] Published 1.7.5 (PR #38, run 42272691433 green) after GitHub Pages was stuck for a while; #37 closed.
+
+## Round 10 – minimalist dark design and store matrix (6 Nov 2026)
+- [x] Dark mode is the default (light still in Postavke); calmer palette, flat header.
+- [x] Start screen: large microphone in the centre, list in the spacious middle, "Često kupuješ" as a discreet widget at the bottom.
+- [x] Comparison: interactive store matrix (items × stores, colour by price level, totals per store, tap to select a store), now the default view; A/B/C still available.
+- [x] Tests: browser checks for the matrix (order, cheapest per row, column sum = total, selection, column width). Picture: `docs/pregled-1.8.0.png`.
