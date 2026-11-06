@@ -57,6 +57,17 @@ srv.listen(0, '127.0.0.1', async () => {
       provjeri(await procitaj() === nova, `nova verzija ${nova} stigla u istu otvorenu karticu bez zatvaranja`);
     }
     provjeri(await verzija() === '9.0.2', 'učitani kod je najnoviji');
+    // gumb „Provjeri ima li nove verzije” u Više: kad je objavljena novija, preuzme je i osvježi
+    await s.click('nav [data-idi="vise"]');
+    await s.click('[data-akcija="provjeri-verziju"]');
+    await s.waitForSelector('#poruka:not([hidden])');
+    provjeri(/najnoviju verziju \(9\.0\.2\)/.test(await s.locator('#poruka').innerText()), 'Provjeri: „Imaš najnoviju verziju (9.0.2)”');
+    objaviVerziju('9.0.3');
+    const opet = s.waitForEvent('load', { timeout: 30000 });
+    await s.click('[data-akcija="provjeri-verziju"]');
+    await opet;
+    await s.waitForSelector('nav [data-idi="vise"]');
+    provjeri(await procitaj() === '9.0.3', 'Provjeri: nova verzija 9.0.3 preuzeta i aplikacija osvježena jednim dodirom');
   } catch (e) {
     console.error(e);
     greska = 1;

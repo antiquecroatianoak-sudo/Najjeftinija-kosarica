@@ -259,7 +259,8 @@ class MaliLanci(unittest.TestCase):
                 self.assertNotIn(pl, pr["l"])
                 self.assertNotIn(pl, [l["id"] for l in meta["lanci"]])
                 self.assertFalse([p for p in pos if p[0] == pl])
-            self.assertTrue(all(l["poslovnica"] >= 3 for l in meta["lanci"]))
+            self.assertTrue(all(l["poslovnica"] >= 3 or l["jedan_cjenik"] for l in meta["lanci"]))   # dm: iznimka
+            self.assertTrue(any(l["id"] == "dm" and l["jedan_cjenik"] for l in meta["lanci"]))
             # svaki proizvod u izlazu ima cijenu u barem jednom preostalom lancu
             ima = set()
             for L in pr["l"].values():

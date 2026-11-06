@@ -84,6 +84,7 @@ LANCI = {
     "eurospin": (2, 0.92, {"3850115000011"}),
     "ntl": (2, 0.99, set()),
     "ktc": (2, 1.01, set()),
+    "dm": (1, 1.04, set()),          # kao stvarni dm: jedan cjenik za sve poslovnice, bez koordinata
 }
 GRADOVI = [("Zagreb", "10000", 45.8150, 15.9819), ("Split", "21000", 43.5081, 16.4402), ("Rijeka", "51000", 45.3271, 14.4422),
            ("Osijek", "31000", 45.5550, 18.6955), ("Zadar", "23000", 44.1194, 15.2314), ("Velika Gorica", "10410", 45.7125, 16.0756)]
@@ -178,6 +179,8 @@ def napravi_koordinate(put: Path):
             for s in poslovnice(lanac, broj):
                 if lanac == "ktc" and s["store_id"].endswith("2"):
                     continue          # jedna poslovnica bez koordinata
+                if lanac == "dm":
+                    continue          # dm: jedan cjenik, bez lokacije poslovnice
                 n += 1
                 w.writerow([n, lanac, s["store_id"], s["type"], s["address"], s["city"], s["zipcode"], s["lat"], s["lon"], ""])
 

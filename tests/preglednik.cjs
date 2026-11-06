@@ -72,6 +72,13 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(trgovineNaPopisu.length === 6 && trgovineNaPopisu.every((x) => /€/.test(x)),
     'uz svaku stavku popisa najjeftinija trgovina i cijena: ' + trgovineNaPopisu.slice(0, 2).map((x) => x.replace(/\s+/g, ' ')).join(' | '));
   provjeri(await s.locator('.plocice.precaci').count() === 0, 's popisom: umjesto prečaca pločice za slanje');
+  await s.fill('#upisPolje', 'sol'); await s.press('#upisPolje', 'Enter');
+  await s.waitForSelector('#poruka:not([hidden])');
+  const porukaOkvir = await s.locator('#poruka').boundingBox();
+  const trakaOkvir = await s.locator('.donja-traka').boundingBox();
+  provjeri(porukaOkvir.y + porukaOkvir.height <= trakaOkvir.y + 1, 'poruka „Dodano…” iznad donje trake, ne prekriva gumbe');
+  await s.click('.stavka .ukloni-stavku >> nth=-1');
+  await s.waitForTimeout(200);
   provjeri(await s.locator('.donja-traka [data-akcija="zakljucaj"]').isVisible() && await s.locator('.donja-traka [data-akcija="dijeli-ploca"]').isVisible(),
     'donja zona (jedna ruka): „Pošalji” i „Zaključaj i usporedi” uvijek vidljivi iznad izbornika');
   const traka = await s.locator('.donja-traka').boundingBox();
@@ -122,6 +129,14 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     provjeri(glasStavke.length === 3 && /Mlijeko/.test(glasStavke[1]) && /1 l/.test(glasStavke[1]) && /10 kom/.test(glasStavke[2]),
       'glas: „kruh, mljeko i deset jaja” → Kruh, Mlijeko 1 l, Jaja 10 kom');
     provjeri(/Razumio sam/.test(await sg.locator('#stanjeGlasa').innerText()), 'glas: prikazano što je aplikacija čula');
+    // mikrofon u donjoj traci (jedna ruka): isti glasovni unos, oblačić pokazuje što je čuto
+    provjeri(await sg.locator('.donja-traka #mikrofonDolje').isVisible(), 'mikrofon je i u donjoj traci (jedna ruka)');
+    await sg.click('#mikrofonDolje');
+    await sg.waitForSelector('#glasOblacic:not([hidden])', { timeout: 3000 });
+    provjeri(true, 'dok sluša, oblačić iznad donje trake pokazuje stanje');
+    await sg.waitForFunction(() => document.querySelectorAll('.stavka').length >= 3 && !document.querySelector('#mikrofonDolje.slusa'), null, { timeout: 5000 });
+    provjeri(/10 kom|20 kom/.test(await sg.locator('.stavke').innerText()) && await sg.locator('#glasOblacic').isHidden(),
+      'donji mikrofon dodaje na popis (ponovljene stavke zbrojene), oblačić se skrije');
     await kg.close();
   }
 
@@ -257,6 +272,8 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForSelector('.sazetak, #karuselB');
   const karticeKrug = await s.locator('#karuselB .trgovina-kartica').evaluateAll((k) => k.map((x) => x.querySelector('.tk-lanac').firstChild.textContent.trim() + '|' + x.querySelector('.tk-cijena').textContent));
   provjeri(new Set(karticeKrug).size === karticeKrug.length, `B u krugu: isti lanac s istom cijenom samo jednom (${karticeKrug.length} unosa)`);
+  const dmKartica = await s.locator('#karuselB .trgovina-kartica', { hasText: 'dm' }).allInnerTexts();
+  provjeri(dmKartica.some((x) => /ista cijena u svim poslovnicama/.test(x)), 'uz lokaciju i dm (jedan cjenik, bez lokacija poslovnica) je u usporedbi');
   const upute = s.locator('#detaljiB a.upute');
   provjeri(await upute.count() === 1 && /google\.com\/maps\/dir\/\?api=1&destination=4\d\.\d+,1\d\.\d+/.test(await upute.getAttribute('href')), 'B u krugu: „Upute do trgovine” vodi na Google Karte do te poslovnice');
   await snimi('8-rezultat-krug');

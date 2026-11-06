@@ -125,6 +125,14 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
 
 - **Spojeno i objavljeno 1.7.4** (provjereno 6.11.2026. 17:45 Europe/Zagreb): [PR #35](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/35) (1.7.2 tekst uštede i nadogradnja, 1.7.3 jedan unos po lancu, × za uklanjanje, 1.7.4 poruka za kupnju), merge `40e793d`; [run 42251848528](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42251848528) `provjere` (uključujući test nadogradnje) i `objava` uspješni, „Objavljena verzija podataka: 0179f6270b”. Zakazano popodnevno pokretanje (run 42253182196) u tijeku – osvježava cijene.
 
+- **Pregled cijelog razgovora od početka (nalog vlasnika 6.11.2026., provjereno 18:10 Europe/Zagreb):** „run again through our talk from the beginning … implement changes you didn't, you skip or you didn't see”. Pročitane sve poruke vlasnika iz zapisa razgovora i cijela specifikacija (dijelovi 1–7) i provjerene prema aplikaciji. Nađeno i popravljeno (1.7.5):
+  - **Jedna ruka – dodavanje na popis bilo je gore:** mikrofon i u donjoj traci popisa; dok sluša, oblačić iznad trake pokazuje što je čuto (prije je pisalo samo u kartici gore).
+  - **Nova verzija ne stiže na mobitel (vlasnik ne vidi ×):** Više → „Provjeri ima li nove verzije” čita verziju izravno s poslužitelja, preuzme novu i osvježi; aplikacija to provjeri i sama 5 s nakon otvaranja i ponudi „Osvježi”.
+  - **dm nije bio u usporedbi uz lokaciju:** dm ima jedan cjenik i nijednu poslovnicu s lokacijom, pa ga krug nikad nije uključio; sada ulazi kao lanac („ista cijena u svim poslovnicama”), meta `jedan_cjenik`.
+  - **Poruke („Dodano…”) prekrivale su donju traku s gumbima** – sada su iznad nje.
+  - **Testirano:** Python 50 OK, Node 23/23, preglednik „SVE PROVJERE SU PROŠLE” (novo: donji mikrofon i oblačić, dm uz lokaciju, broj poslovnica u krugu bez dm-a, poruka iznad trake), nadogradnja (novo: gumb Provjeri – „najnovija” i preuzimanje nove verzije jednim dodirom). Testni primjer dobio dm (1 poslovnica bez koordinata).
+  - **Otvoreno (odluka vlasnika):** (1) bez lokacije na karti: NTL ~38 %, Gavranović ~38 % poslovnica (OpenStreetMap ne nalazi adresu; dnevno se traži dalje) – moguće rješenje: približna lokacija po mjestu (središte grada), uz oznaku „približno”; (2) oglasi, Premium naplata i obiteljski popis u stvarnom vremenu trebaju vlasnikove račune/uslugu; (3) „star display” iz poruke 5.11. protumačeno kao početni zaslon (preuređen dvaput) – nije potvrđeno; (4) GitHub akcije na Node 20 (upozorenje, rade).
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).
