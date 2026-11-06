@@ -75,6 +75,8 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
   - **Pregledano bez nalaza:** `esc()` ispravan; adrese poslovnica, nazivi i karta escapeani; WhatsApp/SMS poveznice kodirane; uvoz čita ZIP u memoriji (bez raspakiravanja na disk); `dnevno.yml` ima najmanje ovlasti po poslu.
   - **Testirano:** Node 22/22, Python 47 OK, preglednik „SVE PROVJERE SU PROŠLE” (uključujući XSS, staru stavku „mljeko”, apsurdnu količinu).
 
+- **Spojeno i objavljeno 1.5.0** (provjereno 6.11.2026. 11:55 Europe/Zagreb): [PR #27](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/27), merge `40882ab` (head `9d44cb2`, CI push run 42205000961 uspješan); [run 42205274123](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42205274123) `provjere` i `objava` uspješni, „Objavljena verzija podataka: 6c116695c3”. Sadrži: filtar neobično niskih cijena, šareni početni zaslon (WhatsApp, imenik, Viber), popravak mlijeko→jogurt (stare stavke), sigurnosnu reviziju. Otvoreno: GitHub upozorava da akcije `checkout@v4`, `setup-python@v5`, `configure-pages@v5`, `deploy-pages@v4`, `upload-artifact@v4` ciljaju Node 20 (zastarjelo; zasad rade na Node 24) – nadograditi na nove glavne verzije nakon provjere njihovih promjena. NIJE provjereno: stvarni imenik i glas na vlasnikovu Androidu.
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).

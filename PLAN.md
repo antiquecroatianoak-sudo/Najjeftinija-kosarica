@@ -86,3 +86,4 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Damaged or old saved data and absurd values from links (e.g. 10^12 packs) can no longer break the app.
 - [x] A slow, older results calculation can no longer overwrite a newer screen; a double tap cannot count savings twice.
 - [x] Faster start: data preparation 548 → 209 ms on real data.
+- [x] Published: version 1.5.0 live (PR #27, publish run 42205274123 green, data 6c116695c3).
