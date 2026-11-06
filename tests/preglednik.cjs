@@ -59,7 +59,16 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.click('.stavka [data-akcija="vise"] >> nth=0');
   provjeri(/1 kg|1000 g|600 g/.test(await s.locator('.stavka >> nth=0').innerText()), 'gumb + povećava količinu');
   await snimi('2-popis');
+  provjeri(await s.locator('.stavka .ukloni-stavku').count() === 6, '× za uklanjanje uz svaku stavku');
+  const imeX = (await s.locator('.stavka-naziv >> nth=1').innerText()).trim();
+  await s.click('.stavka .ukloni-stavku >> nth=1');
+  provjeri(await s.locator('.stavka').count() === 5 && /Uklonjeno/.test(await s.locator('#poruka').innerText()), `× uklanja stavku („${imeX}”) i nudi „Vrati”`);
+  await s.click('#poruka button');
+  await s.waitForTimeout(200);
+  provjeri(await s.locator('.stavka').count() === 6 && (await s.locator('.stavka-naziv >> nth=1').innerText()).trim() === imeX, '„Vrati” vraća stavku na isto mjesto');
   const trgovineNaPopisu = await s.locator('.stavka .stavka-trgovina').allInnerTexts();
+  const naziviTrgovina = await s.locator('.stavka .stavka-trgovina b').evaluateAll((b) => b.map((x) => ({ t: x.textContent, ok: x.scrollWidth <= x.clientWidth + 1 && x.clientWidth > 0 })));
+  provjeri(naziviTrgovina.length === 6 && naziviTrgovina.every((x) => x.ok), 'naziv trgovine uz stavku vidljiv i neskraćen: ' + naziviTrgovina.map((x) => x.t).join(', '));
   provjeri(trgovineNaPopisu.length === 6 && trgovineNaPopisu.every((x) => /€/.test(x)),
     'uz svaku stavku popisa najjeftinija trgovina i cijena: ' + trgovineNaPopisu.slice(0, 2).map((x) => x.replace(/\s+/g, ' ')).join(' | '));
   provjeri(await s.locator('.plocice.precaci').count() === 0, 's popisom: umjesto prečaca pločice za slanje');

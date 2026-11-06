@@ -40,6 +40,7 @@ const IKONE = {
   kopiraj: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   zastava: '<svg viewBox="0 0 24 24"><path d="M4 22V4M4 4h13l-2 4 2 4H4"/></svg>',
   kvacica: '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+  zatvori: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
   whatsapp: '<svg viewBox="0 0 24 24" class="puna"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2.1 1-2.4c.3-.3.6-.3.8-.3h.6c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.7 1.2 1.5 1.9 1 .9 1.9 1.2 2.2 1.3.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.8-.1 1.5z"/></svg>',
   imenik: '<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 18a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/></svg>',
   viber: '<svg viewBox="0 0 24 24"><path d="M5 4.5C7 2.8 9.5 2.5 12 2.5s5 .3 7 2c1.8 1.6 2.4 3.9 2.4 7s-.6 5.4-2.4 7c-1.6 1.4-3.6 1.8-5.6 1.9L10 23v-2.7c-1.9-.2-3.6-.6-5-1.8C3.2 16.9 2.6 14.6 2.6 11.5S3.2 6.1 5 4.5z"/><path d="M9 7.5c.5 2.5 2.5 5 5.5 6.5l1-1.2 2 1-.5 1.7c-4.5-.5-8-4-8.7-8.2L9.5 7"/></svg>',
@@ -437,6 +438,7 @@ function zaslonPopis(el) {
             ${S.zakljucano ? '' : `<button data-akcija="vise" data-id="${s.id}" aria-label="Više">+</button>`}
           </div>
           ${trgovinaStavke(najjeftinije.get(s.id))}
+          <button class="ukloni-stavku" data-akcija="ukloni" data-id="${s.id}" aria-label="Ukloni ${esc(nazivStavke(s))} s popisa">${IKONE.zatvori}</button>
         </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci, upiši ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}”.</p></div>`}
     </section>
     ${stavke.length ? '' : plocicePrecaca()}
@@ -1635,6 +1637,16 @@ document.addEventListener('click', (e) => {
       stavka.kolicina = Math.round(nova * 1000) / 1000;
       stavka.zadano = false;
       promjenaPopisa();
+      break;
+    }
+    case 'ukloni': {
+      // × uz stavku: ukloni odmah, uz „Vrati” u poruci (bez pitanja – brzo i bez straha od pogreške)
+      if (!stavka) break;
+      const kopija = { ...stavka };
+      const poz = S.stavke.indexOf(stavka);
+      S.stavke.splice(poz, 1);
+      promjenaPopisa();
+      poruka(`Uklonjeno: ${nazivStavke(kopija)}`, { tekst: 'Vrati', radi: () => { S.stavke.splice(Math.min(poz, S.stavke.length), 0, kopija); promjenaPopisa(); } });
       break;
     }
     case 'uredi': urediStavku(id); break;

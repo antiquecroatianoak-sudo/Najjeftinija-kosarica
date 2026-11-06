@@ -117,6 +117,8 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
   - **Stvarni podaci** (lokacija Lučko, krug 20 km, 4 stavke): 60 poslovnica → 28 unosa (npr. Konzum 8 poslovnica jedan unos; Spar s različitim cijenama ostaje zasebno).
   - **Testirano:** Python 50 OK, Node 23/23 (novi test grupiranja: 3 Lidla iste cijene → 1, 2 Konzuma različitog kruha → 2, prosjek nepromijenjen, C bez ponovljenih parova), preglednik „SVE PROVJERE SU PROŠLE” (u krugu nema dvostrukih lanac+cijena), nadogradnja radi.
 
+- **× za uklanjanje stavke (nalog vlasnika 6.11.2026., provjereno 17:20 Europe/Zagreb):** „Na popisu za kupnju uz odabrane artikle mora biti x za uklanjanje.” Uz svaku stavku gumb × (drugi red, desno); uklanja odmah uz „Vrati” u poruci (vraća na isto mjesto). Red s trgovinom proširen do gumba × da se naziv trgovine nikad ne skrati. Testovi u pregledniku: × uz svaku stavku, uklanjanje i „Vrati”, naziv trgovine neskraćen. Nije još objavljeno (čeka se sljedeći nalog vlasnika za WhatsApp poruku, objava zajedno).
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).

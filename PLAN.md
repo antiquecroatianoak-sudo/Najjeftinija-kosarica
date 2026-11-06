@@ -113,3 +113,4 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] 1.7.1 published (run 42242007549). Publish workflow now survives GitHub Pages slowness (20 min) and re-runs (artifact per attempt).
 - [x] 1.7.2: savings text in plain words ("Ovdje plaćaš 1,51 € manje nego u prosječnoj trgovini…"); new versions now reach an open app by themselves (two updates in one day used to wait for the tab to be closed). Test `tests/nadogradnja.cjs` in CI.
 - [x] 1.7.3: shops of the same chain with identical prices for the whole list are one entry ("ista cijena u 8 poslovnica", nearest shown, full list underneath); different prices stay separate. Real data, 20 km: 60 shops → 28 entries. Tests: Node + browser.
+- [x] × next to every list item removes it, with "Vrati" (undo). Browser tests.

@@ -554,3 +554,21 @@ body.ima-traku .sadrzaj { padding-bottom: calc(var(--izbornik) + 104px + env(saf
 .iste-poslovnice li b { font-size: .82rem; white-space: nowrap; color: var(--tekst-2); font-weight: 600; }
 .karusel { align-items: flex-start; }
 .tk-iste { margin: 2px 0 0; }
+
+/* × za uklanjanje stavke: drugi red, desno ispod količine (prvi red ostaje širok za naziv) */
+.stavka .stavka-trgovina { grid-column: 3 / 4; }
+.ukloni-stavku {
+  grid-column: 4; grid-row: 2; justify-self: end; width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--rub);
+  background: var(--kartica); color: var(--tekst-3); display: grid; place-items: center; padding: 0;
+}
+.ukloni-stavku svg { width: 20px; height: 20px; stroke-width: 2.4; }
+.ukloni-stavku:hover, .ukloni-stavku:active { color: var(--opasnost); border-color: color-mix(in srgb, var(--opasnost) 40%, var(--rub)); background: var(--opasnost-svijetla); }
+@media (max-width: 360px) { .stavka .stavka-trgovina { grid-column: 2 / 4; } }
+/* trgovina uz × : počinje ispod ikone (više mjesta); naziv trgovine se nikad ne skraćuje do nestanka */
+.stavka .stavka-trgovina { grid-column: 2 / 4; flex-wrap: wrap; row-gap: 2px; }
+.stavka-trgovina b { flex-shrink: 0; }
+@media (max-width: 360px) { .stavka .stavka-trgovina { grid-column: 1 / 4; } }
+/* trgovina u drugom redu cijelom širinom do gumba × (gumb 40 px + razmak) */
+.stavka .stavka-trgovina { grid-column: 2 / -1; grid-row: 2; max-width: calc(100% - 52px); flex-wrap: nowrap; }
+.stavka .ukloni-stavku { grid-column: -2 / -1; grid-row: 2; }
+@media (max-width: 360px) { .stavka .stavka-trgovina { grid-column: 1 / -1; } }
