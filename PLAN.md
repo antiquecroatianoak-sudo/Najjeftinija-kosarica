@@ -123,3 +123,4 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] dm (one price list, no store locations) is now included in results with location on.
 - [x] Messages ("Dodano…", "Vrati") appear above the bottom buttons instead of covering them.
 - [~] Store locations: NTL and Gavranović about 62 % found on OpenStreetMap; the rest can't be shown inside the circle yet (decision needed: approximate town location?).
+- [x] Published 1.7.5 (PR #38, run 42272691433 green) after GitHub Pages was stuck for a while; #37 closed.

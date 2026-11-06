@@ -135,6 +135,8 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
 
 - **Objava 1.7.5 (6.11.2026., provjereno 19:25 Europe/Zagreb):** [PR #36](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/36) spojen (`783812b`). Run 42264780670: `provjere` uspješne (i test nadogradnje); `objava`: uvoz uspio, ali GitHub Pages je držao objavu u stanju „deployment_queued” 7 min i odbio je („Deployment failed, try again later”); ponovni pokušaj (paket `github-pages-2` – popravak re-runa radi) odmah odbijen jer je prethodna objava i dalje zapela kod GitHuba. Automatski [issue #37](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/issues/37). Aplikacija za to vrijeme prikazuje 1.7.4. Ispravak: rok deploy-pages vraćen na 600000 (najviše dopušteno; 1200000 se svodio na 10 min uz upozorenje). Sljedeći korak: nova objava nakon ~20 min (ili zakazana u 07:17 UTC).
 
+- **1.7.5 objavljeno** (provjereno 6.11.2026. 20:05 Europe/Zagreb): [PR #38](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/38), merge `731f471`; [run 42272691433](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42272691433) `provjere` i `objava` uspješni (deploy 5 min), provjera objavljene verzije uspješna. Issue #37 zatvoren.
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).
