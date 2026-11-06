@@ -66,8 +66,10 @@ export class Baza {
   // NIGDJE ne koristi: ni u A/B/C, zamjeni, akcijama, favoritima ni detaljima (odluka vlasnika 6.11.2026.).
   // Pravila (izmjereno na stvarnih 438 000 cijena, 6.11.2026.):
   //  1. isti proizvod u 3+ lanca: cijena ispod 1/4 njegove srednje cijene po lancima;
-  //  2. jedinična cijena (kg/l) ispod 1/20 srednje cijene iste vrste (grupa, podgrupa) – npr. med 1,2 kg za 0,08 €.
-  // Blaža granica (1/8 po vrsti) skrivala je stvarne cijene (losion, gel za tuširanje), pa nije uzeta.
+  //  2. jedinična cijena (kg/l) ispod 1/16 srednje cijene iste podgrupe (npr. batak 0,29 €/kg prema 5,58 €/kg)
+  //     ili ispod 1/20 srednje cijene cijele grupe kad podgrupe nema (npr. med 1,2 kg za 0,08 €).
+  // Blaža granica (1/8 po vrsti ili 1/4 najjeftinijih 10 %) skrivala je stvarne cijene (losion, suncokretovo ulje),
+  // jer grupe miješaju vrlo različite proizvode, pa nije uzeta.
   sumnjivoNiska(i, cijenaCenti) {
     if (!this.donjaGranica) this.donjaGranica = this.izracunajGranice();
     return cijenaCenti < this.donjaGranica[i];
@@ -89,7 +91,7 @@ export class Baza {
       let granica = 0;
       if (kol > 0 && (vrsta === 'kg' || vrsta === 'l') && g >= 0) {
         const m = mediani.get(`${g}|${pg}|${vrsta}`);
-        if (m != null) granica = (m / 20) * kol;
+        if (m != null) granica = (m / (pg >= 0 ? 16 : 20)) * kol;    // podgrupa je ujednačenija od cijele grupe
       }
       cijene.length = 0;
       for (const L of lanci) { const k = L.lokalno[i]; if (k) cijene.push(L.t[k - 1]); }

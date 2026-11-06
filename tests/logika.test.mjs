@@ -248,6 +248,12 @@ test('neobično niska cijena (greška u cjeniku) se nikad ne koristi: ni u A, B,
   assert.ok(B.every((r) => !r.stavke[0] || r.stavke[0].i !== 0));
   assert.ok(rezultatC(B).every((par) => par.podjela.every((x) => !x || x.ponuda.i !== 0)));
   assert.ok(akcije(b, Object.keys(b.lanci)).every((x) => x.i !== 0));
+  // u podgrupi (ujednačenija) granica je 1/16: 0,29 €/kg prema ~5,6 €/kg je greška
+  const p2 = p.map((x) => [x[0], x[1], x[2], x[3], 0, 0, '']);
+  const l2 = Object.fromEntries(Object.entries(l).map(([id, L]) => [id, { ...L, t: L.t.map((c) => (c === 19 ? 29 : c + 150)) }]));
+  const b2 = new Baza({ p: p2, l: l2 }, [{ id: 'piletina', naziv: 'Piletina', pod: [{ id: 'batak', naziv: 'batak' }] }]);
+  assert.equal(b2.prihvatljiva(0, 29), false);
+  assert.equal(b2.prihvatljiva(0, 299), true);
 });
 
 test('isti proizvod u 3+ lanca: cijena ispod 1/4 uobičajene je greška (npr. vino 0,20 € umjesto 3,99 €)', () => {
