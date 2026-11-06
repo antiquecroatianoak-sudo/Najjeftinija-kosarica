@@ -227,14 +227,26 @@ test('procjena po lancu: proizvod iz samo jedne poslovnice velikog lanca nije ci
   assert.equal(b.lanci.mali.procjena[0], 25);                           // mali lanac: svaki proizvod vrijedi
 });
 
-test('neobično niska cijena se označi, ali se ne briše ni ne premješta', () => {
+test('neobično niska cijena (greška u cjeniku) se nikad ne koristi: ni u A, B, C ni u akcijama', () => {
   const p = [['Pileći batak-zabatak za gastro', '', 1, 'kg', 0, -1, '']];
-  const l = { a: { i: [0], t: [29], n: [0], x: [0], r: [0], s: [1] } };
-  for (let k = 1; k <= 30; k++) { p.push([`Pileći batak ${k}`, '', 1, 'kg', 0, -1, '']); l[`c${k}`] = { i: [k], t: [400 + k], n: [0], x: [0], r: [0], s: [5] }; }
-  const b = new Baza({ p, l }, [{ id: 'piletina', pod: [] }]);
+  const l = { a: { i: [0, 1], t: [29, 405], n: [0, 0], x: [0, 0], r: [500, 0], s: [1, 1] } };
+  for (let k = 1; k <= 30; k++) { p.push([`Pileći batak ${k}`, '', 1, 'kg', 0, -1, '']); if (k > 1) l[`c${k}`] = { i: [k], t: [400 + k], n: [0], x: [0], r: [0], s: [5] }; }
+  const b = new Baza({ p, l }, [{ id: 'piletina', naziv: 'Piletina', pod: [], zadano: { kolicina: 1, jedinica: 'kg' } }]);
   assert.equal(b.sumnjivoNiska(0, 29), true);                // 0,29 €/kg prema ~4 €/kg
   assert.equal(b.sumnjivoNiska(1, 401), false);
-  assert.equal(b.lanci.a.cijena[0], 29);                     // cijena ostaje u usporedbi
+  assert.equal(b.prihvatljiva(0, 29), false);
+  assert.equal(b.prihvatljiva(1, 0), false);
+  const prodavaci = prodavaciLanaca(b);
+  const stavke = [{ g: 0, pg: -1, kolicina: 1, jedinica: 'kg' }];
+  const A = rezultatA(b, stavke, prodavaci);
+  assert.ok(A[0].najbolja);
+  assert.ok(A[0].rang.every((x) => x.i !== 0));             // greška nije ni na rang-listi
+  const B = rezultatB(b, stavke, prodavaci);
+  const kodA = B.find((r) => r.prodavac.id === 'a');
+  assert.equal(kodA.stavke[0].i, 1);                         // u lancu "a" uzima se stvarni batak, ne greška
+  assert.ok(B.every((r) => !r.stavke[0] || r.stavke[0].i !== 0));
+  assert.ok(rezultatC(B).every((par) => par.podjela.every((x) => !x || x.ponuda.i !== 0)));
+  assert.ok(akcije(b, Object.keys(b.lanci)).every((x) => x.i !== 0));
 });
 
 test('najniža cijena u 30 dana (NN 75/2025): prava akcija ili je bilo jeftinije', () => {

@@ -63,13 +63,29 @@ export class Baza {
   }
 
   // Neobično niska cijena: jedinična cijena ispod 1/8 medijana iste vrste proizvoda (grupa, podgrupa, kg/l).
-  // Ne briše se i ne mijenja poredak (rasprodaje i veća pakiranja su stvarne), nego se kupca upozori.
+  // Takva cijena je gotovo uvijek greška u cjeniku (krivo upisana količina ili cijena), pa se NIGDJE ne
+  // koristi: ni u rezultatima A/B/C, ni u akcijama, favoritima ni detaljima proizvoda (odluka vlasnika 6.11.2026.).
   sumnjivoNiska(i, cijenaCenti) {
-    const [, , kol, vrsta, g, pg] = this.p[i];
-    if (!(kol > 0) || (vrsta !== 'kg' && vrsta !== 'l') || g < 0) return false;
-    if (!this.mediani) this.mediani = this.izracunajMedijane();
-    const m = this.mediani.get(`${g}|${pg}|${vrsta}`);
-    return m != null && cijenaCenti / kol < m / 8;
+    if (!this.donjaGranica) this.donjaGranica = this.izracunajGranice();
+    return cijenaCenti < this.donjaGranica[i];
+  }
+
+  // Cijena koja smije ući u usporedbu: postoji i nije neobično niska.
+  prihvatljiva(i, cijenaCenti) {
+    return cijenaCenti > 0 && !this.sumnjivoNiska(i, cijenaCenti);
+  }
+
+  // Najniža prihvatljiva cijena pakiranja po proizvodu (0 = bez granice).
+  izracunajGranice() {
+    const mediani = this.izracunajMedijane();
+    const out = new Float64Array(this.n);
+    for (let i = 0; i < this.n; i++) {
+      const [, , kol, vrsta, g, pg] = this.p[i];
+      if (!(kol > 0) || (vrsta !== 'kg' && vrsta !== 'l') || g < 0) continue;
+      const m = mediani.get(`${g}|${pg}|${vrsta}`);
+      if (m != null) out[i] = (m / 8) * kol;
+    }
+    return out;
   }
 
   izracunajMedijane() {
@@ -209,7 +225,7 @@ function najboljaKod(baza, nacin, cijena) {
   let naj = null;
   for (const o of nacin.opcije) {
     const c = cijena[o.i];
-    if (!c) continue;
+    if (!baza.prihvatljiva(o.i, c)) continue;
     const ponuda = { i: o.i, pakiranja: o.pakiranja, cijena: c, trosak: c * o.pakiranja, poPakiranju: o.poPakiranju };
     if (!naj || bolje(ponuda, naj, baza) < 0) naj = ponuda;
   }
@@ -227,7 +243,7 @@ export function rezultatA(baza, stavke, prodavaci) {
       const isti = [];
       for (const pr of prodavaci) {
         const c = pr.cijena[o.i];
-        if (!c) continue;
+        if (!baza.prihvatljiva(o.i, c)) continue;
         if (!naj || c < naj.cijena) { naj = { cijena: c, prodavac: pr }; isti.length = 0; isti.push(pr); } else if (c === naj.cijena) isti.push(pr);
       }
       if (naj) {
@@ -311,6 +327,7 @@ export function akcije(baza, lanci, { grupa = -1, upit = '', najvise = 300 } = {
       const redovna = L.r[k - 1];
       const t = L.t[k - 1];
       if (!redovna || redovna <= t) continue;
+      if (!baza.prihvatljiva(i, t)) continue;
       if (grupa >= 0 && baza.p[i][4] !== grupa) continue;
       if (dozvoljeni && !dozvoljeni.has(i)) continue;
       out.push({ i, lanac: id, cijena: t, redovna, popust: 1 - t / redovna });

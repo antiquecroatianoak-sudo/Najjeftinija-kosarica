@@ -93,3 +93,15 @@ export function jedinicnaCijena(centi, kolicina, vrsta) {
 export function korakKolicine(jedinica) {
   return { g: 100, ml: 250, kg: 0.5, l: 0.5, kom: 1, pak: 1 }[jedinica] || 1;
 }
+
+// Broj iz imenika u međunarodni oblik za wa.me (bez +, razmaka i vodeće nule; hrvatski 09x → 3859x)
+export function brojZaWhatsApp(broj, pozivni = '385') {
+  let d = String(broj || '').trim();
+  const plus = d.startsWith('+');
+  d = d.replace(/\D/g, '');
+  if (!d) return '';
+  if (plus) return d;
+  if (d.startsWith('00')) return d.slice(2);
+  if (d.startsWith('0')) return pozivni + d.slice(1);
+  return d;
+}

@@ -45,6 +45,8 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForSelector('#upisPolje');
   provjeri(await s.locator('.mikrofon').count() === 1, 'gumb za glasovni unos postoji');
   await snimi('1-pocetna');
+  const precaci = await s.locator('.plocice.precaci .plocica').allInnerTexts();
+  provjeri(precaci.length === 4 && /Akcije/.test(precaci[0]) && /barkod/i.test(precaci[1]), 'prazan popis: 4 šarene pločice (akcije, skener, favoriti, obitelj)');
   await s.fill('#upisPolje', 'kruh, dvije litre mlijeka, jaja, pola kile krumpira, kava, banane');
   await s.press('#upisPolje', 'Enter');
   await s.waitForSelector('.stavka');
@@ -55,6 +57,21 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.click('.stavka [data-akcija="vise"] >> nth=0');
   provjeri(/1 kg|1000 g|600 g/.test(await s.locator('.stavka >> nth=0').innerText()), 'gumb + povećava količinu');
   await snimi('2-popis');
+  provjeri(await s.locator('.plocice.precaci').count() === 0, 's popisom: umjesto prečaca pločice za slanje');
+  const waHref = await s.locator('.dijeli-kartica a.plocica.wa').getAttribute('href');
+  provjeri(/^https:\/\/wa\.me\/\?text=/.test(waHref) && /Popis%20za%20kupovinu%20\(6\)/.test(waHref) && /%23popis%3D/.test(waHref),
+    'velika pločica WhatsApp: šalje popis s poveznicom, osobu se bira u WhatsAppu');
+  provjeri(/^viber:\/\/forward\?text=/.test(await s.locator('.dijeli-kartica a.plocica.viber').getAttribute('href')), 'pločica Viber');
+  // imenik: Contact Picker (Chrome na Androidu) – ovdje simuliran
+  await s.evaluate(() => Object.defineProperty(navigator, 'contacts', { configurable: true, value: { select: async () => [{ name: ['Mama'], tel: ['091 234 5678'] }] } }));
+  await s.click('.dijeli-kartica [data-akcija="imenik"]');
+  await s.waitForSelector('.ploca-sadrzaj a.plocica.wa');
+  const waOsoba = await s.locator('.ploca-sadrzaj a.plocica.wa').getAttribute('href');
+  provjeri(/^https:\/\/wa\.me\/385912345678\?text=/.test(waOsoba) && /Mama/.test(await s.locator('.ploca-sadrzaj').innerText()),
+    'iz imenika: odabrana osoba (Mama, 091 234 5678) → WhatsApp izravno na +385 91 234 5678');
+  provjeri(/^sms:/.test(await s.locator('.ploca-sadrzaj a.plocica.ostalo').getAttribute('href')), 'iz imenika: i SMS toj osobi');
+  await snimi('2b-imenik');
+  await s.evaluate(() => { delete navigator.contacts; document.querySelector('#ploca').hidden = true; });
 
   console.log('Glasovni unos (simulirano prepoznavanje govora)');
   {
