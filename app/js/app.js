@@ -1,6 +1,6 @@
 // Najjeftinija košarica – sučelje aplikacije.
 import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm, brojZaWhatsApp } from './tekst.js';
-import { pripremiGrupe, rastavi, novaStavkaId, kanon } from './popis.js';
+import { pripremiGrupe, rastavi, novaStavkaId, kanon, osvjeziStavke } from './popis.js';
 import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost, ocjenaCijene } from './usporedba.js';
 import { ucitajPodatke, ucitajPoslovnice, pripremiPoslovnice, DRZAVE } from './podaci.js';
 import { ukljuciHvatanje, zabiljezi, izvjesce, obrisiGreske, VERZIJA_APLIKACIJE } from './greske.js';
@@ -1189,6 +1189,7 @@ function zaslonObitelj(el) {
 function uveziPopis(kod) {
   try {
     const nove = procitajKod(kod);
+    osvjeziStavke(nove);
     if (!nove.length) throw new Error('prazno');
     otvoriPlocu(`<h3>Primljen popis (${nove.length})</h3><p class="sitno">${esc(nove.map((s) => s.tekst || (s.proizvod != null ? P.baza.p[s.proizvod][0] : '')).join(', '))}</p>
       <button class="gumb glavni puni" data-akcija="uvoz-dodaj">Dodaj na moj popis</button><button class="gumb puni" data-akcija="uvoz-zamijeni">Zamijeni moj popis</button>`, (pl) => {
@@ -1522,6 +1523,7 @@ async function pokreni(rucno = false) {
       }
     }
     for (const s of S.stavke) if (s.proizvod != null) s.barkod = baza.p[s.proizvod][6];
+    if (osvjeziStavke(S.stavke)) zadnjiIzracun = null;      // stare stavke ("mljeko") ponovno prepoznate
     S.verzijaPodataka = d.meta.verzija;
     spremi();
     zadnjiIzracun = null;

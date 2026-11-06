@@ -247,6 +247,28 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s2.waitForSelector('.stavka');
   provjeri(await s2.locator('.stavka').count() === 6, 'primljeni popis ima 6 stavki');
 
+  console.log('Stari spremljeni popis s mobitela (stavka "mljeko" iz starije verzije)');
+  const stari = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR' });
+  await stari.addInitScript(() => {
+    if (sessionStorage.getItem('postavljeno')) return;
+    sessionStorage.setItem('postavljeno', '1');
+    localStorage.setItem('kosarica-stanje-v1', JSON.stringify({ drzava: 'hr', zaslon: 'popis', verzijaPodataka: 'stara',
+      stavke: [{ id: 's1', tekst: 'mljeko', g: -1, pg: -1, upit: 'mljeko', filtar: '', kolicina: 1, jedinica: 'pak', zadano: true }] }));
+  });
+  const s4 = await stari.newPage();
+  s4.on('pageerror', (e) => greske.push('pageerror(stari): ' + e.message));
+  await s4.goto(url);
+  await s4.waitForSelector('.stavka');
+  const staraStavka = await s4.locator('.stavka').innerText();
+  provjeri(/Mlijeko/.test(staraStavka) && /1 l/.test(staraStavka), 'stara stavka „mljeko” ponovno prepoznata: ' + staraStavka.replace(/\s+/g, ' '));
+  await s4.click('[data-akcija="zakljucaj"]');
+  await s4.waitForSelector('[data-tab="A"]');
+  await s4.click('[data-tab="A"]');
+  await s4.waitForSelector('.ponuda');
+  const ponudaMlijeko = await s4.locator('.ponuda >> nth=0').innerText();
+  provjeri(/mlijeko/i.test(ponudaMlijeko) && !/jogurt/i.test(ponudaMlijeko), 'rezultat za staru stavku je mlijeko, ne jogurt');
+  await stari.close();
+
   console.log('Skener (ručni unos barkoda)');
   await s.goto(url);
   await s.waitForSelector('.izbornik');

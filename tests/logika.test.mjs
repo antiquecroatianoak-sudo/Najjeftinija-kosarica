@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { norm, korijen, prikazPakiranja, eur, uOsnovnu } from '../app/js/tekst.js';
-import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu } from '../app/js/popis.js';
+import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu, osvjeziStavke } from '../app/js/popis.js';
 import { Baza, pragPoslovnica, ocjenaCijene, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
 
 const KORIJEN = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -208,6 +208,41 @@ test('prepoznavanje govora: "mljeko", "mleko", jedno krivo slovo – ista grupa 
   assert.equal(id('xyzabc'), null);
   assert.equal(kanon('mlijeko'), kanon('mljeko'));
   assert.ok(blizu('mlieko', 'mleko') && blizu('jogrut', 'jogurt') && !blizu('sir', 'sirup'));
+});
+
+test('stara stavka spremljena kao tekst ("mljeko") ponovno se prepozna kao mlijeko, ne jogurt (prijava vlasnika 6.11.)', () => {
+  pripremiGrupe(grupe);                                                     // grupe objavljenih podataka (primjer)
+  // ovako je stavku spremila starija verzija: g = -1, pretraga teksta "mljeko" → „Mljekara Marina” jogurt
+  const stare = [
+    { id: 'a', tekst: 'mljeko', g: -1, pg: -1, upit: 'mljeko', filtar: '', kolicina: 1, jedinica: 'pak', zadano: true },
+    { id: 'b', tekst: 'mljeko', g: -1, pg: -1, upit: 'mljeko', filtar: '', kolicina: 2, jedinica: 'pak', zadano: false },
+    { id: 'c', tekst: 'xyzabc', g: -1, pg: -1, upit: 'xyzabc', filtar: '', kolicina: 1, jedinica: 'pak', zadano: true },
+    { id: 'd', tekst: 'Coca-Cola 2L', g: -1, pg: -1, upit: '', proizvod: 5, samoTaj: true, kolicina: 1, jedinica: 'pak' },
+  ];
+  assert.equal(osvjeziStavke(stare), 2);
+  assert.equal(grupe[stare[0].g].id, 'mlijeko');
+  assert.deepEqual([stare[0].kolicina, stare[0].jedinica, stare[0].upit], [1, 'l', '']);
+  assert.deepEqual([stare[1].kolicina, stare[1].jedinica], [2, 'l']);     // "2 pakiranja" mlijeka = 2 l
+  assert.equal(stare[2].g, -1);                                             // nepoznato ostaje pretraga
+  assert.equal(stare[3].g, -1);                                             // odabrani proizvod se ne dira
+  // u cijelom tijeku mlijeko nikad ne dovodi do jogurta (prije popravka pretraga "mljeko" nalazila je i jogurt)
+  const kand = baza.kandidati(stare[0]);
+  assert.ok(kand.length && kand.every((i) => baza.p[i][4] === gid('mlijeko') && !/jogurt/i.test(baza.p[i][0])));
+  const [a] = rezultatA(baza, [stare[0]], prodavaciLanaca(baza));
+  assert.ok(/mlijeko/i.test(baza.p[a.najbolja.i][0]) && a.rang.every((r) => !/jogurt/i.test(baza.p[r.i][0])));
+});
+
+test('engleski nazivi namirnica: "milk" je mlijeko (ne Milka), "bread" kruh, "eggs" jaja', () => {
+  const grupe = JSON.parse(readFileSync(join(KORIJEN, 'uvoz', 'grupe.json'), 'utf8')).grupe;
+  pripremiGrupe(grupe);
+  const id = (t) => { const s = rastavi(t)[0]; return s && s.g >= 0 ? grupe[s.g].id : null; };
+  for (const [en, hr] of [['milk', 'mlijeko'], ['Milk', 'mlijeko'], ['two litres of milk', 'mlijeko'], ['bread', 'kruh'], ['eggs', 'jaja'],
+    ['potatoes', 'krumpir'], ['coffee', 'kava'], ['yogurt', 'jogurt'], ['toilet paper', 'toaletni-papir'], ['chicken', 'piletina'],
+    ['cheese', 'sir'], ['butter', 'maslac'], ['sugar', 'secer'], ['bananas', 'banane'], ['apples', 'jabuke'], ['water', 'voda'],
+    ['beer', 'pivo'], ['rice', 'riza'], ['oil', 'ulje'], ['tea', 'caj'], ['onions', 'luk'], ['tomatoes', 'rajcica'], ['flour', 'brasno'],
+    ['juice', 'sok'], ['wine', 'vino'], ['meat', 'meso'], ['fish', 'riba'], ['salt', 'sol'], ['pasta', 'tjestenina'], ['chocolate', 'cokolada'],
+    ['biscuits', 'keksi'], ['carrots', 'mrkva'], ['ice cream', 'sladoled'], ['detergent', 'deterdzent']]) assert.equal(id(en), hr, en);
+  assert.equal(id('Milka čokolada'), 'cokolada');
 });
 
 test('procjena po lancu: proizvod iz samo jedne poslovnice velikog lanca nije cijena lanca', () => {
