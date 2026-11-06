@@ -268,3 +268,18 @@ class MaliLanci(unittest.TestCase):
                     i += d_
                     ima.add(i)
             self.assertEqual(ima, set(range(len(pr["p"]))))
+
+
+class PreskoceniLanci(unittest.TestCase):
+    """Odluka vlasnika 6.11.2026.: Stridon se ne prikazuje (kao ni Metro – veleprodaja)."""
+
+    def test_stridon_i_metro_se_ne_citaju(self):
+        import io
+        import zipfile
+        b = io.BytesIO()
+        with zipfile.ZipFile(b, "w") as z:
+            for lanac in ("konzum", "stridon", "metro", "Stridon"):
+                z.writestr(f"{lanac}/prices.csv", "store_id,product_id,price\n")
+        with zipfile.ZipFile(b) as z:
+            self.assertEqual(sorted(uvoz.lanci_u_arhivi(z)), ["konzum"])
+        self.assertIn("stridon", uvoz.PRESKOCI)

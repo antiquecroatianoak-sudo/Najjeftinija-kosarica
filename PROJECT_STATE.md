@@ -88,6 +88,8 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
   - **Testirano:** Python 49 OK, Node 22/22, preglednik „SVE PROVJERE SU PROŠLE” (2×) s novim provjerama: izbornik, trgovina uz svaku stavku, Natrag sa Statusa → Više, s Više → Popis (`history.state` = baza: sljedeći Natrag izlazi), Natrag zatvara ploču, gumb natrag Ušteda → Akcije, druga kartica → Popis. Snimke na stvarnim podacima (bez malih lanaca): `pregled-1.6.0.png` (`docs/pregled-1.6.0.png`).
   - **Spojeno i objavljeno** (provjereno 6.11.2026. 14:25 Europe/Zagreb): [PR #29](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/29), merge `c4b5b0e`; [run 42223793731](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42223793731) `provjere` i `objava` uspješni, „Objavljena verzija podataka: 1593f29b9e”. NIJE provjereno: tipka Natrag na stvarnom Android mobitelu (provjereno u Chromiumu s emulacijom Pixel 7).
 
+- **Odluka vlasnika 6.11.2026. (~14:40 Europe/Zagreb): „Delete street on”** – na pitanje vlasnik je potvrdio: ukloniti lanac **Stridon**. `uvoz.py`: `PRESKOCI = {"metro", "stridon"}` – Stridon se ne čita iz arhive niti traži u starijim arhivama. Učinak (podaci od 6.11.): −41 poslovnica, −~22 500 proizvoda koje prodaje samo Stridon (od ~185 000). Test `PreskoceniLanci`; Python 52 OK.
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).
