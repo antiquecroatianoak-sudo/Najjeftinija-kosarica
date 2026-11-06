@@ -122,8 +122,9 @@ function otvoriPlocu(html, nakon) {
   p.querySelector('.ploca-sadrzaj').innerHTML = html;
   p.hidden = false;
   if (nakon) nakon(p.querySelector('.ploca-sadrzaj'));
+  zakaziPovijest();
 }
-function zatvoriPlocu() { $('#ploca').hidden = true; }
+function zatvoriPlocu() { $('#ploca').hidden = true; zakaziPovijest(); }
 
 async function kopiraj(tekst) {
   try {
@@ -138,16 +139,84 @@ async function kopiraj(tekst) {
 }
 
 // ---------------------------------------------------------------- navigacija
-function idi(zaslon) {
+// Kao u izvornoj aplikaciji: glavne kartice (donji izbornik) i podzasloni. Aplikacija vodi vlastiti stog zaslona;
+// tipka Natrag na mobitelu (i gumb „‹” na zaslonu) redom: zatvara otvorenu ploču → vraća na prethodni zaslon →
+// s druge kartice vraća na Popis → tek s Popisa izlazi iz aplikacije.
+const KARTICE = ['popis', 'rezultati', 'akcije', 'skener', 'vise'];
+const RODITELJ = { usteda: 'vise', favoriti: 'vise', obitelj: 'vise', status: 'vise', trgovine: 'vise', postavke: 'vise',
+  greska: 'vise', o: 'vise', karta: 'popis' };
+const NASLOVI = { popis: 'Popis', rezultati: 'Usporedba', akcije: 'Akcije', skener: 'Skeniraj', vise: 'Više', usteda: 'Moja ušteda',
+  favoriti: 'Moji favoriti', obitelj: 'Obiteljski popis', status: 'Status podataka', trgovine: 'Moje trgovine', postavke: 'Postavke',
+  greska: 'Prijavi grešku', o: 'O aplikaciji', karta: 'Karta trgovina' };
+let stog = ['popis'];
+
+function idi(zaslon, { pocetak = false } = {}) {
+  if (!NASLOVI[zaslon]) zaslon = 'popis';
+  if (S.zaslon === 'skener' && zaslon !== 'skener') zaustaviSkener();
+  if (KARTICE.includes(zaslon)) stog = zaslon === 'popis' ? ['popis'] : ['popis', zaslon];
+  else {
+    const i = stog.indexOf(zaslon);
+    if (i >= 0) stog = stog.slice(0, i + 1);
+    else if (pocetak) stog = ['popis', ...(RODITELJ[zaslon] && RODITELJ[zaslon] !== 'popis' ? [RODITELJ[zaslon]] : []), zaslon];
+    else stog.push(zaslon);
+  }
+  prikaziZaslon(zaslon);
+}
+
+function prikaziZaslon(zaslon) {
+  const prije = S.zaslon;
   S.zaslon = zaslon;
   spremi();
+  const glavni = KARTICE.includes(zaslon) ? zaslon : stog.slice().reverse().find((z) => KARTICE.includes(z)) || 'popis';
   for (const b of document.querySelectorAll('.izbornik button')) {
-    const glavni = { usteda: 'vise', obitelj: 'vise', skener: 'vise', status: 'vise', trgovine: 'vise', postavke: 'vise', greska: 'vise', o: 'vise' }[zaslon] || zaslon;
-    b.classList.toggle('aktivno', b.dataset.idi === glavni);
+    const da = b.dataset.idi === glavni;
+    b.classList.toggle('aktivno', da);
+    if (da) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   }
   prikazi();
-  window.scrollTo({ top: 0 });
+  if (prije !== zaslon) window.scrollTo({ top: 0 });
+  zakaziPovijest();
 }
+
+// Korak natrag unutar aplikacije; vraća false kad nema kamo (Popis bez otvorene ploče).
+function natragUnutar() {
+  if (!$('#ploca').hidden) {
+    const lok = !!$('#ploca .lok-ploca');
+    zatvoriPlocu();
+    if (lok) prikazi();
+    return true;
+  }
+  if (S.zaslon === 'skener') zaustaviSkener();
+  if (stog.length > 1) { stog.pop(); prikaziZaslon(stog[stog.length - 1]); return true; }
+  if (S.zaslon !== 'popis') { stog = ['popis']; prikaziZaslon('popis'); return true; }
+  return false;
+}
+
+// Povijest preglednika: dok postoji korak natrag unutar aplikacije, drži se jedan dodatni zapis („straža”),
+// pa tipka Natrag na Androidu ne zatvara aplikaciju nego dolazi ovdje (popstate).
+let imaStrazu = false;
+let preskociPop = false;
+let povijestZakazana = false;
+const trebaStrazu = () => stog.length > 1 || S.zaslon !== 'popis' || !$('#ploca').hidden;
+function zakaziPovijest() {
+  // stražu dodaj odmah (Natrag pritisnut odmah nakon otvaranja ploče mora je zatvoriti);
+  // uklanjanje straže čeka kraj trenutnog koraka, jer zatvaranje ploče često prati otvaranje novog zaslona
+  if (trebaStrazu()) {
+    if (!imaStrazu) { history.pushState({ kosarica: 'straza' }, ''); imaStrazu = true; }
+    return;
+  }
+  if (!imaStrazu || povijestZakazana) return;
+  povijestZakazana = true;
+  setTimeout(() => {
+    povijestZakazana = false;
+    if (!trebaStrazu() && imaStrazu) { imaStrazu = false; preskociPop = true; history.back(); }
+  }, 0);
+}
+window.addEventListener('popstate', () => {
+  if (preskociPop) { preskociPop = false; return; }
+  imaStrazu = false;
+  if (natragUnutar()) zakaziPovijest();
+});
 
 function prikazi() {
   const sadrzaj = $('#sadrzaj');
@@ -253,12 +322,38 @@ function zapamtiPovijest(stavke) {
   }
 }
 
+// Najjeftinija trgovina za svaku stavku, za prikaz na samom popisu („Mlijeko” → „Plodine · 0,89 €”).
+// Ako je usporedba (s lokacijom: stvarne poslovnice u krugu) već izračunata za isti popis, koristi se ona;
+// inače odmah, bez čekanja, procjena po lancima. Rezultat se pamti dok se popis ne promijeni.
+let najjeftinijeNaPopisu = { kljuc: '', mapa: new Map() };
+function najjeftinijePoStavci() {
+  if (!P || !S.stavke.length) return new Map();
+  const kljuc = kljucIzracuna();
+  if (zadnjiIzracun && zadnjiIzracun.kljuc === kljuc) {
+    return new Map(zadnjiIzracun.a.map((r) => [r.stavka.id, r.najbolja && { ...r.najbolja, uKrugu: zadnjiIzracun.pr.nacin === 'poslovnice' }]));
+  }
+  if (najjeftinijeNaPopisu.kljuc !== kljuc) {
+    const lanci = odabraniLanci().map((id) => ({ id, lanac: id, naziv: nazivLanca(id), cijena: P.baza.lanci[id].procjena }));
+    const a = rezultatA(P.baza, S.stavke, lanci);
+    najjeftinijeNaPopisu = { kljuc, mapa: new Map(a.map((r) => [r.stavka.id, r.najbolja])) };
+  }
+  return najjeftinijeNaPopisu.mapa;
+}
+function trgovinaStavke(n) {
+  if (!n) return '<span class="stavka-trgovina nema">nije pronađeno u odabranim trgovinama</span>';
+  const pr = n.prodavac;
+  const iste = n.istaCijena && n.istaCijena.length > 1 ? ` <span class="i-jos">+${n.istaCijena.length - 1}</span>` : '';
+  return `<span class="stavka-trgovina" style="--boja:${boja(pr.lanac)}"><i aria-hidden="true"></i><b>${esc(pr.naziv)}</b>${iste}<span class="cijena">${eur(n.trosak)}</span></span>`;
+}
+
 function zaslonPopis(el) {
   const stavke = S.stavke;
   const prazan = !stavke.length;
   const brze = cestoKupujes();
   const imaPovijest = Object.keys(S.povijest || {}).length > 0;
   const uKosari = stavke.filter((s) => s.uKosari).length;
+  let najjeftinije = new Map();
+  try { najjeftinije = najjeftinijePoStavci(); } catch (e) { zabiljezi('popis-cijene', e.message, e.stack); }
   // redoslijed: još nekupljeno gore, u košarici dolje (način kupnje)
   const poredane = [...stavke].sort((x, y) => (S.zakljucano ? odjelStavke(x) - odjelStavke(y) : 0) || (x.uKosari ? 1 : 0) - (y.uKosari ? 1 : 0));
   const naslovOdjela = (s, k) => {
@@ -303,6 +398,7 @@ function zaslonPopis(el) {
             <span>${esc(prikazKolicine(s.kolicina, s.jedinica))}${s.zadano ? '<br><span class="zadano">zadano</span>' : ''}</span>
             ${S.zakljucano ? '' : `<button data-akcija="vise" data-id="${s.id}" aria-label="Više">+</button>`}
           </div>
+          ${trgovinaStavke(najjeftinije.get(s.id))}
         </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci, upiši ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}”.</p></div>`}
     </section>
     ${stavke.length ? plociceDijeljenja() : plocicePrecaca()}
@@ -341,7 +437,7 @@ function plociceDijeljenja() {
 function plocicePrecaca() {
   return `<div class="plocice precaci">
     <button class="plocica akcije" data-idi="akcije"><span class="pl-ik">${IKONE.akcija}</span><b>Akcije tjedna</b><span>najveći popusti</span></button>
-    <button class="plocica skener" data-idi="skener"><span class="pl-ik">${IKONE.barkod}</span><b>Skeniraj barkod</b><span>cijena u trgovini</span></button>
+    <button class="plocica skener" data-idi="karta"><span class="pl-ik">${IKONE.lokacija}</span><b>Karta trgovina</b><span>trgovine oko tebe</span></button>
     <button class="plocica favoriti" data-idi="favoriti"><span class="pl-ik">${IKONE.zvijezda}</span><b>Favoriti</b><span>${(S.favoriti || []).length} praćenih</span></button>
     <button class="plocica obitelj" data-idi="obitelj"><span class="pl-ik">${IKONE.obitelj}</span><b>Obiteljski popis</b><span>primi ili pošalji</span></button>
   </div>`;
@@ -662,7 +758,7 @@ function redakPonude(stavka, ponuda, { prodavac, nacin, ostali = 0, prikaziTrgov
           ${akcija ? '<span class="oznaka crvena">akcija</span>' : ''}
           ${akcija ? oznakaCijene(raspon, ponuda.cijena) : ''}
         </div>
-        ${prikaziTrgovinu ? `<div class="ponuda-detalji" style="margin-top:5px">${znakTrgovine(pr)}${ostali ? `<span>i još ${ostali} po istoj cijeni</span>` : ''}</div>` : ''}
+        ${prikaziTrgovinu ? `<div class="ponuda-detalji ponuda-trgovina">${znakTrgovine(pr)}${ostali ? `<span>i još ${ostali} po istoj cijeni</span>` : ''}</div>` : ''}
         ${raspon && raspon.min !== raspon.max ? `<div class="ponuda-detalji"><span>U poslovnicama ${esc(nazivLanca(pr.lanac))}: ${eur(raspon.min)} – ${eur(raspon.max)}</span></div>` : ''}
       </div>
       <div class="ponuda-cijena">
@@ -1002,7 +1098,7 @@ async function zaslonKarta(el) {
   const L0 = S.lokacija;
   const sKoord = P.poslovnice.filter((p) => p[5] != null && odabraniLanci().includes(p[0]));
   const krug = L0.ukljucena && L0.lat != null ? poslovniceUKrugu() : [];
-  el.innerHTML = `<div class="zaslon">
+  el.innerHTML = `<div class="zaslon">${natrag()}
     <div class="naslov-zaslona"><div><h2>Trgovine na karti</h2><p>${sKoord.length} poslovnica s poznatom lokacijom${L0.ukljucena && L0.lat != null ? ` · ${krug.length} u krugu ${L0.radijus} km` : ''}</p></div></div>
     <div class="kartica ravna">
       <div class="redak" style="flex-wrap:wrap">
@@ -1124,8 +1220,8 @@ function postaviKrug(r) {
   zatvoriPlocu();
   const krug = poslovniceUKrugu();
   pripremiPoslovnice(S.drzava, krug.slice(0, NAJVISE_POSLOVNICA).map((x) => x.p[7]));   // rezultati odmah spremni
-  if (S.zaslon !== 'rezultati') S.zaslon = 'popis';                                         // natrag na popis
-  prikazi();
+  if (S.zaslon !== 'rezultati' && S.zaslon !== 'popis') idi('popis');                     // natrag na popis
+  else prikazi();
   poruka(krug.length ? `Koristim ${krug.length} ${krug.length === 1 ? 'trgovinu' : krug.length <= 4 ? 'trgovine' : 'trgovina'} u krugu ${r} km.` : `U krugu ${r} km nema trgovina s poznatom lokacijom – odaberi veći krug.`);
 }
 
@@ -1145,7 +1241,7 @@ function zaslonVise(el) {
     ['usteda', IKONE.novac, 'Moja ušteda', `${eur(Math.round(S.usteda.ukupno))} ukupno`],
     ['favoriti', '<span style="font-size:1.4rem;line-height:1">★</span>', 'Moji favoriti', `${(S.favoriti || []).length} proizvoda · obavijest o akciji`],
     ['obitelj', IKONE.obitelj, 'Obiteljski popis', 'Podijeli popis s ukućanima'],
-    ['skener', IKONE.barkod, 'Skeniraj barkod', 'Provjeri cijenu u trgovini'],
+    ['karta', IKONE.lokacija, 'Karta trgovina', S.lokacija.ukljucena ? `U krugu ${S.lokacija.radijus} km` : 'Trgovine oko tebe'],
     ['status', IKONE.status, 'Status podataka', `Cijene od ${datumHR(P.meta.datum)}${st ? ` · ${st} upozorenja` : ''}`],
     ['trgovine', IKONE.trgovina, 'Moje trgovine', `${odabraniLanci().length} od ${sviLanci().length} lanaca`],
     ['postavke', IKONE.postavke, 'Postavke', 'Država, Premium, izgled'],
@@ -1160,7 +1256,11 @@ function zaslonVise(el) {
   </div>`;
 }
 
-const natrag = (kamo = 'vise') => `<button class="natrag" data-idi="${kamo}">${IKONE.natrag} Natrag</button>`;
+// Gumb natrag na podzaslonima: vodi točno na zaslon s kojeg je korisnik došao (i piše koji je to).
+const natrag = () => {
+  const kamo = stog.length > 1 ? stog[stog.length - 2] : RODITELJ[S.zaslon] || 'popis';
+  return `<button class="natrag" data-akcija="natrag" aria-label="Natrag na ${esc(NASLOVI[kamo])}">${IKONE.natrag}<span>${esc(NASLOVI[kamo])}</span></button>`;
+};
 
 function zaslonUsteda(el) {
   const k = [...S.usteda.kupnje].reverse();
@@ -1225,7 +1325,7 @@ let skenerTok = null;
 function zaustaviSkener() { if (skenerTok) { skenerTok.getTracks().forEach((t) => t.stop()); skenerTok = null; } }
 function zaslonSkener(el) {
   const podrzano = 'BarcodeDetector' in window && navigator.mediaDevices;
-  el.innerHTML = `<div class="zaslon">${natrag()}
+  el.innerHTML = `<div class="zaslon">
     <div class="naslov-zaslona"><div><h2>Skeniraj barkod</h2><p>Usmjeri kameru na barkod proizvoda u trgovini.</p></div></div>
     ${podrzano ? '<video id="skenerVideo" class="skener-video" playsinline muted></video><p class="stanje-glasa" id="skenerStanje">Pokrećem kameru…</p>' : '<div class="kartica ravna"><p>Ovaj preglednik ne podržava skeniranje kamerom. Upiši brojeve ispod barkoda.</p></div>'}
     <form class="upis" id="barkodForma"><input id="barkodPolje" inputmode="numeric" placeholder="ili upiši barkod (npr. 3850104000011)"><button class="gumb glavni">Traži</button></form>
@@ -1367,17 +1467,23 @@ function zaslonO(el) {
 document.addEventListener('click', (e) => {
   const navEl = e.target.closest('[data-idi]');
   if (navEl && !e.target.closest('[data-akcija]')) {
-    if (S.zaslon === 'skener') zaustaviSkener();
+    const lok = !!$('#ploca .lok-ploca');
     zatvoriPlocu();
+    if (navEl.dataset.idi === S.zaslon && KARTICE.includes(S.zaslon)) {      // ponovni dodir kartice: na vrh
+      if (lok) prikazi();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     idi(navEl.dataset.idi);
     return;
   }
-  if (e.target.closest('[data-zatvori]')) { const lok = !!$('#ploca .lok-ploca'); zatvoriPlocu(); if (lok) prikazi(); return; }
+  if (e.target.closest('[data-zatvori]')) { natragUnutar(); return; }
   const a = e.target.closest('[data-akcija]');
   if (!a) return;
   const id = a.dataset.id;
   const stavka = id ? S.stavke.find((s) => s.id === id) : null;
   switch (a.dataset.akcija) {
+    case 'natrag': natragUnutar(); break;
     case 'brzo': case 'prijedlog': {
       dodajGrupu(Number(a.dataset.g), Number(a.dataset.pg ?? -1));
       if (a.dataset.akcija === 'prijedlog') {
@@ -1487,7 +1593,7 @@ document.addEventListener('click', (e) => {
     case 'lok-trazi': traziLokaciju(); break;
     case 'lok-r': postaviKrug(Number(a.dataset.r)); break;
     case 'lok-iskljuci': iskljuciLokaciju(); break;
-    case 'lok-karta': zatvoriPlocu(); S.zaslon = 'karta'; prikazi(); break;
+    case 'lok-karta': zatvoriPlocu(); idi('karta'); break;
     case 'ponovno-poslovnice': zadnjiIzracun = null; prikazi(); break;
     case 'moja-lokacija': otvoriLokaciju(); break;
     case 'iskljuci-lokaciju': iskljuciLokaciju(); break;
@@ -1528,6 +1634,7 @@ function obavijest(html) {
 }
 
 // ---------------------------------------------------------------- pokretanje
+let imaPocetak = false;
 async function pokreni(rucno = false) {
   primijeniTemu();
   try {
@@ -1556,7 +1663,9 @@ async function pokreni(rucno = false) {
     const hash = location.hash.match(/#popis=([\w-]+)/);
     if (hash) { history.replaceState(null, '', location.pathname); uveziPopis(hash[1]); }
     if (rucno) poruka(novo ? 'Učitane su nove cijene.' : 'Cijene su već najnovije.');
-    idi(S.zaslon === 'skener' ? 'vise' : S.zaslon);
+    // kamera se ne pali sama pri otvaranju aplikacije
+    if (!imaPocetak) { imaPocetak = true; history.replaceState({ kosarica: 'baza' }, ''); idi(S.zaslon === 'skener' ? 'popis' : S.zaslon, { pocetak: true }); }
+    else prikazi();
   } catch (e) {
     zabiljezi('ucitavanje', e.message, e.stack);
     if (P) { poruka('Nove cijene se trenutno ne mogu učitati. Koristim postojeće.'); return; }
