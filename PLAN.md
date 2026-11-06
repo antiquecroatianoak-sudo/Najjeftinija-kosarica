@@ -99,3 +99,10 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Tests: browser checks for Back button, panel closing, back-button target, active tab, store line on every item. Version 1.6.0.
 - [x] Published 1.6.0: PR #29, run 42223793731 green, data 1593f29b9e. Picture of all screens: `docs/pregled-1.6.0.png`.
 - [x] Stridon removed (owner's decision 6 Nov): not imported at all, like Metro. Test `PreskoceniLanci`.
+
+## Round 8 – premium look (owner's 4 proposals, 6 Nov 2026)
+- [x] 1. Flat design with subtle layered shadows; prices prominent, store addresses in a thinner grey font.
+- [x] 2. "Jedna trgovina": swipeable carousel – the focused store in front, others smaller and faded behind; its basket shows below.
+- [x] 3. "Kupio/la sam": confetti, a tick that draws itself, savings counter counts up (calm version when the phone asks for less motion).
+- [x] 4. Ads: elegant rounded banner with a fine border in the app's colours.
+- Tests: browser checks for the carousel, celebration and ad banner. Picture: `docs/pregled-1.7.0.png`. Version 1.7.0.

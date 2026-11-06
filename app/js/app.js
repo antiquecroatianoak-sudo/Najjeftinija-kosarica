@@ -240,12 +240,49 @@ function karticaGreske(tekst) {
 }
 
 function osvjeziUstedu() {
+  if (animacijaUstede) return;                      // brojač upravo broji – ne prekidaj ga
   $('#ustedaIznos').textContent = eur(Math.round(S.usteda.ukupno || 0));
+}
+
+// „Kupio/la sam”: konfeti, kvačica koja se iscrta i ušteda u zaglavlju koja odbroji do novog iznosa.
+// Uz „smanji pokrete” u postavkama mobitela: samo kvačica, bez konfeta i brojanja.
+let animacijaUstede = null;
+function slaviUstedu(usteda, prije) {
+  const mirno = smanjiPokrete();
+  document.querySelectorAll('.slavlje').forEach((x) => x.remove());
+  const o = document.createElement('div');
+  o.className = 'slavlje' + (mirno ? ' mirno' : '');
+  o.setAttribute('aria-hidden', 'true');
+  const boje = ['#f2a516', '#0f7a70', '#2fd16c', '#4c8dff', '#ff6b5b', '#8a73ff', '#ffd166'];
+  const konfeti = mirno ? '' : Array.from({ length: 70 }, (_, i) => {
+    const x = Math.random() * 100;
+    return `<i style="left:${x.toFixed(1)}%;--b:${boje[i % boje.length]};--k:${(Math.random() * 720 - 360).toFixed(0)}deg;--p:${(Math.random() * 60 - 30).toFixed(0)}vw;--t:${(1.3 + Math.random() * 1.2).toFixed(2)}s;--c:${(Math.random() * 0.35).toFixed(2)}s;${i % 3 ? '' : 'border-radius:50%;'}"></i>`;
+  }).join('');
+  o.innerHTML = `${konfeti}<div class="slavlje-kvacica"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="23"/><path d="M15.5 27.5l7 7 14-15"/></svg>
+    <b>${usteda > 0 ? `+${eur(usteda)}` : 'Zabilježeno'}</b><span>${usteda > 0 ? 'ušteđeno' : 'kupnja je spremljena'}</span></div>`;
+  document.body.appendChild(o);
+  setTimeout(() => o.remove(), mirno ? 1400 : 2600);
+  if (!mirno && usteda > 0) {
+    const el = $('#ustedaIznos');
+    const cilj = Math.round(S.usteda.ukupno);
+    const pocetak = performance.now();
+    const trajanje = 1100;
+    cancelAnimationFrame(animacijaUstede);
+    const korak = (sad) => {
+      const p = Math.min(1, (sad - pocetak) / trajanje);
+      const e = 1 - (1 - p) ** 3;
+      el.textContent = eur(Math.round(prije + (cilj - prije) * e));
+      if (p < 1) animacijaUstede = requestAnimationFrame(korak);
+      else { animacijaUstede = null; el.textContent = eur(cilj); el.parentElement.classList.add('bljesak'); setTimeout(() => el.parentElement.classList.remove('bljesak'), 700); }
+    };
+    animacijaUstede = requestAnimationFrame(korak);
+  }
 }
 
 function oglas() {
   if (S.premium) return '';
-  return `<aside class="oglas" aria-label="Oglas"><b>Oglas</b><span>Ovdje će biti mali, nenametljiv oglas. Trgovine ne mogu platiti bolji položaj u rezultatima.</span></aside>`;
+  return `<aside class="oglas" aria-label="Oglas"><span class="oglas-oznaka">Oglas</span>
+    <span class="oglas-tekst"><b>Mjesto za oglas</b><span>Mali, nenametljiv oglas. Trgovine ne mogu platiti bolji položaj u rezultatima.</span></span></aside>`;
 }
 
 // ---------------------------------------------------------------- POPIS
@@ -713,7 +750,7 @@ async function izracunaj() {
 
 // ---------------------------------------------------------------- REZULTATI
 function znakTrgovine(pr, sAdresom = true) {
-  return `<span class="trgovina-znak" style="--boja:${boja(pr.lanac)}"><i></i>${esc(pr.naziv)}</span>${sAdresom && pr.adresa ? `<span>${esc(pr.adresa)}${pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : ''}</span>` : ''}`;
+  return `<span class="trgovina-znak" style="--boja:${boja(pr.lanac)}"><i></i>${esc(pr.naziv)}</span>${sAdresom && pr.adresa ? `<span class="adresa">${esc(pr.adresa)}${pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : ''}</span>` : ''}`;
 }
 
 // Navigacija do stvarne poslovnice (Google Karte otvaraju se u aplikaciji na mobitelu)
@@ -825,6 +862,7 @@ async function zaslonRezultati(el) {
     ${pr.popis.length ? `<p class="savjet">${IKONE.zamijeni}<span>Dodirni proizvod za <b>sljedeći najjeftiniji</b> iz iste grupe. ${pr.nacin === 'lanci' ? 'Cijene su uobičajene cijene lanca (najčešća cijena u poslovnicama). Uključi lokaciju na karti za cijene stvarnih poslovnica blizu tebe.' : 'Cijene su iz cjenika svake pojedine poslovnice.'}</span></p>` : ''}
     ${oglas()}
   </div>`;
+  if (tab === 'B' && pr.popis.length) pripremiKarusel(b, pr);
 }
 
 function gumbiKupnje(iznos, prosjek, opis) {
@@ -851,6 +889,63 @@ function prikazA(a, b, pr) {
     ${gumbiKupnje(ukupno, u.prosjek, `Najjeftinije po stavci (${trgovine.size} trgovina)`)}`;
 }
 
+// Kartica jedne trgovine u karuselu: cijena istaknuta, adresa tanjim fontom, fokusirana kartica naprijed.
+function karticaTrgovine(r, k, najbolji, uFokusu) {
+  const pr = r.prodavac;
+  const adresa = pr.adresa ? esc(pr.adresa) + (pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : '') : 'uobičajena cijena lanca';
+  const razlika = k === 0 ? '<span class="tk-najbolja">Najjeftinije</span>'
+    : r.nedostaje === najbolji.nedostaje ? `<span class="tk-razlika">+${eur(r.ukupno - najbolji.ukupno)}</span>` : '';
+  return `<button role="listitem" class="trgovina-kartica ${uFokusu ? 'u-fokusu' : ''}" data-akcija="otvori-b" data-id="${esc(pr.id)}" aria-pressed="${uFokusu}"
+      aria-label="${k + 1}. ${esc(pr.naziv)}, ${eur(r.ukupno)}" style="--boja:${boja(pr.lanac)}">
+    <span class="tk-vrh"><span class="mjesto">${k + 1}</span>${razlika}</span>
+    <span class="tk-lanac">${esc(pr.naziv)}</span>
+    <span class="tk-adresa">${adresa}</span>
+    <span class="tk-cijena">${eur(r.ukupno)}</span>
+    <span class="tk-dno">${r.nedostaje ? `<span class="razlika">nema ${r.nedostaje} ${r.nedostaje === 1 ? 'stavku' : 'stavki'}</span>` : `sve ${S.stavke.length} stavki`}</span>
+  </button>`;
+}
+function detaljiB(r, pr) {
+  return `<div class="redak"><h3 class="razmak">Popis u ${esc(r.prodavac.naziv)}</h3><b class="detalji-iznos">${eur(r.ukupno)}</b></div>
+    ${gumbUputa(r.prodavac)}
+    ${S.stavke.map((s, i) => redakPonude(s, r.stavke[i], { prodavac: r.prodavac, nacin: pr.nacin, prikaziTrgovinu: false })).join('')}`;
+}
+// Karusel: kartica najbliža sredini je u fokusu; ispod se prikazuje njen popis (bez ponovnog crtanja cijelog zaslona).
+function pripremiKarusel(b, pr) {
+  const kar = $('#karuselB');
+  if (!kar) return;
+  const kartice = [...kar.querySelectorAll('.trgovina-kartica')];
+  const tocke = [...document.querySelectorAll('.karusel-tocke i')];
+  const fokus = kartice.findIndex((x) => x.classList.contains('u-fokusu'));
+  if (fokus > 0) kar.scrollLeft = kartice[fokus].offsetLeft - (kar.clientWidth - kartice[fokus].offsetWidth) / 2;
+  let sat = null;
+  const postavi = (k) => {
+    if (k < 0 || kartice[k].classList.contains('u-fokusu')) return;
+    kartice.forEach((x, i) => { x.classList.toggle('u-fokusu', i === k); x.setAttribute('aria-pressed', String(i === k)); });
+    tocke.forEach((x, i) => x.classList.toggle('aktivna', i === k));
+    S.otvorenB = kartice[k].dataset.id;
+    spremi();
+    const r = b.find((x) => x.prodavac.id === S.otvorenB);
+    const det = $('#detaljiB');
+    if (r && det) { det.innerHTML = detaljiB(r, pr); det.classList.remove('pojava'); void det.offsetWidth; det.classList.add('pojava'); }
+  };
+  kar.addEventListener('scroll', () => {
+    clearTimeout(sat);
+    sat = setTimeout(() => {
+      const sredina = kar.scrollLeft + kar.clientWidth / 2;
+      let naj = 0;
+      kartice.forEach((x, i) => { if (Math.abs(x.offsetLeft + x.offsetWidth / 2 - sredina) < Math.abs(kartice[naj].offsetLeft + kartice[naj].offsetWidth / 2 - sredina)) naj = i; });
+      postavi(naj);
+    }, 90);
+  }, { passive: true });
+  kar.postaviFokus = (id) => {
+    const k = kartice.findIndex((x) => x.dataset.id === id);
+    if (k < 0) return;
+    postavi(k);
+    kar.scrollTo({ left: kartice[k].offsetLeft - (kar.clientWidth - kartice[k].offsetWidth) / 2, behavior: smanjiPokrete() ? 'auto' : 'smooth' });
+  };
+}
+const smanjiPokrete = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 function prikazB(b, pr) {
   const najbolji = b[0];
   const u = procjenaUstede(b, najbolji.ukupno);
@@ -864,18 +959,13 @@ function prikazB(b, pr) {
       ${u.usteda > 0 ? `<div class="ustedi">Štediš ${eur(u.usteda)} u odnosu na prosjek · do ${eur(Math.max(0, u.najskuplje - najbolji.ukupno))} prema najskupljoj</div>` : ''}
     </section>
     ${!potpuni ? '<p class="savjet">' + IKONE.info + '<span>Nijedna trgovina nema sve stavke. Poredak: najprije one kojima nedostaje najmanje.</span></p>' : ''}
-    <section class="kartica">
-      ${prvi.map((r, k) => `
-        <button class="trgovina-red ${k === 0 ? 'prva' : ''}" data-akcija="otvori-b" data-id="${esc(r.prodavac.id)}" aria-expanded="${r.prodavac.id === otvoren}">
-          <span class="mjesto">${k + 1}</span>
-          <span class="razmak"><span style="display:block">${znakTrgovine(r.prodavac, false)}</span>
-            <span class="sitno">${r.prodavac.adresa ? esc(r.prodavac.adresa) + (r.prodavac.km != null ? ` · ${r.prodavac.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : '') : ''}
-            ${r.nedostaje ? `<span class="razlika">nema ${r.nedostaje}</span>` : ''}</span></span>
-          <span style="text-align:right"><span class="iznos">${eur(r.ukupno)}</span>${k > 0 && r.nedostaje === najbolji.nedostaje ? `<br><span class="razlika">+${eur(r.ukupno - najbolji.ukupno)}</span>` : ''}</span>
-        </button>
-        ${r.prodavac.id === otvoren ? `<div class="otvoreno">${gumbUputa(r.prodavac)}${S.stavke.map((s, i) => redakPonude(s, r.stavke[i], { prodavac: r.prodavac, nacin: pr.nacin, prikaziTrgovinu: false })).join('')}</div>` : ''}`).join('')}
-      ${b.length > prvi.length ? `<p class="sitno" style="margin-top:8px">I još ${b.length - prvi.length} skupljih.</p>` : ''}
-    </section>
+    <div class="karusel-naslov"><h3>Trgovine po ukupnoj cijeni</h3><span class="sitno">povuci lijevo ili desno</span></div>
+    <div class="karusel" id="karuselB" role="list" aria-label="Trgovine, od najjeftinije">
+      ${prvi.map((r, k) => karticaTrgovine(r, k, najbolji, r.prodavac.id === otvoren)).join('')}
+    </div>
+    <div class="karusel-tocke" aria-hidden="true">${prvi.map((r) => `<i class="${r.prodavac.id === otvoren ? 'aktivna' : ''}"></i>`).join('')}</div>
+    ${b.length > prvi.length ? `<p class="sitno" style="margin:0;text-align:center">I još ${b.length - prvi.length} skupljih.</p>` : ''}
+    <section class="kartica" id="detaljiB">${detaljiB(prvi.find((r) => r.prodavac.id === otvoren) || najbolji, pr)}</section>
     ${gumbiKupnje(najbolji.ukupno, u.prosjek, `Jedna trgovina: ${najbolji.prodavac.naziv}`)}`;
 }
 
@@ -1548,7 +1638,7 @@ document.addEventListener('click', (e) => {
     case 'zakljucaj': S.zakljucano = true; S.otvorenB = null; spremi(); idi('rezultati'); break;
     case 'otkljucaj': S.zakljucano = false; spremi(); idi('popis'); break;
     case 'tab': S.rezTab = a.dataset.tab; spremi(); prikazi(); break;
-    case 'otvori-b': S.otvorenB = a.dataset.id; spremi(); prikazi(); break;
+    case 'otvori-b': { const kar = $('#karuselB'); if (kar && kar.postaviFokus) kar.postaviFokus(a.dataset.id); else { S.otvorenB = a.dataset.id; spremi(); prikazi(); } break; }
     case 'zamijeni': zamijeni(id, Number(a.dataset.i)); break;
     case 'vrati-sve': if (stavka) { stavka.odbijeni = []; zadnjiIzracun = null; spremi(); prikazi(); } break;
     case 'proizvod': prikaziProizvod(Number(a.dataset.i)); break;
@@ -1576,8 +1666,11 @@ document.addEventListener('click', (e) => {
       S.usteda.ukupno += usteda;
       S.usteda.kupnje.push({ datum: new Date().toISOString(), iznos, usteda, opis: a.dataset.opis });
       S.kupljenoKljuc = kljucIzracuna() + S.rezTab;
+      const prijeUkupno = S.usteda.ukupno - usteda;
       spremi(); prikazi();
-      poruka(usteda > 0 ? `Bravo! Ušteđeno ${eur(usteda)}.` : 'Kupnja je zabilježena.');
+      slaviUstedu(usteda, prijeUkupno);
+      // poruka samo kad nema animacije (inače kartica s kvačicom već kaže isto)
+      if (smanjiPokrete()) poruka(usteda > 0 ? `Bravo! Ušteđeno ${eur(usteda)}.` : 'Kupnja je zabilježena.');
       break;
     }
     case 'ponisti-ustedu': if (confirm('Obrisati povijest uštede?')) { S.usteda = { ukupno: 0, kupnje: [] }; spremi(); prikazi(); } break;

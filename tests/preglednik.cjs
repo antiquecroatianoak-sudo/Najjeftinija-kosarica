@@ -146,7 +146,19 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.click('[data-akcija="zakljucaj"]');
   await s.waitForSelector('.sazetak');
   provjeri(/€/.test(await s.locator('.sazetak .iznos').innerText()), 'B: ukupna cijena za jednu trgovinu');
-  provjeri(await s.locator('.trgovina-red').count() >= 3, 'B: poredak trgovina');
+  provjeri(await s.locator('#karuselB .trgovina-kartica').count() >= 3, 'B: karusel trgovina po ukupnoj cijeni');
+  provjeri(await s.locator('#karuselB .trgovina-kartica.u-fokusu').count() === 1
+    && await s.locator('#karuselB .trgovina-kartica >> nth=0').getAttribute('aria-pressed') === 'true', 'B: prva (najjeftinija) trgovina u fokusu');
+  const lanacPrije = (await s.locator('#detaljiB h3').innerText()).trim();
+  await s.locator('#karuselB .trgovina-kartica >> nth=2').click();
+  await s.waitForTimeout(700);
+  const lanacPoslije = (await s.locator('#detaljiB h3').innerText()).trim();
+  provjeri(await s.locator('#karuselB .trgovina-kartica >> nth=2').getAttribute('aria-pressed') === 'true' && lanacPrije !== lanacPoslije,
+    `B: dodir/klizanje mijenja trgovinu u fokusu i njen popis („${lanacPrije}” → „${lanacPoslije}”)`);
+  await s.locator('#karuselB').evaluate((k) => k.scrollTo({ left: 0 }));
+  await s.waitForTimeout(500);
+  provjeri(await s.locator('#karuselB .trgovina-kartica >> nth=0').getAttribute('aria-pressed') === 'true', 'B: klizanje natrag vraća fokus na prvu');
+  provjeri(await s.locator('.oglas .oglas-oznaka').count() === 1, 'oglas: zaobljeni banner s oznakom „Oglas”');
   await snimi('3-rezultat-b');
   await s.click('[data-tab="A"]');
   await s.waitForSelector('.sazetak');
@@ -167,8 +179,11 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(/\+/.test(await s.locator('.sazetak .gdje').innerText()), 'C: dvije trgovine');
   await snimi('5-rezultat-c');
   await s.click('[data-akcija="kupljeno"]');
-  await s.waitForTimeout(200);
-  provjeri(await s.locator('#ustedaIznos').innerText() !== '', 'ušteda je zabilježena u zaglavlju');
+  await s.waitForSelector('.slavlje .slavlje-kvacica');
+  provjeri(await s.locator('.slavlje > i').count() > 20, 'Kupio/la sam: konfeti i kvačica koja se iscrta');
+  await snimi('5b-slavlje');
+  await s.waitForTimeout(2800);
+  provjeri(await s.locator('.slavlje').count() === 0 && await s.locator('#ustedaIznos').innerText() !== '0,00 €', 'slavlje nestane samo; ušteda u zaglavlju odbrojana do novog iznosa');
   await s.click('.ikona-gumb[data-akcija="proizvod"] >> nth=0');
   await s.waitForSelector('.ploca-sadrzaj .tablica');
   provjeri(await s.locator('.ploca-sadrzaj [data-akcija="prijavi"]').count() === 1, 'detalji proizvoda i gumb „Prijavi pogrešnu cijenu”');
@@ -207,7 +222,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
   await s.click('[data-tab="B"]');
   await s.waitForSelector('.sazetak');
-  const upute = s.locator('.otvoreno a.upute');
+  const upute = s.locator('#detaljiB a.upute');
   provjeri(await upute.count() === 1 && /google\.com\/maps\/dir\/\?api=1&destination=4\d\.\d+,1\d\.\d+/.test(await upute.getAttribute('href')), 'B u krugu: „Upute do trgovine” vodi na Google Karte do te poslovnice');
   await snimi('8-rezultat-krug');
 
