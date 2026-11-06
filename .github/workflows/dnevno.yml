@@ -41,7 +41,8 @@ jobs:
         run: |
           python tests/primjer.py "$RUNNER_TEMP/primjer"
           python uvoz/uvoz.py --arhiva "$RUNNER_TEMP/primjer/2026-11-05.zip" "$RUNNER_TEMP/primjer/2026-11-04.zip" \
-            --izlaz app/data/hr --bez-dopune --dopuna-poslovnica "$RUNNER_TEMP/primjer/poslovnice.csv"
+            --izlaz app/data/hr --bez-dopune --dopuna-poslovnica "$RUNNER_TEMP/primjer/poslovnice.csv" \
+            --najmanje-poslovnica 1    # primjer ima 1–6 poslovnica po lancu; stvarni uvoz koristi zadano (19)
       - name: Provjera aplikacije u pregledniku (mobitel)
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.49.1

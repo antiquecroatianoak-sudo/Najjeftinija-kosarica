@@ -21,7 +21,7 @@ before(() => {
   const tmp = mkdtempSync(join(tmpdir(), 'kosarica-'));
   execFileSync('python3', ['-c', `import sys; sys.path.insert(0, ${JSON.stringify(join(KORIJEN, 'tests'))}); import primjer; primjer.napravi_sve(__import__('pathlib').Path(${JSON.stringify(tmp)}))`]);
   izlaz = join(tmp, 'izlaz');
-  execFileSync('python3', [join(KORIJEN, 'uvoz/uvoz.py'), '--arhiva', join(tmp, '2026-11-05.zip'), join(tmp, '2026-11-04.zip'),
+  execFileSync('python3', [join(KORIJEN, 'uvoz/uvoz.py'), '--najmanje-poslovnica', '1', '--arhiva', join(tmp, '2026-11-05.zip'), join(tmp, '2026-11-04.zip'),
     '--izlaz', izlaz, '--bez-dopune', '--privremeno', join(tmp, 'tmp')]);
   grupe = JSON.parse(readFileSync(join(izlaz, 'grupe.json'))).grupe;
   baza = new Baza(JSON.parse(readFileSync(join(izlaz, 'proizvodi.json'))), grupe);

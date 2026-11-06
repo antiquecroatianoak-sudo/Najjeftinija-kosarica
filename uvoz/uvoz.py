@@ -65,6 +65,10 @@ IMENA = {
 DJELOMICNO_OBJAVLJUJU = {
     "studenac": "Studenac javno objavljuje cjenik samo za {n} poslovnica; za ostale poslovnice službene cijene nisu dostupne.",
 }
+# Odluka vlasnika 6.11.2026.: lanci s manje od 19 poslovnica ne prikazuju se (broj poslovnica s cijenama u cjeniku).
+# Iznimka: dm objavljuje jedan cjenik za sve svoje poslovnice (100+ u Hrvatskoj), pa u podacima ima „1 poslovnicu”.
+NAJMANJE_POSLOVNICA = 19
+JEDAN_CJENIK_ZA_SVE = {"dm"}
 # Glavni lanci: njihov izostanak je upozorenje u izvješću.
 GLAVNI = ["konzum", "lidl", "kaufland", "plodine", "tommy", "studenac", "spar", "eurospin", "ntl", "ktc"]
 
@@ -291,6 +295,7 @@ class Lanac:
         self.sidrene: dict[tuple[str, str], Counter] = defaultdict(Counter)
         self.omjeri: dict[str, list[float]] = defaultdict(list)   # pid -> cijena / jedinična cijena
         self.po_pid = Counter()                                    # pid -> broj poslovnica s cijenom
+        self.trgovine: dict[str, set] = defaultdict(set)           # podlanac -> poslovnice s barem jednom cijenom
 
     def ucitaj(self):
         p = self.prefiks
@@ -307,6 +312,7 @@ class Lanac:
                     self.proizvodi[pid] = r
         for sid, pid, eff, red, up, naj30, sidrena in self._cijene():
             pl = podlanac(self.lanac, self.poslovnice.get(sid, {}))
+            self.trgovine[pl].add(sid)
             self.efektivne[(pl, pid)][eff] += 1
             self.redovne[(pl, pid)][red] += 1
             if naj30:
@@ -382,8 +388,11 @@ def uobicajena(brojac: Counter) -> int:
 
 # ---------------------------------------------------------------- glavna obrada
 class Uvoz:
-    def __init__(self, dopuna_proizvoda: dict, dopuna_poslovnica: dict, razvrstavanje: Razvrstavanje):
+    def __init__(self, dopuna_proizvoda: dict, dopuna_poslovnica: dict, razvrstavanje: Razvrstavanje,
+                 najmanje_poslovnica: int = NAJMANJE_POSLOVNICA):
         self.dp, self.dpo, self.raz = dopuna_proizvoda, dopuna_poslovnica, razvrstavanje
+        self.najmanje = najmanje_poslovnica
+        self.izostavljeni: dict[str, int] = {}
         self.lanci: list[Lanac] = []
         self.status: dict[str, dict] = {}
         self.upozorenja: list[str] = []
@@ -399,6 +408,7 @@ class Uvoz:
         izlaz.mkdir(parents=True, exist_ok=True)
         mapa_s = izlaz / "s"
         mapa_s.mkdir(exist_ok=True)
+        self._ukloni_male_lance()
 
         # 1) globalni proizvodi
         globalni: dict[str, int] = {}
@@ -578,6 +588,25 @@ class Uvoz:
         self._nastavak(izlaz, datum_arhive, proizvodi, lanci_izlaz, ponude, poslovnice, odbaceno_lanci, statistika, grupirano)
         return self.meta
 
+    def _ukloni_male_lance(self):
+        """Lanci (podlanci) s manje od NAJMANJE_POSLOVNICA poslovnica ispadaju prije svake obrade:
+        njihove cijene ne ulaze u proizvode, usporedbu, poslovnice ni status."""
+        broj: dict[str, set] = defaultdict(set)
+        for L in self.lanci:
+            for pl, sidovi in L.trgovine.items():
+                broj[pl] |= {(L.lanac, s) for s in sidovi}
+        mali = {pl: len(s) for pl, s in broj.items() if len(s) < self.najmanje and pl not in JEDAN_CJENIK_ZA_SVE}
+        for L in self.lanci:
+            for rjecnik in (L.efektivne, L.redovne, L.naj30, L.sidrene):
+                for kljuc in [k for k in rjecnik if k[0] in mali]:
+                    del rjecnik[kljuc]
+        for pl in mali:
+            self.status.pop(pl, None)
+        self.izostavljeni = dict(sorted(mali.items()))
+        if mali:
+            log(f"Izostavljeni lanci s manje od {self.najmanje} poslovnica: "
+                + ", ".join(f"{IMENA.get(pl, pl)} ({n})" for pl, n in sorted(mali.items(), key=lambda x: -x[1])))
+
     @staticmethod
     def _poslovnice_lanca(L, u_memoriji, lanci_izlaz, ponude, veza, novi):
         """Za svaku poslovnicu: (podlanac, id, redak poslovnice, {indeks proizvoda: cijena u centima})."""
@@ -629,6 +658,7 @@ class Uvoz:
             "izvor": "Javni cjenici trgovačkih lanaca (NN 75/2025), preuzeti preko arhive cijene.dev",
             "proizvoda": len(proizvodi), "poslovnica": len(poslovnice), "lanci": lanci_meta,
             "preskoceno": dict(preskoceno), "kolicine": dict(statistika), "grupirano": dict(grupirano),
+            "izostavljeni_lanci": {"najmanje_poslovnica": self.najmanje, "lanci": self.izostavljeni},
             "upozorenja": self.upozorenja,
         }
         zapisi_json(izlaz / "proizvodi.json", {"verzija": verzija, "p": proizvodi, "l": lanci_izlaz})
@@ -738,7 +768,7 @@ def pokreni(argumenti) -> dict:
         if not arhive:
             raise RuntimeError("Popis arhiva cjenika je prazan.")
 
-    uvoz = Uvoz(dp, dpo, raz)
+    uvoz = Uvoz(dp, dpo, raz, argumenti.najmanje_poslovnica)
     if not argumenti.bez_dopune and not argumenti.bez_lokacija:
         predmemorija = {}
         if argumenti.lokacije:
@@ -864,6 +894,8 @@ def main(argv=None):
     ap.add_argument("--dopuna-poslovnica", default=DOPUNA_POSLOVNICA, help="URL ili put do koordinata poslovnica")
     ap.add_argument("--lokacije", help="URL ili put do prethodno objavljenog lokacije.json (spremljene koordinate)")
     ap.add_argument("--bez-lokacija", action="store_true", help="ne traži koordinate poslovnica na OpenStreetMapu")
+    ap.add_argument("--najmanje-poslovnica", type=int, default=NAJMANJE_POSLOVNICA,
+                    help="lanci s manje poslovnica se ne prikazuju (odluka vlasnika: 19; testni primjer koristi 1)")
     ap.add_argument("--prisilno", action="store_true", help="objavi i ako je novi cjenik bitno slabiji")
     ap.add_argument("--izvjesce", default="izvjesce-greske.md")
     argumenti = ap.parse_args(argv)
