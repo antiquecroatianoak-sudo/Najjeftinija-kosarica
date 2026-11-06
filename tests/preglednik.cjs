@@ -165,7 +165,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   console.log('Zaključan popis po odjelima trgovine');
   {
     await s.click('[data-akcija="zakljucaj"]');
-    await s.waitForSelector('.sazetak, #karuselB');
+    await s.waitForSelector('.sazetak, #karuselB, #matrica');
     await s.click('nav [data-idi="popis"]');
     await s.waitForSelector('.stavke');
     const odjeli = await s.locator('.stavke .odjel').allInnerTexts();
@@ -179,7 +179,32 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
 
   console.log('Rezultati');
   await s.click('[data-akcija="zakljucaj"]');
+  await s.waitForSelector('#matrica');
+  // matrica trgovina: zadani prikaz usporedbe
+  const brojStupaca = await s.locator('#matrica .m-glava').count();
+  provjeri(brojStupaca >= 3 && await s.locator('#matrica .m-stavka').count() === 6, `matrica: 6 redaka (stavke) × ${brojStupaca} trgovina`);
+  provjeri(await s.locator('#matrica .m-celija.r0').count() >= 6, 'matrica: u svakom retku istaknuta najjeftinija cijena (zeleno)');
+  const ukupniMatrica = await s.locator('#matrica .m-ukupno').allInnerTexts();
+  const centi = (x) => Math.round(Number(x.replace(/[^\d,]/g, '').replace(',', '.')) * 100);
+  provjeri(ukupniMatrica.every((x, k) => k === 0 || centi(x) >= centi(ukupniMatrica[k - 1])), 'matrica: trgovine poredane od najjeftinije (ukupno)');
+  const prviStupac = await s.locator('#matrica .m-glava >> nth=0').getAttribute('data-id');
+  const prviZbroj = await s.locator(`#matrica .m-celija[data-id="${prviStupac}"]`).evaluateAll((c) => c.reduce((z, x) => z + (/€/.test(x.textContent) ? Math.round(Number(x.textContent.replace(/[^\d,]/g, '').replace(',', '.')) * 100) : 0), 0));
+  provjeri(prviZbroj === centi(ukupniMatrica[0]), 'matrica: zbroj ćelija stupca = ukupno trgovine');
+  await s.click('#matrica .m-glava >> nth=2');
+  await s.waitForTimeout(400);
+  const odabranaMatrica = (await s.locator('#matrica .m-glava >> nth=2 >> .m-lanac').innerText()).trim();
+  provjeri(await s.locator('#matrica .m-glava >> nth=2').getAttribute('aria-pressed') === 'true'
+    && (await s.locator('#detaljiB h3').innerText()).includes(odabranaMatrica)
+    && (await s.locator('.donja-traka [data-akcija="kupljeno"]').getAttribute('data-opis')).includes(odabranaMatrica),
+    `matrica: dodir trgovine (${odabranaMatrica}) prikaže njen popis, Kupio/la sam vrijedi za nju`);
+  const sirinaStupca = await s.locator('#matrica .m-glava >> nth=0').evaluate((x) => x.getBoundingClientRect().width);
+  provjeri(sirinaStupca < 120, `matrica: stupci stalne širine (${Math.round(sirinaStupca)} px), više trgovina vidljivo odjednom`);
+  await snimi('3a-matrica');
+  await s.click('[data-tab="B"]');
   await s.waitForSelector('#karuselB');
+  await s.locator('#karuselB').evaluate((k) => k.scrollTo({ left: 0 }));
+  await s.click('#karuselB .trgovina-kartica >> nth=0');
+  await s.waitForTimeout(500);
   provjeri(/€/.test(await s.locator('#karuselB .u-fokusu .tk-cijena').innerText()), 'B: ukupna cijena za jednu trgovinu');
   const cijenaB = await s.locator('#karuselB .u-fokusu .tk-cijena').boundingBox();
   const trakaB = await s.locator('.donja-traka').boundingBox();
@@ -202,7 +227,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(await s.locator('.oglas .oglas-oznaka').count() === 1, 'oglas: zaobljeni banner s oznakom „Oglas”');
   await snimi('3-rezultat-b');
   await s.click('[data-tab="A"]');
-  await s.waitForSelector('.sazetak, #karuselB');
+  await s.waitForSelector('.sazetak, #karuselB, #matrica');
   provjeri(await s.locator('.ponuda').count() === 6, 'A: ponuda za svaku stavku');
   const prvaPrije = await s.locator('.ponuda-naziv >> nth=0').innerText();
   const detalji = await s.locator('.ponuda >> nth=0').innerText();
@@ -216,7 +241,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForTimeout(300);
   provjeri(await s.locator('.ponuda-naziv >> nth=0').innerText() === prvaPrije, 'zamjena se može vratiti');
   await s.click('[data-tab="C"]');
-  await s.waitForSelector('.sazetak, #karuselB');
+  await s.waitForSelector('.sazetak, #karuselB, #matrica');
   provjeri(/\+/.test(await s.locator('.sazetak .gdje').innerText()), 'C: dvije trgovine');
   await snimi('5-rezultat-c');
   await s.click('.donja-traka [data-akcija="podijeli-rezultat"]');
@@ -264,12 +289,12 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(/u krugu 10 km/i.test(await s.locator('.naslov-zaslona').innerText()), 'karta prikazuje isti krug');
   await snimi('7-karta');
   await s.click('nav [data-idi="rezultati"]');
-  await s.waitForSelector('.sazetak, #karuselB, .prazno', { timeout: 20000 });
+  await s.waitForSelector('.sazetak, #karuselB, #matrica, .prazno', { timeout: 20000 });
   const rezKrug = await s.locator('.zaslon').innerText();
   const brojPoslovnica = Number((rezKrug.match(/U krugu 10 km: (\d+) poslovnic/) || [])[1] || 0);
   provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
   await s.click('[data-tab="B"]');
-  await s.waitForSelector('.sazetak, #karuselB');
+  await s.waitForSelector('.sazetak, #karuselB, #matrica');
   const karticeKrug = await s.locator('#karuselB .trgovina-kartica').evaluateAll((k) => k.map((x) => x.querySelector('.tk-lanac').firstChild.textContent.trim() + '|' + x.querySelector('.tk-cijena').textContent));
   provjeri(new Set(karticeKrug).size === karticeKrug.length, `B u krugu: isti lanac s istom cijenom samo jednom (${karticeKrug.length} unosa)`);
   const dmKartica = await s.locator('#karuselB .trgovina-kartica', { hasText: 'dm' }).allInnerTexts();
@@ -464,7 +489,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     await s3.click('.lok-krug[data-r="20"]');
     await s3.click('[data-akcija="zakljucaj"]');
     const t0 = Date.now();
-    await s3.waitForSelector('.sazetak, #karuselB', { timeout: 25000 });
+    await s3.waitForSelector('.sazetak, #karuselB, #matrica', { timeout: 25000 });
     const sek = (Date.now() - t0) / 1000;
     provjeri(sek > 10 && sek < 20, `spora veza: rezultati za ${sek.toFixed(1)} s (rok 15 s), zaslon se ne zaglavi`);
     provjeri(/nisu se učitale na vrijeme/.test(await s3.locator('.zaslon').innerText()) && await s3.locator('[data-akcija="ponovno-poslovnice"]').count() === 1, 'spora veza: umjesto praznog zaslona cijene lanaca, jasno objašnjenje i „Pokušaj ponovno”');

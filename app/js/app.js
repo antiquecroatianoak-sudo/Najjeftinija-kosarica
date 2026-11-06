@@ -52,9 +52,9 @@ const IKONE = {
 // ---------------------------------------------------------------- stanje
 const KLJUC = 'kosarica-stanje-v1';
 const POCETNO = {
-  drzava: 'hr', stavke: [], zakljucano: false, lanci: null, rezTab: 'B', zaslon: 'popis',
+  drzava: 'hr', stavke: [], zakljucano: false, lanci: null, rezTab: 'T', zaslon: 'popis',
   lokacija: { ukljucena: false, lat: null, lon: null, radijus: 5, izvor: '' },
-  usteda: { ukupno: 0, kupnje: [] }, premium: false, tema: 'auto', kupljenoKljuc: '',
+  usteda: { ukupno: 0, kupnje: [] }, premium: false, tema: 'tamna', kupljenoKljuc: '',
   povijest: {},        // id grupe/podgrupe -> koliko puta dodano (za "Često kupuješ")
   favoriti: [],        // barkod ili naziv proizvoda
 };
@@ -68,7 +68,15 @@ function ucitajStanje() {
   try {
     const s = JSON.parse(localStorage.getItem(KLJUC) || 'null');
     if (!s || typeof s !== 'object' || Array.isArray(s)) return structuredClone(POCETNO);
-    return ocistiStanje({ ...structuredClone(POCETNO), ...s, lokacija: { ...POCETNO.lokacija, ...(s.lokacija || {}) }, usteda: { ...POCETNO.usteda, ...(s.usteda || {}) } });
+    const st = ocistiStanje({ ...structuredClone(POCETNO), ...s, lokacija: { ...POCETNO.lokacija, ...(s.lokacija || {}) }, usteda: { ...POCETNO.usteda, ...(s.usteda || {}) } });
+    // 1.8.0 (odluka vlasnika 6.11.2026.): tamni način i matrica trgovina postaju zadani – jednom, za postojeće korisnike
+    // koji to sami nisu birali (tema „auto” je bila zadana; vlastiti izbor svijetle/tamne teme ostaje)
+    if (!st.izgled18) {
+      if (st.tema === 'auto') st.tema = 'tamna';
+      st.rezTab = 'T';
+      st.izgled18 = true;
+    }
+    return st;
   } catch (e) {
     zabiljezi('stanje', 'Spremljeno stanje se ne može pročitati; počinjem iznova', e.message);
     return structuredClone(POCETNO);
@@ -404,23 +412,18 @@ function zaslonPopis(el) {
   el.innerHTML = `<div class="zaslon">
     ${gumbLokacije()}
     ${S.zakljucano ? `<div class="zakljucano">${IKONE.lokot}<span class="razmak">Popis je zaključan. U trgovini označi što je u košarici.</span><button class="gumb mali" data-akcija="otkljucaj">Uredi</button></div>` : `
-    <section class="kartica glas ${prazan ? '' : 'sazeto'}">
-      ${prazan ? `<h2>Što trebaš kupiti?</h2>
-      <ol class="koraci"><li><b>1</b> Reci ili upiši popis</li><li><b>2</b> Zaključaj popis</li><li><b>3</b> Vidi gdje je najjeftinije</li></ol>` : ''}
-      <div class="glas-red">
-        <button class="mikrofon" id="mikrofon" aria-label="Govori popis">${IKONE.mikrofon}</button>
-        <div class="glas-tekst"><div class="stanje-glasa" id="stanjeGlasa">${prazan ? 'Dodirni i reci, npr. „kruh, dvije litre mlijeka i deset jaja”' : 'Dodirni i dodaj još'}</div>
-        <div class="prijepis" id="prijepis"></div></div>
-      </div>
+    <section class="glas-sredina ${prazan ? 'prazan' : ''}" aria-label="Dodaj na popis">
+      ${prazan ? '<h2>Što trebaš kupiti?</h2>' : ''}
+      <button class="mikrofon" id="mikrofon" aria-label="Govori popis">${IKONE.mikrofon}</button>
+      <div class="stanje-glasa" id="stanjeGlasa">${prazan ? 'Dodirni i reci, npr. „kruh, dvije litre mlijeka i deset jaja”' : 'Dodirni i dodaj još'}</div>
+      <div class="prijepis" id="prijepis"></div>
       <form class="upis" id="upis" autocomplete="off">
         <input id="upisPolje" type="text" inputmode="text" enterkeyhint="done" placeholder="ili upiši: kruh, mlijeko, 1 kg krumpira" aria-label="Upiši stavku" aria-autocomplete="list" aria-controls="prijedlozi">
         <button class="gumb glavni" aria-label="Dodaj">${IKONE.plus}</button>
       </form>
       <div class="prijedlozi" id="prijedlozi" role="listbox" hidden></div>
-      <div class="brze-naslov">${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}</div>
-      <div class="cipovi vodoravno">${brze.map((x) => `<button class="cip" data-akcija="brzo" data-g="${x.g}" data-pg="${x.pg}">${x.ikona} ${esc(x.naziv.replace(/^./, (z) => z.toUpperCase()))}</button>`).join('')}</div>
     </section>`}
-    <section class="kartica">
+    <section class="kartica popis-kartica">
       <div class="redak"><h3 class="razmak">Moj popis${stavke.length ? ` <span class="oznaka">${stavke.length}</span>` : ''}</h3>
       ${uKosari ? `<span class="oznaka zelena">${IKONE.kvacica} ${uKosari} od ${stavke.length} u košarici</span>` : ''}
       ${stavke.length && !S.zakljucano ? '<button class="gumb mali" data-akcija="isprazni">Isprazni</button>' : ''}</div>
@@ -439,9 +442,13 @@ function zaslonPopis(el) {
           </div>
           ${trgovinaStavke(najjeftinije.get(s.id))}
           <button class="ukloni-stavku" data-akcija="ukloni" data-id="${s.id}" aria-label="Ukloni ${esc(nazivStavke(s))} s popisa">${IKONE.zatvori}</button>
-        </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci, upiši ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}”.</p></div>`}
+        </li>`).join('')}</ul>` : `<div class="prazno"><p>Popis je prazan. Reci ili upiši što trebaš – ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}” dolje.</p></div>`}
     </section>
     ${stavke.length ? '' : plocicePrecaca()}
+    ${S.zakljucano ? '' : `<section class="cesto-widget" aria-label="${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}">
+      <div class="brze-naslov">${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}</div>
+      <div class="cipovi vodoravno">${brze.map((x) => `<button class="cip" data-akcija="brzo" data-g="${x.g}" data-pg="${x.pg}">${x.ikona} ${esc(x.naziv.replace(/^./, (z) => z.toUpperCase()))}</button>`).join('')}</div>
+    </section>`}
     ${stavke.length ? `${S.zakljucano ? '' : '<div class="glas-oblacic" id="glasOblacic" role="status" aria-live="polite" hidden><b>Slušam…</b><span></span></div>'}
       <div class="donja-traka" role="toolbar" aria-label="Glavne radnje">
         ${S.zakljucano ? '' : `<button class="traka-mikrofon" id="mikrofonDolje" aria-label="Dodaj glasom">${IKONE.mikrofon}</button>`}
@@ -876,13 +883,15 @@ async function zaslonRezultati(el) {
   if (!pr.popis.length) {
     tijelo = `<div class="kartica prazno"><div class="velika">📍</div><p>${pr.nacin === 'poslovnice' ? `U krugu od ${S.lokacija.radijus} km nema poslovnica odabranih lanaca s poznatom lokacijom.` : 'Nijedan lanac nije odabran.'}</p>
       <div class="redak" style="justify-content:center;margin-top:12px">${pr.nacin === 'poslovnice' ? '<button class="gumb mali" data-idi="karta">Povećaj krug</button>' : ''}<button class="gumb mali" data-idi="trgovine">Odaberi trgovine</button></div></div>`;
-  } else if (tab === 'A') tijelo = prikazA(a, b, pr);
+  } else if (tab === 'T') tijelo = prikazT(b, pr);
+  else if (tab === 'A') tijelo = prikazA(a, b, pr);
   else if (tab === 'B') tijelo = prikazB(b, pr);
   else tijelo = prikazC(c, b, pr);
 
   el.innerHTML = `<div class="zaslon">
     <div class="zakljucano">${IKONE.lokot}<span class="razmak">${S.stavke.length} ${S.stavke.length === 1 ? 'stavka' : 'stavki'} · popis zaključan</span><button class="gumb mali" data-akcija="otkljucaj">Uredi</button></div>
-    <div class="segment" role="group" aria-label="Vrsta rezultata">
+    <div class="segment segment-4" role="group" aria-label="Vrsta rezultata">
+      <button data-akcija="tab" data-tab="T" aria-pressed="${tab === 'T'}">Tablica<small>sve trgovine</small></button>
       <button data-akcija="tab" data-tab="A" aria-pressed="${tab === 'A'}">A · Po stavci<small>najjeftinije svugdje</small></button>
       <button data-akcija="tab" data-tab="B" aria-pressed="${tab === 'B'}">B · Jedna trgovina<small>sve na jednom mjestu</small></button>
       <button data-akcija="tab" data-tab="C" aria-pressed="${tab === 'C'}">C · Dvije trgovine<small>najbolji par</small></button>
@@ -898,6 +907,7 @@ async function zaslonRezultati(el) {
   </div>`;
   document.body.classList.toggle('ima-traku', !!el.querySelector('.donja-traka'));
   if (tab === 'B' && pr.popis.length) pripremiKarusel(b, pr);
+  if (tab === 'T' && pr.popis.length) pripremiMatricu();
 }
 
 function gumbiKupnje(iznos, prosjek, opis) {
@@ -931,6 +941,69 @@ function poslovnicaRijec(n) {
   if (d === 1 && s !== 11) return 'poslovnica';
   if (d >= 2 && d <= 4 && (s < 12 || s > 14)) return 'poslovnice';
   return 'poslovnica';
+}
+
+// ---------------------------------------------------------------- matrica trgovina (zadani prikaz usporedbe)
+// Redci = stavke popisa, stupci = trgovine (od najjeftinije); boja ćelije pokazuje koliko je cijena dobra u svom retku
+// (zelena = najjeftinije, prema crvenoj = najskuplje). Dodir stupca/ćelije odabere trgovinu: ispod se prikaže njen
+// popis, a „Kupio/la sam” i „Pošalji” vrijede za nju.
+function prikazT(b, pr) {
+  const stupci = b.slice(0, 12);
+  const odabrani = stupci.find((r) => r.prodavac.id === S.otvorenB) || stupci[0];
+  const u = procjenaUstede(b, stupci[0].ukupno);
+  const n = stupci.length;
+  const glava = stupci.map((r, k) => {
+    const pr0 = r.prodavac;
+    const gdje = pr0.jedanCjenik ? 'sve poslovnice' : pr0.adresa ? `${pr0.adresa}${pr0.km != null ? ` · ${pr0.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : ''}` : 'cijena lanca';
+    return `<button class="m-glava ${r === odabrani ? 'odabran' : ''}" data-akcija="matrica-stupac" data-id="${esc(pr0.id)}" style="--boja:${boja(pr0.lanac)};--k:${k}"
+      aria-pressed="${r === odabrani}" aria-label="${k + 1}. ${esc(pr0.naziv)}, ukupno ${eur(r.ukupno)}">
+      <span class="m-rang">${k === 0 ? '★' : k + 1}</span><b class="m-lanac">${esc(pr0.naziv)}</b>
+      <span class="m-gdje">${esc(gdje)}${r.iste && r.iste.length > 1 ? ` · ${r.iste.length} ${poslovnicaRijec(r.iste.length)}` : ''}</span>
+      <span class="m-ukupno">${eur(r.ukupno)}</span>${r.nedostaje ? `<span class="m-nema">bez ${r.nedostaje}</span>` : ''}</button>`;
+  }).join('');
+  const redovi = S.stavke.map((s, i) => {
+    const vrijednosti = stupci.map((r) => (r.stavke[i] ? r.stavke[i].trosak : null)).filter((v) => v != null);
+    const min = Math.min(...vrijednosti);
+    const max = Math.max(...vrijednosti);
+    const celije = stupci.map((r, k) => {
+      const p = r.stavke[i];
+      if (!p) return `<button class="m-celija nema ${r === odabrani ? 'odabran' : ''}" data-akcija="matrica-stupac" data-id="${esc(r.prodavac.id)}" style="--k:${k}" aria-label="${esc(r.prodavac.naziv)}: nema">—</button>`;
+      const razina = p.trosak === min ? 0 : max > min ? Math.min(4, 1 + Math.floor(((p.trosak - min) / (max - min)) * 3.999)) : 0;
+      return `<button class="m-celija r${razina} ${r === odabrani ? 'odabran' : ''}" data-akcija="matrica-stupac" data-id="${esc(r.prodavac.id)}" style="--k:${k}"
+        aria-label="${esc(r.prodavac.naziv)}: ${eur(p.trosak)}" title="${esc(P.baza.p[p.i][0])}">${eur(p.trosak)}</button>`;
+    }).join('');
+    return `<div class="m-stavka"><b>${esc(nazivStavke(s))}</b><span>${esc(prikazKolicine(s.kolicina, s.jedinica))}</span></div>${celije}`;
+  }).join('');
+  return `<div class="karusel-naslov"><span class="oznaka-naslov">${pr.nacin === 'poslovnice' ? 'Po poslovnicama' : 'Po lancima'}</span><span class="sitno">dodirni trgovinu</span></div>
+    ${u.usteda > 0 ? `<div class="ustedi-traka">Najjeftinije: <b>${esc(stupci[0].prodavac.naziv)} ${eur(stupci[0].ukupno)}</b> – <b>${eur(u.usteda)}</b> manje nego u prosječnoj trgovini.</div>` : ''}
+    <div class="matrica-omot" id="matrica"><div class="matrica" role="grid" aria-label="Cijene po trgovinama" style="--stupci:${n}">
+      <div class="m-kut">Artikl</div>${glava}${redovi}
+    </div></div>
+    <div class="m-legenda" aria-hidden="true"><span><i class="r0"></i>najjeftinije</span><span><i class="r2"></i>skuplje</span><span><i class="r4"></i>najskuplje</span><span><i class="nema"></i>nema</span></div>
+    ${b.length > stupci.length ? `<p class="sitno" style="margin:0;text-align:center">I još ${b.length - stupci.length} skupljih.</p>` : ''}
+    <section class="kartica" id="detaljiB">${detaljiB(odabrani, pr)}</section>
+    ${gumbiKupnje(odabrani.ukupno, u.prosjek, `Jedna trgovina: ${odabrani.prodavac.naziv}`)}`;
+}
+// Odabir trgovine u matrici bez ponovnog crtanja zaslona (glatki prijelaz).
+function odaberiUMatrici(id) {
+  const r = zadnjiIzracun && zadnjiIzracun.b.find((x) => x.prodavac.id === id);
+  if (!r) return;
+  S.otvorenB = id;
+  spremi();
+  document.querySelectorAll('#matrica [data-id]').forEach((x) => {
+    const da = x.dataset.id === id;
+    x.classList.toggle('odabran', da);
+    if (x.classList.contains('m-glava')) x.setAttribute('aria-pressed', String(da));
+  });
+  const det = $('#detaljiB');
+  if (det) { det.innerHTML = detaljiB(r, zadnjiIzracun.pr); det.classList.remove('pojava'); void det.offsetWidth; det.classList.add('pojava'); }
+  const kup = document.querySelector('.donja-traka [data-akcija="kupljeno"]');
+  if (kup) { kup.dataset.iznos = r.ukupno; kup.dataset.opis = `Jedna trgovina: ${r.prodavac.naziv}`; }
+}
+function pripremiMatricu() {
+  const om = $('#matrica');
+  const odabran = om && om.querySelector('.m-glava.odabran');
+  if (odabran && odabran.offsetLeft > om.clientWidth * 0.6) om.scrollLeft = odabran.offsetLeft - om.clientWidth / 2;
 }
 
 // Kartica jedne trgovine u karuselu: cijena istaknuta, adresa tanjim fontom, fokusirana kartica naprijed.
@@ -1748,6 +1821,7 @@ document.addEventListener('click', (e) => {
     case 'zakljucaj': S.zakljucano = true; S.otvorenB = null; spremi(); idi('rezultati'); break;
     case 'otkljucaj': S.zakljucano = false; spremi(); idi('popis'); break;
     case 'tab': S.rezTab = a.dataset.tab; spremi(); prikazi(); break;
+    case 'matrica-stupac': odaberiUMatrici(a.dataset.id); break;
     case 'otvori-b': { const kar = $('#karuselB'); if (kar && kar.postaviFokus) kar.postaviFokus(a.dataset.id); else { S.otvorenB = a.dataset.id; spremi(); prikazi(); } break; }
     case 'zamijeni': zamijeni(id, Number(a.dataset.i)); break;
     case 'vrati-sve': if (stavka) { stavka.odbijeni = []; zadnjiIzracun = null; spremi(); prikazi(); } break;

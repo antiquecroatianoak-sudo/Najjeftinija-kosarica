@@ -74,7 +74,7 @@ const t0 = () => Date.now();
     console.log('  ' + stavke.map((x) => x.replace(/\n+/g, ' ')).join('\n  '));
     await snimi('popis-1');
     await s.click('[data-akcija="zakljucaj"]');
-    await s.waitForSelector('.sazetak, #karuselB', { timeout: 30000 });
+    await s.waitForSelector('.sazetak, #karuselB, #matrica', { timeout: 30000 });
     await s.click('[data-tab="A"]');
     await s.waitForSelector('.ponuda');
     const ponude = await s.locator('.ponuda').allInnerTexts();
@@ -82,10 +82,10 @@ const t0 = () => Date.now();
     for (const p of ponude) console.log('   • ' + p.replace(/\n+/g, ' | ').slice(0, 170));
     await snimi('popis-2-a');
     await s.click('[data-tab="B"]');
-    await s.waitForSelector('.sazetak, #karuselB');
+    await s.waitForSelector('.sazetak, #karuselB, #matrica');
     console.log('  B: ' + (await s.locator('#karuselB .u-fokusu').innerText()).replace(/\n+/g, ' | ').slice(0, 200));
     await s.click('[data-tab="C"]');
-    await s.waitForSelector('.sazetak, #karuselB');
+    await s.waitForSelector('.sazetak, #karuselB, #matrica');
     console.log('  C: ' + (await s.locator('.sazetak').innerText()).replace(/\n+/g, ' | ').slice(0, 200));
   }
 
@@ -97,10 +97,10 @@ const t0 = () => Date.now();
     await s.check('input[data-lanac="konzum"]');
     await s.check('input[data-lanac="lidl"]');
     await s.click('nav [data-idi="rezultati"]');
-    await s.waitForSelector('.sazetak, #karuselB', { timeout: 30000 });
+    await s.waitForSelector('.sazetak, #karuselB, #matrica', { timeout: 30000 });
     for (const tab of ['A', 'B', 'C']) {
       await s.click(`[data-tab="${tab}"]`);
-      await s.waitForSelector('.sazetak, #karuselB');
+      await s.waitForSelector('.sazetak, #karuselB, #matrica');
       const tekst = await s.locator('.zaslon').innerText();
       const drugi = ['Plodine', 'Kaufland', 'Spar', 'Tommy', 'Studenac', 'Eurospin', 'Žabac', 'Trgovina Krk', 'Interspar', 'NTL', 'KTC', 'dm']
         .filter((n) => new RegExp(`(^|\\n)${n}(\\n| |$)`).test(tekst));
@@ -117,7 +117,7 @@ const t0 = () => Date.now();
     console.log('Dodatni zasloni');
     // ušteda
     await s.click('nav [data-idi="rezultati"]');
-    await s.waitForSelector('.sazetak, #karuselB', { timeout: 30000 });
+    await s.waitForSelector('.sazetak, #karuselB, #matrica', { timeout: 30000 });
     const prije = await s.locator('#ustedaIznos').innerText();
     if (await s.locator('[data-akcija="kupljeno"]').count()) await s.click('[data-akcija="kupljeno"]');
     await s.waitForTimeout(300);
@@ -175,7 +175,7 @@ const t0 = () => Date.now();
     await snimi('lok-2-popis');
     await s.click('[data-akcija="zakljucaj"]');
     t = t0();
-    await s.waitForSelector('.sazetak, #karuselB', { timeout: 30000 });
+    await s.waitForSelector('.sazetak, #karuselB, #matrica', { timeout: 30000 });
     const rez = await s.locator('.zaslon').innerText();
     provjeri(/U krugu 5 km: \d+ poslovnic/.test(rez), `rezultati za ${((Date.now() - t) / 1000).toFixed(1)} s: ${(rez.match(/U krugu 5 km: [^\n]*/) || [''])[0]}`);
     await snimi('lok-3-rezultati');
