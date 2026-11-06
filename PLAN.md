@@ -110,3 +110,8 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Less clutter: share tiles out of the middle of the list, shorter tips, roomier cards. Browser test checks the bar is visible in the bottom quarter of the screen.
 - [x] Published together: 1.7.0 + Stridon removed – PR #31, run 42233402968 green, data 0179f6270b; 15 chains, 1,448 stores, 163,673 products.
 - [x] 1.7.1 (owner's screenshot): B showed the best store twice and the bottom buttons covered the store card's price – now the carousel is the main element with the saving in a slim strip, compact top on small phones, and "Kupio/la sam" records the store in focus. Browser test checks the price is above the bottom bar.
+- [x] 1.7.1 published (run 42242007549). Publish workflow now survives GitHub Pages slowness (20 min) and re-runs (artifact per attempt).
+- [x] 1.7.2: savings text in plain words ("Ovdje plaćaš 1,51 € manje nego u prosječnoj trgovini…"); new versions now reach an open app by themselves (two updates in one day used to wait for the tab to be closed). Test `tests/nadogradnja.cjs` in CI.
+- [x] 1.7.3: shops of the same chain with identical prices for the whole list are one entry ("ista cijena u 8 poslovnica", nearest shown, full list underneath); different prices stay separate. Real data, 20 km: 60 shops → 28 entries. Tests: Node + browser.
+- [x] × next to every list item removes it, with "Vrati" (undo). Browser tests.
+- [x] 1.7.4: share message in the owner's format (date, store + address, Google Maps link, items with prices, total; for 2+ stores a block per store with its own map link and subtotal, then the overall total). Same message on WhatsApp, phone book, Viber and SMS. Browser tests check the format and that the total equals the sum.

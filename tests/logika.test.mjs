@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { norm, korijen, prikazPakiranja, eur, uOsnovnu } from '../app/js/tekst.js';
 import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu, osvjeziStavke } from '../app/js/popis.js';
 import { ocistiStanje, ocistiStavku, vratiGrupePoId } from '../app/js/stanje.js';
-import { Baza, pragPoslovnica, ocjenaCijene, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
+import { Baza, pragPoslovnica, ocjenaCijene, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost, grupirajIstePoslovnice } from '../app/js/usporedba.js';
 
 const KORIJEN = join(dirname(fileURLToPath(import.meta.url)), '..');
 let baza; let grupe; let poslovnice; let izlaz;
@@ -345,4 +345,32 @@ test('spremljena stavka pamti ID grupe: nova verzija s preslaganim grupama ne pr
   assert.equal(nove[st[1].g].id, 'jogurt');
   assert.deepEqual([st[2].g, st[2].upit], [-1, 'nešto']);      // nevaljan stari broj → pretraga teksta
   assert.deepEqual([st[3].g, st[3].upit], [-1, 'sok']);        // grupa više ne postoji
+});
+
+test('iste cijene u svim poslovnicama lanca = jedan unos; čim se cijena razlikuje, poslovnica je zasebno', () => {
+  const p = [['Mlijeko 1 l', '', 1, 'l', 0, -1, ''], ['Kruh 500 g', '', 0.5, 'kg', 1, -1, '']];
+  const cj = (a, b) => { const x = new Int32Array(2); x[0] = a; x[1] = b; return x; };
+  const prod = [
+    { id: 'lidl:1', lanac: 'lidl', naziv: 'Lidl', adresa: 'A 1', km: 1.2, cijena: cj(89, 99) },
+    { id: 'konzum:1', lanac: 'konzum', naziv: 'Konzum', adresa: 'K 1', km: 1.5, cijena: cj(95, 110) },
+    { id: 'lidl:2', lanac: 'lidl', naziv: 'Lidl', adresa: 'A 2', km: 3.4, cijena: cj(89, 99) },      // ista cijena kao lidl:1
+    { id: 'konzum:2', lanac: 'konzum', naziv: 'Konzum', adresa: 'K 2', km: 2.0, cijena: cj(95, 105) }, // drukčiji kruh
+    { id: 'lidl:3', lanac: 'lidl', naziv: 'Lidl', adresa: 'A 3', km: 5.0, cijena: cj(89, 99) },
+  ];
+  const b = new Baza({ p, l: { x: { i: [0, 1], t: [100, 100], n: [0, 0], x: [0, 0], r: [0, 0], s: [1, 1] } } },
+    [{ id: 'mlijeko', naziv: 'Mlijeko', pod: [] }, { id: 'kruh', naziv: 'Kruh', pod: [] }]);
+  const stavke = [{ g: 0, pg: -1, kolicina: 1, jedinica: 'l' }, { g: 1, pg: -1, kolicina: 500, jedinica: 'g' }];
+  const sve = rezultatB(b, stavke, prod);
+  const g = grupirajIstePoslovnice(sve);
+  const lidl = g.filter((r) => r.prodavac.lanac === 'lidl');
+  assert.equal(lidl.length, 1);                                   // 3 Lidla s istim cijenama → jedan unos
+  assert.equal(lidl[0].iste.length, 3);
+  assert.equal(lidl[0].prodavac.id, 'lidl:1');                     // prikazuje se najbliža
+  assert.equal(g.filter((r) => r.prodavac.lanac === 'konzum').length, 2);   // različite cijene → oba Konzuma
+  assert.equal(g.length, 3);
+  assert.deepEqual(procjenaUstede(g, 188), procjenaUstede(sve, 188));       // prosjek po svim poslovnicama
+  const c = rezultatC(g);
+  const parovi = c.map((x) => x.prodavaci.map((y) => y.id).sort().join('+'));
+  assert.equal(new Set(parovi).size, parovi.length);              // nema ponovljenih parova istih trgovina
+  assert.ok(c.every((x) => x.prodavaci.every((y) => !['lidl:2', 'lidl:3'].includes(y.id))));
 });

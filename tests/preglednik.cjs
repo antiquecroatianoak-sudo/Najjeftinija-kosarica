@@ -59,7 +59,16 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.click('.stavka [data-akcija="vise"] >> nth=0');
   provjeri(/1 kg|1000 g|600 g/.test(await s.locator('.stavka >> nth=0').innerText()), 'gumb + povećava količinu');
   await snimi('2-popis');
+  provjeri(await s.locator('.stavka .ukloni-stavku').count() === 6, '× za uklanjanje uz svaku stavku');
+  const imeX = (await s.locator('.stavka-naziv >> nth=1').innerText()).trim();
+  await s.click('.stavka .ukloni-stavku >> nth=1');
+  provjeri(await s.locator('.stavka').count() === 5 && /Uklonjeno/.test(await s.locator('#poruka').innerText()), `× uklanja stavku („${imeX}”) i nudi „Vrati”`);
+  await s.click('#poruka button');
+  await s.waitForTimeout(200);
+  provjeri(await s.locator('.stavka').count() === 6 && (await s.locator('.stavka-naziv >> nth=1').innerText()).trim() === imeX, '„Vrati” vraća stavku na isto mjesto');
   const trgovineNaPopisu = await s.locator('.stavka .stavka-trgovina').allInnerTexts();
+  const naziviTrgovina = await s.locator('.stavka .stavka-trgovina b').evaluateAll((b) => b.map((x) => ({ t: x.textContent, ok: x.scrollWidth <= x.clientWidth + 1 && x.clientWidth > 0 })));
+  provjeri(naziviTrgovina.length === 6 && naziviTrgovina.every((x) => x.ok), 'naziv trgovine uz stavku vidljiv i neskraćen: ' + naziviTrgovina.map((x) => x.t).join(', '));
   provjeri(trgovineNaPopisu.length === 6 && trgovineNaPopisu.every((x) => /€/.test(x)),
     'uz svaku stavku popisa najjeftinija trgovina i cijena: ' + trgovineNaPopisu.slice(0, 2).map((x) => x.replace(/\s+/g, ' ')).join(' | '));
   provjeri(await s.locator('.plocice.precaci').count() === 0, 's popisom: umjesto prečaca pločice za slanje');
@@ -70,8 +79,13 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.click('.donja-traka [data-akcija="dijeli-ploca"]');
   await s.waitForSelector('.ploca-sadrzaj .dijeli-kartica');
   const waHref = await s.locator('.dijeli-kartica a.plocica.wa').getAttribute('href');
-  provjeri(/^https:\/\/wa\.me\/\?text=/.test(waHref) && /Popis%20za%20kupovinu%20\(6\)/.test(waHref) && /%23popis%3D/.test(waHref),
-    'velika pločica WhatsApp: šalje popis s poveznicom, osobu se bira u WhatsAppu');
+  const waTekst = decodeURIComponent(waHref.split('text=')[1]);
+  provjeri(/^https:\/\/wa\.me\/\?text=/.test(waHref) && /^🛒 Najjeftinija košarica\n📅 \d+\.\d+\.\d{4}\.\n📍 Trgovina: .+\n🗺️ https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=.+\nPopis za kupnju:\n/.test(waTekst)
+    && (waTekst.match(/^• .+ – \d+,\d\d €$/gm) || []).length === 6 && /\n💰 Ukupno: \d+,\d\d €$/.test(waTekst),
+    'WhatsApp poruka u formatu vlasnika: datum, trgovina, karta, 6 artikala s cijenom, ukupno');
+  const zbrojArtikala = (waTekst.match(/– (\d+,\d\d) €$/gm) || []).reduce((s, x) => s + Math.round(Number(x.match(/(\d+),(\d\d)/).slice(1).join('.')) * 100), 0);
+  const ukupnoPoruke = Math.round(Number(waTekst.match(/💰 Ukupno: (\d+),(\d\d)/).slice(1).join('.')) * 100);
+  provjeri(zbrojArtikala === ukupnoPoruke, `ukupno u poruci = zbroj artikala (${ukupnoPoruke / 100} €)`);
   provjeri(/^viber:\/\/forward\?text=/.test(await s.locator('.dijeli-kartica a.plocica.viber').getAttribute('href')), 'pločica Viber');
   // imenik: Contact Picker (Chrome na Androidu) – ovdje simuliran
   await s.evaluate(() => Object.defineProperty(navigator, 'contacts', { configurable: true, value: { select: async () => [{ name: ['Mama'], tel: ['091 234 5678'] }] } }));
@@ -190,6 +204,13 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForSelector('.sazetak, #karuselB');
   provjeri(/\+/.test(await s.locator('.sazetak .gdje').innerText()), 'C: dvije trgovine');
   await snimi('5-rezultat-c');
+  await s.click('.donja-traka [data-akcija="podijeli-rezultat"]');
+  await s.waitForSelector('.ploca-sadrzaj .pregled-poruke');
+  const porukaC = await s.locator('.ploca-sadrzaj .pregled-poruke').inputValue();
+  provjeri(/📍 Trgovina 1: /.test(porukaC) && /📍 Trgovina 2: /.test(porukaC) && (porukaC.match(/🗺️ https:\/\/www\.google\.com\/maps/g) || []).length === 2
+    && (porukaC.match(/Ukupno u ovoj trgovini: /g) || []).length === 2 && /💰 Ukupno: /.test(porukaC), 'poruka za dvije trgovine: svaka s nazivom, kartom, artiklima i iznosom, na kraju ukupno');
+  await s.goBack();
+  await s.waitForTimeout(200);
   await s.click('[data-akcija="kupljeno"]');
   await s.waitForSelector('.slavlje .slavlje-kvacica');
   provjeri(await s.locator('.slavlje > i').count() > 20, 'Kupio/la sam: konfeti i kvačica koja se iscrta');
@@ -234,9 +255,17 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
   await s.click('[data-tab="B"]');
   await s.waitForSelector('.sazetak, #karuselB');
+  const karticeKrug = await s.locator('#karuselB .trgovina-kartica').evaluateAll((k) => k.map((x) => x.querySelector('.tk-lanac').firstChild.textContent.trim() + '|' + x.querySelector('.tk-cijena').textContent));
+  provjeri(new Set(karticeKrug).size === karticeKrug.length, `B u krugu: isti lanac s istom cijenom samo jednom (${karticeKrug.length} unosa)`);
   const upute = s.locator('#detaljiB a.upute');
   provjeri(await upute.count() === 1 && /google\.com\/maps\/dir\/\?api=1&destination=4\d\.\d+,1\d\.\d+/.test(await upute.getAttribute('href')), 'B u krugu: „Upute do trgovine” vodi na Google Karte do te poslovnice');
   await snimi('8-rezultat-krug');
+  await s.click('.donja-traka [data-akcija="podijeli-rezultat"]');
+  await s.waitForSelector('.ploca-sadrzaj .pregled-poruke');
+  const porukaKrug = await s.locator('.ploca-sadrzaj .pregled-poruke').inputValue();
+  provjeri(/📍 Trgovina: [^\n]+, [^\n]+\n🗺️ https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=4\d\.\d+,1\d\.\d+\n/.test(porukaKrug), 'u krugu: poruka sadrži adresu i točnu lokaciju poslovnice na karti');
+  await s.goBack();
+  await s.waitForTimeout(200);
 
   console.log('Akcije i Više');
   await s.click('nav [data-idi="akcije"]');
@@ -292,7 +321,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(/Izvješće o grešci/.test(await s.locator('#izvjesceTekst').inputValue()), 'izvješće o grešci za Claude Code');
   await s.click('[data-idi="vise"]');
   await s.click('[data-idi="obitelj"]');
-  await s.click('[data-akcija="podijeli-popis"]');
+  await s.click('[data-akcija="podijeli-poveznicu"]');
   const poveznica = await s.locator('.ploca-sadrzaj textarea').inputValue();
   provjeri(/#popis=/.test(poveznica), 'poveznica obiteljskog popisa');
   provjeri(await s.locator('.ploca-sadrzaj a[href^="https://wa.me"]').count() === 1 && await s.locator('.ploca-sadrzaj a[href^="viber://"]').count() === 1, 'slanje preko WhatsAppa i Vibera');

@@ -48,6 +48,8 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.49.1
           npx playwright install --with-deps chromium
           node tests/preglednik.cjs app "$RUNNER_TEMP/snimke"
+      - name: Nova verzija stiže na mobitel bez zatvaranja kartice
+        run: node tests/nadogradnja.cjs app
       - uses: actions/upload-artifact@v4
         if: always()
         with:
