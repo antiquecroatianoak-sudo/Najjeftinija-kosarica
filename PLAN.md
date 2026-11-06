@@ -91,3 +91,9 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 ## Round 6 – only chains with 19+ stores (6 Nov 2026)
 - [x] Chains with fewer than 19 stores are removed in the daily import (owner's decision; dm kept because it publishes one price list for all its 100+ shops). Removed today: Boso, Trgovina Krk, Roto, Dukat, Trgocentar, Vrutak, Bure, Žabac, Djelo Vodice, Jadranka, Lorenco (61 stores, ~39,400 products only they sell). Checked every day, so a chain that grows to 19+ stores comes back automatically. Tests: Python `MaliLanci`.
 - [x] Published: run 42212785056 green, data 12174de0dc. The import log confirms 12 small chains left out (also Branka, which appeared today); 16 chains, 1,384 stores and 185,057 products remain.
+
+## Round 7 – navigation and stores on the list (6 Nov 2026)
+- [x] Phone Back button works like a real app: closes a panel → previous screen → list → only then leaves the app (before, it closed the whole app). Back buttons say where they go ("‹ Više") and return exactly where you came from.
+- [x] Bottom bar: Popis · Usporedba · Akcije · Skeniraj · Više; the active tab is highlighted, also on sub-screens. Map: from the location button, Više and a start-screen tile.
+- [x] On the list, every item shows its cheapest shop and price in a bigger, coloured line ("Mlijeko" → "● Kaufland · 0,44 €"); with location on, the real nearby store. Store names bigger in results A too.
+- [x] Tests: browser checks for Back button, panel closing, back-button target, active tab, store line on every item. Version 1.6.0.

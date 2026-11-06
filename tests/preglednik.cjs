@@ -46,7 +46,9 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(await s.locator('.mikrofon').count() === 1, 'gumb za glasovni unos postoji');
   await snimi('1-pocetna');
   const precaci = await s.locator('.plocice.precaci .plocica').allInnerTexts();
-  provjeri(precaci.length === 4 && /Akcije/.test(precaci[0]) && /barkod/i.test(precaci[1]), 'prazan popis: 4 šarene pločice (akcije, skener, favoriti, obitelj)');
+  provjeri(precaci.length === 4 && /Akcije/.test(precaci[0]) && /Karta/i.test(precaci[1]), 'prazan popis: 4 šarene pločice (akcije, karta, favoriti, obitelj)');
+  const izbornik = await s.locator('nav.izbornik button').allInnerTexts();
+  provjeri(izbornik.join('|') === 'Popis|Usporedba|Akcije|Skeniraj|Više', 'donji izbornik: ' + izbornik.join(' · '));
   await s.fill('#upisPolje', 'kruh, dvije litre mlijeka, jaja, pola kile krumpira, kava, banane');
   await s.press('#upisPolje', 'Enter');
   await s.waitForSelector('.stavka');
@@ -57,6 +59,9 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.click('.stavka [data-akcija="vise"] >> nth=0');
   provjeri(/1 kg|1000 g|600 g/.test(await s.locator('.stavka >> nth=0').innerText()), 'gumb + povećava količinu');
   await snimi('2-popis');
+  const trgovineNaPopisu = await s.locator('.stavka .stavka-trgovina').allInnerTexts();
+  provjeri(trgovineNaPopisu.length === 6 && trgovineNaPopisu.every((x) => /€/.test(x)),
+    'uz svaku stavku popisa najjeftinija trgovina i cijena: ' + trgovineNaPopisu.slice(0, 2).map((x) => x.replace(/\s+/g, ' ')).join(' | '));
   provjeri(await s.locator('.plocice.precaci').count() === 0, 's popisom: umjesto prečaca pločice za slanje');
   const waHref = await s.locator('.dijeli-kartica a.plocica.wa').getAttribute('href');
   provjeri(/^https:\/\/wa\.me\/\?text=/.test(waHref) && /Popis%20za%20kupovinu%20\(6\)/.test(waHref) && /%23popis%3D/.test(waHref),
@@ -190,7 +195,8 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   const brojUKrugu = Number((gumbTekst.match(/U krugu 10 km · (\d+) trgovin/) || [])[1] || 0);
   provjeri(brojUKrugu > 0 && await s.locator('.stavke').count() === 1, `odmah natrag na popis; gumb pokazuje krug i broj trgovina (${brojUKrugu})`);
   await snimi('7b-popis-krug');
-  await s.click('nav [data-idi="karta"]');
+  await s.click('nav [data-idi="vise"]');
+  await s.click('.zaslon [data-idi="karta"]');
   await s.waitForSelector('#karta');
   provjeri(/u krugu 10 km/i.test(await s.locator('.naslov-zaslona').innerText()), 'karta prikazuje isti krug');
   await snimi('7-karta');
@@ -227,6 +233,33 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForSelector('.tablica');
   provjeri(await s.locator('.tablica >> nth=1').locator('tr').count() > 3, 'status podataka po trgovini');
   await snimi('10-status');
+
+  console.log('Navigacija: tipka Natrag na mobitelu, gumb natrag, označena kartica');
+  provjeri(await s.locator('nav [data-idi="vise"].aktivno').count() === 1, 'na podzaslonu (Status) označena je kartica Više');
+  provjeri(/Više/.test(await s.locator('.natrag').innerText()), 'gumb natrag piše kamo vodi: „' + (await s.locator('.natrag').innerText()).trim() + '”');
+  await s.goBack();                                                   // tipka Natrag na Androidu
+  await s.waitForSelector('.izbor');
+  provjeri(await s.locator('.izbor [data-idi="status"]').count() === 1, 'Natrag sa Statusa → Više (aplikacija se ne zatvara)');
+  await s.goBack();
+  await s.waitForSelector('.lokacija-gumb');
+  provjeri(await s.evaluate(() => history.state && history.state.kosarica) === 'baza', 'Natrag s Više → Popis; tek sljedeći Natrag izlazi iz aplikacije');
+  await s.click('.lokacija-gumb');
+  await s.waitForSelector('#ploca:not([hidden])');
+  await s.goBack();
+  await s.waitForTimeout(200);
+  provjeri(await s.locator('#ploca').isHidden() && await s.locator('.lokacija-gumb').count() === 1, 'otvorena ploča: Natrag zatvara ploču, zaslon ostaje');
+  await s.click('nav [data-idi="akcije"]');
+  await s.click('.zaglavlje .usteda-zna');
+  await s.waitForSelector('.velika-usteda');
+  await s.click('.natrag');
+  await s.waitForSelector('#praveAkcije');
+  provjeri(true, 'gumb natrag vraća točno odakle se došlo (Ušteda → Akcije)');
+  await s.goBack();
+  await s.waitForSelector('.lokacija-gumb');
+  provjeri(await s.locator('nav [data-idi="popis"].aktivno').count() === 1, 'Natrag s druge kartice → Popis');
+  await s.click('nav [data-idi="vise"]');
+  await s.click('[data-idi="status"]');
+  await s.waitForSelector('.tablica');
   await s.click('[data-idi="vise"]');
   await s.click('[data-idi="greska"]');
   provjeri(/Izvješće o grešci/.test(await s.locator('#izvjesceTekst').inputValue()), 'izvješće o grešci za Claude Code');
@@ -290,8 +323,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   console.log('Skener (ručni unos barkoda)');
   await s.goto(url);
   await s.waitForSelector('.izbornik');
-  await s.click('nav [data-idi="vise"]');
-  await s.click('[data-idi="skener"]');
+  await s.click('nav [data-idi="skener"]');
   const barkod = await s.evaluate(async () => { const r = await fetch('data/hr/proizvodi.json'); const d = await r.json(); return d.p.find((p) => p[6])[6]; });
   await s.fill('#barkodPolje', barkod);
   await s.click('#barkodForma button');

@@ -367,3 +367,43 @@ select.polje { appearance: none; background-image: linear-gradient(45deg, transp
 .plocica.wa:only-child { grid-column: 1 / -1; }
 .kontakt-red { margin: 6px 0 8px; }
 @media (min-width: 600px) { .plocice { grid-template-columns: repeat(4, 1fr); } }
+
+/* ---------------------------------------------------------- 1.6.0: navigacija i vidljive trgovine na popisu */
+/* gumb natrag: velika površina za dodir, piše kamo vodi */
+.natrag {
+  min-height: 44px; padding: 8px 14px 8px 8px; margin: -4px 0 4px; border-radius: 999px; background: var(--glavna-svijetla);
+  font-size: .95rem; font-weight: 700; gap: 2px; align-self: flex-start;
+}
+.natrag svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.natrag:active { transform: scale(.97); }
+
+/* donji izbornik: aktivna kartica u „pilulici”, jasan dodir */
+.izbornik button { font-size: .74rem; position: relative; -webkit-tap-highlight-color: transparent; }
+.izbornik button svg { width: 26px; height: 26px; padding: 2px 14px; box-sizing: content-box; border-radius: 999px; transition: background .15s ease; }
+.izbornik button.aktivno svg { background: var(--glavna-svijetla); }
+.izbornik button.aktivno span { font-weight: 800; }
+.izbornik button:active svg { transform: scale(.92); }
+
+/* popis: veći naziv i najjeftinija trgovina odmah ispod */
+.stavka-naziv { font-size: 1.1rem; }
+.stavka-trgovina { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 1rem; line-height: 1.25; min-width: 0; }
+.stavka-trgovina i { width: 12px; height: 12px; border-radius: 4px; background: var(--boja, #888); flex: none; }
+.stavka-trgovina b { font-weight: 750; color: var(--tekst); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stavka-trgovina .i-jos { font-size: .78rem; font-weight: 700; color: var(--tekst-2); }
+.stavka-trgovina .cijena { font-weight: 800; color: var(--glavna); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stavka-trgovina .cijena::before { content: "·"; color: var(--tekst-3); margin-right: 6px; font-weight: 400; }
+.stavka-trgovina.nema { font-size: .85rem; color: var(--opasnost); }
+.u-kosari .stavka-trgovina { opacity: .55; }
+
+/* rezultati A: trgovina uz svaki proizvod veća */
+.ponuda-trgovina { margin-top: 6px; }
+.ponuda-trgovina .trgovina-znak { font-size: 1rem; }
+.ponuda-trgovina .trgovina-znak i { width: 12px; height: 12px; border-radius: 4px; }
+
+/* stavka: mreža – gore kvačica, ikona, naziv, količina; ispod cijelom širinom najjeftinija trgovina (ne reže se) */
+.stavka { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; column-gap: 12px; row-gap: 6px; align-items: center; }
+.stavka .stavka-trgovina {
+  grid-column: 3 / -1; justify-self: start; max-width: 100%; margin-top: 0;
+  padding: 6px 12px 6px 10px; border-radius: 12px; background: var(--kartica-2); border: 1px solid var(--rub);
+}
+@media (max-width: 360px) { .stavka .stavka-trgovina { grid-column: 2 / -1; } }
