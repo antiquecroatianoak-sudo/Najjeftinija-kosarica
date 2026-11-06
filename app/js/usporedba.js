@@ -62,9 +62,12 @@ export class Baza {
     }
   }
 
-  // Neobično niska cijena: jedinična cijena ispod 1/8 medijana iste vrste proizvoda (grupa, podgrupa, kg/l).
-  // Takva cijena je gotovo uvijek greška u cjeniku (krivo upisana količina ili cijena), pa se NIGDJE ne
-  // koristi: ni u rezultatima A/B/C, ni u akcijama, favoritima ni detaljima proizvoda (odluka vlasnika 6.11.2026.).
+  // Neobično niska cijena = gotovo uvijek greška u cjeniku (krivo upisana cijena ili količina). Takva se cijena
+  // NIGDJE ne koristi: ni u A/B/C, zamjeni, akcijama, favoritima ni detaljima (odluka vlasnika 6.11.2026.).
+  // Pravila (izmjereno na stvarnih 438 000 cijena, 6.11.2026.):
+  //  1. isti proizvod u 3+ lanca: cijena ispod 1/4 njegove srednje cijene po lancima;
+  //  2. jedinična cijena (kg/l) ispod 1/20 srednje cijene iste vrste (grupa, podgrupa) – npr. med 1,2 kg za 0,08 €.
+  // Blaža granica (1/8 po vrsti) skrivala je stvarne cijene (losion, gel za tuširanje), pa nije uzeta.
   sumnjivoNiska(i, cijenaCenti) {
     if (!this.donjaGranica) this.donjaGranica = this.izracunajGranice();
     return cijenaCenti < this.donjaGranica[i];
@@ -78,12 +81,23 @@ export class Baza {
   // Najniža prihvatljiva cijena pakiranja po proizvodu (0 = bez granice).
   izracunajGranice() {
     const mediani = this.izracunajMedijane();
+    const lanci = Object.values(this.lanci);
     const out = new Float64Array(this.n);
+    const cijene = [];
     for (let i = 0; i < this.n; i++) {
       const [, , kol, vrsta, g, pg] = this.p[i];
-      if (!(kol > 0) || (vrsta !== 'kg' && vrsta !== 'l') || g < 0) continue;
-      const m = mediani.get(`${g}|${pg}|${vrsta}`);
-      if (m != null) out[i] = (m / 8) * kol;
+      let granica = 0;
+      if (kol > 0 && (vrsta === 'kg' || vrsta === 'l') && g >= 0) {
+        const m = mediani.get(`${g}|${pg}|${vrsta}`);
+        if (m != null) granica = (m / 20) * kol;
+      }
+      cijene.length = 0;
+      for (const L of lanci) { const k = L.lokalno[i]; if (k) cijene.push(L.t[k - 1]); }
+      if (cijene.length >= 3) {
+        cijene.sort((a, b) => a - b);
+        granica = Math.max(granica, cijene[Math.floor(cijene.length / 2)] / 4);
+      }
+      out[i] = granica;
     }
     return out;
   }

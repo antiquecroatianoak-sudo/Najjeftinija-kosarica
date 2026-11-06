@@ -229,12 +229,13 @@ test('procjena po lancu: proizvod iz samo jedne poslovnice velikog lanca nije ci
 
 test('neobično niska cijena (greška u cjeniku) se nikad ne koristi: ni u A, B, C ni u akcijama', () => {
   const p = [['Pileći batak-zabatak za gastro', '', 1, 'kg', 0, -1, '']];
-  const l = { a: { i: [0, 1], t: [29, 405], n: [0, 0], x: [0, 0], r: [500, 0], s: [1, 1] } };
+  const l = { a: { i: [0, 1], t: [19, 405], n: [0, 0], x: [0, 0], r: [500, 0], s: [1, 1] } };
   for (let k = 1; k <= 30; k++) { p.push([`Pileći batak ${k}`, '', 1, 'kg', 0, -1, '']); if (k > 1) l[`c${k}`] = { i: [k], t: [400 + k], n: [0], x: [0], r: [0], s: [5] }; }
   const b = new Baza({ p, l }, [{ id: 'piletina', naziv: 'Piletina', pod: [], zadano: { kolicina: 1, jedinica: 'kg' } }]);
-  assert.equal(b.sumnjivoNiska(0, 29), true);                // 0,29 €/kg prema ~4 €/kg
+  assert.equal(b.sumnjivoNiska(0, 19), true);                // 0,19 €/kg prema ~4 €/kg (ispod 1/20)
+  assert.equal(b.sumnjivoNiska(0, 29), false);               // 1/14: može biti stvarna rasprodaja, ostaje
   assert.equal(b.sumnjivoNiska(1, 401), false);
-  assert.equal(b.prihvatljiva(0, 29), false);
+  assert.equal(b.prihvatljiva(0, 19), false);
   assert.equal(b.prihvatljiva(1, 0), false);
   const prodavaci = prodavaciLanaca(b);
   const stavke = [{ g: 0, pg: -1, kolicina: 1, jedinica: 'kg' }];
@@ -247,6 +248,19 @@ test('neobično niska cijena (greška u cjeniku) se nikad ne koristi: ni u A, B,
   assert.ok(B.every((r) => !r.stavke[0] || r.stavke[0].i !== 0));
   assert.ok(rezultatC(B).every((par) => par.podjela.every((x) => !x || x.ponuda.i !== 0)));
   assert.ok(akcije(b, Object.keys(b.lanci)).every((x) => x.i !== 0));
+});
+
+test('isti proizvod u 3+ lanca: cijena ispod 1/4 uobičajene je greška (npr. vino 0,20 € umjesto 3,99 €)', () => {
+  const p = [['Vino Arabella Merlot 0,75 l', 'Arabella', 0.75, 'l', -1, -1, '']];
+  const l = { k: { i: [0], t: [20], n: [0], x: [0], r: [0], s: [5] }, a: { i: [0], t: [399], n: [0], x: [0], r: [0], s: [5] },
+    b: { i: [0], t: [419], n: [0], x: [0], r: [0], s: [5] }, c: { i: [0], t: [389], n: [0], x: [0], r: [0], s: [5] } };
+  const b = new Baza({ p, l }, []);
+  assert.equal(b.prihvatljiva(0, 20), false);
+  assert.equal(b.prihvatljiva(0, 299), true);                // akcija −25 % je stvarna
+  const B = rezultatB(b, [{ g: -1, pg: -1, proizvod: 0, samoTaj: true, kolicina: 1, jedinica: 'pak' }], prodavaciLanaca(b));
+  const kodK = B.find((r) => r.prodavac.id === 'k');
+  assert.equal(kodK.stavke[0], null);                        // u "k" se vino ne računa po krivih 0,20 €
+  assert.equal(B[0].ukupno, 389);
 });
 
 test('najniža cijena u 30 dana (NN 75/2025): prava akcija ili je bilo jeftinije', () => {
