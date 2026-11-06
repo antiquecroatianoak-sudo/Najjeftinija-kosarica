@@ -228,6 +228,7 @@ function prikazi() {
       usteda: zaslonUsteda, favoriti: zaslonFavoriti, obitelj: zaslonObitelj, skener: zaslonSkener, status: zaslonStatus, trgovine: zaslonTrgovine,
       postavke: zaslonPostavke, greska: zaslonGreska, o: zaslonO };
     (zasloni[S.zaslon] || zaslonPopis)(sadrzaj);
+    document.body.classList.toggle('ima-traku', !!sadrzaj.querySelector('.donja-traka'));
   } catch (e) {
     zabiljezi('prikaz', e.message, e.stack);
     sadrzaj.innerHTML = karticaGreske('Ovaj zaslon se nije mogao prikazati.');
@@ -438,11 +439,13 @@ function zaslonPopis(el) {
           ${trgovinaStavke(najjeftinije.get(s.id))}
         </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci, upiši ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}”.</p></div>`}
     </section>
-    ${stavke.length ? plociceDijeljenja() : plocicePrecaca()}
-    ${stavke.length ? (S.zakljucano
-      ? `<button class="gumb glavni puni" data-idi="rezultati">Pogledaj rezultate</button>`
-      : `<button class="gumb glavni puni" data-akcija="zakljucaj">${IKONE.lokot} Zaključaj popis i usporedi cijene</button>
-         <p class="sitno" style="text-align:center">Količinu bez broja aplikacija postavlja na uobičajenu (npr. mlijeko 1 l, krumpir 1 kg) – promijeni je gumbima − i +. U trgovini dodirni kružić pokraj stavke kad je u košarici.</p>`) : ''}
+    ${stavke.length ? '' : plocicePrecaca()}
+    ${stavke.length ? `<div class="donja-traka" role="toolbar" aria-label="Glavne radnje">
+        <button class="gumb traka-sporedni" data-akcija="dijeli-ploca">${IKONE.whatsapp}<span>Pošalji</span></button>
+        ${S.zakljucano
+          ? `<button class="gumb glavni traka-glavni" data-idi="rezultati">${IKONE.status}<span>Pogledaj gdje je najjeftinije</span></button>`
+          : `<button class="gumb glavni traka-glavni" data-akcija="zakljucaj">${IKONE.lokot}<span>Zaključaj i usporedi</span></button>`}
+      </div>` : ''}
   </div>`;
   if (!S.zakljucano) {
     const polje = $('#upisPolje');
@@ -458,7 +461,7 @@ function zaslonPopis(el) {
 // Velike šarene pločice: slanje popisa (WhatsApp, imenik, Viber, ostalo)
 function plociceDijeljenja() {
   const t = encodeURIComponent(tekstPopisa());
-  return `<section class="kartica dijeli-kartica">
+  return `<section class="dijeli-kartica">
     <h3>Pošalji popis obitelji</h3>
     <div class="plocice">
       <a class="plocica wa" href="https://wa.me/?text=${t}" target="_blank" rel="noopener" data-dijeli="whatsapp"><span class="pl-ik">${IKONE.whatsapp}</span><b>WhatsApp</b><span>odaberi osobu ili grupu</span></a>
@@ -859,19 +862,21 @@ async function zaslonRezultati(el) {
     </div>
     <p class="sitno">${esc(mjesto)}${pr.krugNijeUcitan ? ' <button class="gumb mali" data-akcija="ponovno-poslovnice">Pokušaj ponovno</button>' : ''}${pr.neuspjele ? ` · <span class="upozorenje">${pr.neuspjele} trgovina se nije učitalo na vrijeme (slaba veza) i nisu u usporedbi</span> <button class="gumb mali" data-akcija="ponovno-poslovnice">Pokušaj ponovno</button>` : ''}</p>
     ${tijelo}
-    ${pr.popis.length ? `<p class="savjet">${IKONE.zamijeni}<span>Dodirni proizvod za <b>sljedeći najjeftiniji</b> iz iste grupe. ${pr.nacin === 'lanci' ? 'Cijene su uobičajene cijene lanca (najčešća cijena u poslovnicama). Uključi lokaciju na karti za cijene stvarnih poslovnica blizu tebe.' : 'Cijene su iz cjenika svake pojedine poslovnice.'}</span></p>` : ''}
+    ${pr.popis.length ? `<p class="savjet">${IKONE.zamijeni}<span>Dodirni proizvod za sljedeći najjeftiniji. ${pr.nacin === 'lanci' ? 'Za cijene trgovina blizu tebe uključi lokaciju.' : 'Cijene su iz cjenika svake poslovnice.'}</span></p>` : ''}
     ${oglas()}
   </div>`;
+  document.body.classList.toggle('ima-traku', !!el.querySelector('.donja-traka'));
   if (tab === 'B' && pr.popis.length) pripremiKarusel(b, pr);
 }
 
 function gumbiKupnje(iznos, prosjek, opis) {
   const kljuc = kljucIzracuna() + S.rezTab;
   const vec = S.kupljenoKljuc === kljuc;
-  return `<div class="redak" style="flex-wrap:wrap">
-    <button class="gumb naglaseni razmak" data-akcija="kupljeno" data-iznos="${iznos}" data-prosjek="${prosjek}" data-opis="${esc(opis)}" ${vec ? 'disabled' : ''}>
-      ${vec ? `${IKONE.kvacica} Ušteda je zabilježena` : `${IKONE.novac} Kupio/la sam – zabilježi uštedu`}</button>
-    <button class="gumb" data-akcija="podijeli-rezultat">${IKONE.podijeli} Pošalji</button></div>`;
+  // u donjoj zoni zaslona (jedna ruka), uvijek vidljivo iznad izbornika
+  return `<div class="donja-traka" role="toolbar" aria-label="Glavne radnje">
+    <button class="gumb traka-sporedni" data-akcija="podijeli-rezultat">${IKONE.podijeli}<span>Pošalji</span></button>
+    <button class="gumb naglaseni traka-glavni" data-akcija="kupljeno" data-iznos="${iznos}" data-prosjek="${prosjek}" data-opis="${esc(opis)}" aria-label="${vec ? 'Ušteda je zabilježena' : 'Kupio/la sam – zabilježi uštedu'}" ${vec ? 'disabled' : ''}>
+      ${vec ? `${IKONE.kvacica}<span>Ušteda zabilježena</span>` : `${IKONE.novac}<span>Kupio/la sam</span>`}</button></div>`;
 }
 
 function prikazA(a, b, pr) {
@@ -1676,6 +1681,7 @@ document.addEventListener('click', (e) => {
     case 'ponisti-ustedu': if (confirm('Obrisati povijest uštede?')) { S.usteda = { ukupno: 0, kupnje: [] }; spremi(); prikazi(); } break;
     case 'podijeli-rezultat': ponudiDijeljenje(tekstRezultata(), 'Pošalji popis i rezultat'); break;
     case 'podijeli-popis': ponudiDijeljenje(tekstPopisa(), 'Pošalji popis obitelji'); break;
+    case 'dijeli-ploca': otvoriPlocu(plociceDijeljenja()); break;
     case 'imenik': posaljiIzImenika(); break;
     case 'uvezi-kod': {
       const v = $('#kodPolje').value.trim();

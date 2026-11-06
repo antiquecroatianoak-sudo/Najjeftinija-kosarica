@@ -106,3 +106,5 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] 3. "Kupio/la sam": confetti, a tick that draws itself, savings counter counts up (calm version when the phone asks for less motion).
 - [x] 4. Ads: elegant rounded banner with a fine border in the app's colours.
 - Tests: browser checks for the carousel, celebration and ad banner. Picture: `docs/pregled-1.7.0.png`. Version 1.7.0.
+- [x] One-hand use (owner's 3rd note): fixed action bar just above the bottom menu – list: "Pošalji" + "Zaključaj i usporedi"; results: "Pošalji" + "Kupio/la sam". "Pošalji" opens a bottom panel with WhatsApp / phone book / Viber / SMS tiles.
+- [x] Less clutter: share tiles out of the middle of the list, shorter tips, roomier cards. Browser test checks the bar is visible in the bottom quarter of the screen.

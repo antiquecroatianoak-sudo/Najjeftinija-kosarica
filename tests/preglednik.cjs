@@ -63,6 +63,12 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(trgovineNaPopisu.length === 6 && trgovineNaPopisu.every((x) => /€/.test(x)),
     'uz svaku stavku popisa najjeftinija trgovina i cijena: ' + trgovineNaPopisu.slice(0, 2).map((x) => x.replace(/\s+/g, ' ')).join(' | '));
   provjeri(await s.locator('.plocice.precaci').count() === 0, 's popisom: umjesto prečaca pločice za slanje');
+  provjeri(await s.locator('.donja-traka [data-akcija="zakljucaj"]').isVisible() && await s.locator('.donja-traka [data-akcija="dijeli-ploca"]').isVisible(),
+    'donja zona (jedna ruka): „Pošalji” i „Zaključaj i usporedi” uvijek vidljivi iznad izbornika');
+  const traka = await s.locator('.donja-traka').boundingBox();
+  provjeri(traka && traka.y > (await s.evaluate(() => innerHeight)) * 0.75, 'traka s radnjama je u donjoj četvrtini zaslona');
+  await s.click('.donja-traka [data-akcija="dijeli-ploca"]');
+  await s.waitForSelector('.ploca-sadrzaj .dijeli-kartica');
   const waHref = await s.locator('.dijeli-kartica a.plocica.wa').getAttribute('href');
   provjeri(/^https:\/\/wa\.me\/\?text=/.test(waHref) && /Popis%20za%20kupovinu%20\(6\)/.test(waHref) && /%23popis%3D/.test(waHref),
     'velika pločica WhatsApp: šalje popis s poveznicom, osobu se bira u WhatsAppu');
