@@ -49,8 +49,10 @@ KORISNIK = "NajjeftinijaKosarica-uvoz/1.0 (+https://github.com/antiquecroatianoa
 
 GRUPE = Path(__file__).resolve().parent / "grupe.json"
 
-# Metro je veleprodaja (potrebna poslovna kartica).
-PRESKOCI = {"metro"}
+# Lanci koji se uopće ne uvoze (ne pojavljuju se nigdje u aplikaciji):
+#  - metro: veleprodaja (potrebna poslovna kartica);
+#  - stridon: odluka vlasnika 6.11.2026. („Delete Stridon”).
+PRESKOCI = {"metro", "stridon"}
 IMENA = {
     "konzum": "Konzum", "lidl": "Lidl", "kaufland": "Kaufland", "plodine": "Plodine", "tommy": "Tommy",
     "studenac": "Studenac", "spar": "Spar", "interspar": "Interspar", "eurospin": "Eurospin", "ntl": "NTL",

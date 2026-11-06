@@ -97,3 +97,5 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Bottom bar: Popis · Usporedba · Akcije · Skeniraj · Više; the active tab is highlighted, also on sub-screens. Map: from the location button, Više and a start-screen tile.
 - [x] On the list, every item shows its cheapest shop and price in a bigger, coloured line ("Mlijeko" → "● Kaufland · 0,44 €"); with location on, the real nearby store. Store names bigger in results A too.
 - [x] Tests: browser checks for Back button, panel closing, back-button target, active tab, store line on every item. Version 1.6.0.
+- [x] Published 1.6.0: PR #29, run 42223793731 green, data 1593f29b9e. Picture of all screens: `docs/pregled-1.6.0.png`.
+- [x] Stridon removed (owner's decision 6 Nov): not imported at all, like Metro. Test `PreskoceniLanci`.
