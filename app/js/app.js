@@ -1,6 +1,7 @@
 // Najjeftinija košarica – sučelje aplikacije.
 import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm, brojZaWhatsApp } from './tekst.js';
 import { pripremiGrupe, rastavi, novaStavkaId, kanon, osvjeziStavke } from './popis.js';
+import { ocistiStanje, vratiGrupePoId } from './stanje.js';
 import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost, ocjenaCijene } from './usporedba.js';
 import { ucitajPodatke, ucitajPoslovnice, pripremiPoslovnice, DRZAVE } from './podaci.js';
 import { ukljuciHvatanje, zabiljezi, izvjesce, obrisiGreske, VERZIJA_APLIKACIJE } from './greske.js';
@@ -65,13 +66,25 @@ let karta = null;
 function ucitajStanje() {
   try {
     const s = JSON.parse(localStorage.getItem(KLJUC) || 'null');
-    return s ? { ...POCETNO, ...s, lokacija: { ...POCETNO.lokacija, ...(s.lokacija || {}) }, usteda: { ...POCETNO.usteda, ...(s.usteda || {}) } } : structuredClone(POCETNO);
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return structuredClone(POCETNO);
+    return ocistiStanje({ ...structuredClone(POCETNO), ...s, lokacija: { ...POCETNO.lokacija, ...(s.lokacija || {}) }, usteda: { ...POCETNO.usteda, ...(s.usteda || {}) } });
   } catch (e) {
     zabiljezi('stanje', 'Spremljeno stanje se ne može pročitati; počinjem iznova', e.message);
     return structuredClone(POCETNO);
   }
 }
+// 2. Stavka pamti i ID grupe/podgrupe (ne samo redni broj): ako nova verzija doda ili presloži grupe,
+//    spremljeni broj bi pokazivao na drugu grupu (npr. mlijeko → jogurt). Pri pokretanju broj se ponovno izračuna iz ID-a.
+function zapamtiIdGrupa() {
+  if (!P) return;
+  for (const s of S.stavke) {
+    const g = s.g >= 0 ? P.grupe[s.g] : null;
+    s.gid = g ? g.id : '';
+    s.pgid = g && s.pg >= 0 && g.pod[s.pg] ? g.pod[s.pg].id : '';
+  }
+}
 function spremi() {
+  zapamtiIdGrupa();
   try { localStorage.setItem(KLJUC, JSON.stringify(S)); } catch (e) { zabiljezi('stanje', 'Spremanje nije uspjelo', e.message); }
 }
 
@@ -174,14 +187,15 @@ function opisStavke(s) {
     if (s.samoTaj && s.proizvod != null) return `${g.ikona} točno ovaj proizvod`;
     if (s.filtar) {
       const ima = P.baza.filtarPronaden(s);
-      return `${g.naziv} · ${ima ? `samo „${esc(s.filtar)}”` : `${pod} <span class="upozorenje">(„${esc(s.filtar)}” nije pronađeno)</span>`}`;
+      return `${esc(g.naziv)} · ${ima ? `samo „${esc(s.filtar)}”` : `${esc(pod)} <span class="upozorenje">(„${esc(s.filtar)}” nije pronađeno)</span>`}`;
     }
     // ne ponavljaj ime: "Mlijeko" + "sve vrste", a ne "Mlijeko" + "Mlijeko · sve vrste"
-    return nazivStavke(s).toLowerCase() === g.naziv.toLowerCase() ? pod : `${g.naziv} · ${pod}`;
+    return esc(nazivStavke(s).toLowerCase() === g.naziv.toLowerCase() ? pod : `${g.naziv} · ${pod}`);
   }
   if (s.samoTaj && s.proizvod != null) return 'točno ovaj proizvod';
   const n = P.baza.trazi(s.upit || s.tekst, 1).length;
-  return n ? `traži „${s.upit || s.tekst}” u nazivima proizvoda` : '<span class="upozorenje">nije pronađeno – dodirni za ispravak</span>';
+  // SIGURNOST: tekst može doći iz tuđe poveznice obiteljskog popisa – bez esc() bio bi umetnuti HTML/skripta
+  return n ? `traži „${esc(s.upit || s.tekst)}” u nazivima proizvoda` : '<span class="upozorenje">nije pronađeno – dodirni za ispravak</span>';
 }
 function ikonaStavke(s) { return s.g >= 0 ? P.grupe[s.g].ikona || '🛒' : '🔎'; }
 function nazivStavke(s) {
@@ -662,7 +676,11 @@ function redakPonude(stavka, ponuda, { prodavac, nacin, ostali = 0, prikaziTrgov
   </div>`;
 }
 
+// Svaki prikaz rezultata dobije broj; stariji (sporiji) izračun ne smije prebrisati noviji zaslon
+// (brzo prebacivanje A/B/C ili promjena popisa dok se cijene poslovnica još učitavaju).
+let prikazRezultata = 0;
 async function zaslonRezultati(el) {
+  const moj = ++prikazRezultata;
   if (!S.stavke.length) {
     el.innerHTML = `<div class="zaslon"><div class="kartica prazno"><div class="velika">📋</div><p>Prvo složi popis za kupovinu.</p>
       <button class="gumb glavni" style="margin-top:14px" data-idi="popis">Na popis</button></div></div>`;
@@ -674,10 +692,11 @@ async function zaslonRezultati(el) {
     r = await izracunaj();
   } catch (e) {
     zabiljezi('izracun', e.message, e.stack);
+    if (moj !== prikazRezultata) return;
     el.innerHTML = karticaGreske('Usporedba se nije mogla izračunati.');
     return;
   }
-  if (S.zaslon !== 'rezultati') return;
+  if (S.zaslon !== 'rezultati' || moj !== prikazRezultata) return;
   const { pr, a, b, c } = r;
   const tab = S.rezTab;
   const lanciTekst = `${odabraniLanci().length} od ${sviLanci().length} lanaca`;
@@ -1168,7 +1187,7 @@ function procitajKod(kod) {
     const gi = x.g ? P.grupe.findIndex((g) => g.id === x.g) : -1;
     const pg = gi >= 0 && x.p ? P.grupe[gi].pod.findIndex((p) => p.id === x.p) : -1;
     const pr = x.b ? P.baza.poBarkodu.get(x.b) : undefined;
-    return { id: novaStavkaId(), tekst: String(x.t || '').slice(0, 80), g: gi, pg, upit: gi >= 0 ? '' : String(x.t || ''), kolicina: Number(x.k) > 0 ? Number(x.k) : 1,
+    return { id: novaStavkaId(), tekst: String(x.t || '').slice(0, 80), g: gi, pg, upit: gi >= 0 ? '' : String(x.t || ''), kolicina: Number(x.k) > 0 && Number(x.k) <= 1000 ? Number(x.k) : 1,
       jedinica: ['g', 'kg', 'ml', 'l', 'kom', 'pak'].includes(x.j) ? x.j : 'pak', zadano: false, proizvod: pr ?? null, samoTaj: pr != null };
   });
 }
@@ -1445,6 +1464,8 @@ document.addEventListener('click', (e) => {
     case 'kupljeno': {
       const iznos = Number(a.dataset.iznos);
       const prosjek = Number(a.dataset.prosjek);
+      // dvostruki dodir ili neispravan iznos ne smiju dvaput/krivo upisati uštedu
+      if (S.kupljenoKljuc === kljucIzracuna() + S.rezTab || !Number.isFinite(iznos) || !Number.isFinite(prosjek)) break;
       const usteda = Math.max(0, Math.round(prosjek - iznos));
       S.usteda.ukupno += usteda;
       S.usteda.kupnje.push({ datum: new Date().toISOString(), iznos, usteda, opis: a.dataset.opis });
@@ -1523,6 +1544,7 @@ async function pokreni(rucno = false) {
       }
     }
     for (const s of S.stavke) if (s.proizvod != null) s.barkod = baza.p[s.proizvod][6];
+    vratiGrupePoId(S.stavke, d.grupe);
     if (osvjeziStavke(S.stavke)) zadnjiIzracun = null;      // stare stavke ("mljeko") ponovno prepoznate
     S.verzijaPodataka = d.meta.verzija;
     spremi();

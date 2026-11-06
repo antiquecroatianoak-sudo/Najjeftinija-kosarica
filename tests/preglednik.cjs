@@ -247,6 +247,24 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s2.waitForSelector('.stavka');
   provjeri(await s2.locator('.stavka').count() === 6, 'primljeni popis ima 6 stavki');
 
+  console.log('Sigurnost: zlonamjerna poveznica obiteljskog popisa');
+  const napad = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR' });
+  const s5 = await napad.newPage();
+  s5.on('pageerror', (e) => greske.push('pageerror(napad): ' + e.message));
+  // HTML oko riječi koja postoji u nazivima proizvoda – tako se prikaže „traži … u nazivima proizvoda” (ranjivi redak)
+  const zlo = '<u>barcaffe</u>';
+  const kodNapada = Buffer.from(JSON.stringify({ v: 1, s: [{ t: zlo, g: '', p: '', k: 1e12, j: 'pak', b: '' }] })).toString('base64url');
+  await s5.goto(url + '#popis=' + kodNapada);
+  await s5.waitForSelector('[data-akcija="uvoz-dodaj"]');
+  await s5.click('[data-akcija="uvoz-dodaj"]');
+  await s5.waitForSelector('.stavka');
+  await s5.waitForTimeout(300);
+  const stavkaNapada = await s5.locator('.stavka').innerText();
+  provjeri(await s5.locator('.stavka u').count() === 0 && stavkaNapada.includes('<u>barcaffe</u>') && /traži/.test(stavkaNapada),
+    'tekst iz tuđe poveznice prikazuje se kao tekst, ne izvršava se (XSS)');
+  provjeri(/1 pakiranje|1 pak/.test(stavkaNapada), 'apsurdna količina iz poveznice (10^12) zamijenjena s 1');
+  await napad.close();
+
   console.log('Stari spremljeni popis s mobitela (stavka "mljeko" iz starije verzije)');
   const stari = await preglednik.newContext({ ...devices['Pixel 7'], locale: 'hr-HR' });
   await stari.addInitScript(() => {

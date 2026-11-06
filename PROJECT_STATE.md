@@ -65,6 +65,16 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
   - **Implementirano:** `osvjeziStavke` (`app/js/popis.js`) pri svakom pokretanju i pri primanju obiteljskog popisa ponovno prepoznaje stavke bez grupe (osim odabranog proizvoda/barkoda) i postavlja zadanu količinu (mlijeko 1 l). Engleski nazivi 40 čestih namirnica (milk, bread, eggs …) prevode se prije prepoznavanja; „Milka čokolada” ostaje čokolada.
   - **Testirano:** Node 20/20 (novi: stara stavka „mljeko” → mlijeko 1 l i rezultat bez jogurta; engleski nazivi), preglednik: stari spremljeni popis sa stavkom „mljeko” → „Mlijeko 1 l”, rezultat A mlijeko, ne jogurt; Python 47 OK.
 
+- **Revizija arhitekture i sigurnosti (nalog vlasnika 6.11.2026., provjereno 11:44 Europe/Zagreb).** Nalazi i popravci (svaki s testom):
+  - **XSS (sigurnost, visoko):** `opisStavke` je umetao tekst stavke bez `esc()`. Tekst može doći iz tuđe poveznice obiteljskog popisa (`#popis=`), pa je primatelj mogao dobiti umetnuti HTML. Popravljeno; test u pregledniku (`<u>barcaffe</u>`) dokazano pada bez popravka i prolazi s njim.
+  - **Workflow `claude-task.yml` (sigurnost):** posao s pravom pisanja i vlasnikovim tokenom pokretao se na „@claude” u bilo kojem issueu/komentaru; aplikacija javnosti otvara issue („Prijavi pogrešnu cijenu”). Dodan uvjet `author_association` ∈ OWNER/MEMBER/COLLABORATOR (claude-code-action i sam provjerava pravo pisanja – ovo je dodatna zaštita).
+  - **Spremljene stavke vezane uz redni broj grupe (skrivena greška):** nova verzija s dodanim/preslaganim grupama pretvorila bi spremljeno mlijeko u drugu grupu. Stavka sad pamti `gid/pgid`; pri pokretanju broj se računa iz ID-a (`app/js/stanje.js`, `vratiGrupePoId`). Do sada redoslijed nije mijenjan (provjereno kroz povijest `grupe.json`: mlijeko uvijek 14).
+  - **Provjera spremljenog stanja i poveznica:** `ocistiStanje/ocistiStavku` – krivi tipovi, `null`, prevelike količine (≤ 1 000), predugi tekst, krivi radijus ne ruše aplikaciju; poveznica s količinom 10^12 → 1.
+  - **Utrka (race):** sporiji stariji izračun rezultata više ne prebrisuje noviji zaslon (brojač prikaza); dvostruki dodir „Kupio/la sam” ne upisuje uštedu dvaput.
+  - **Brzina:** tražilica (norm 225 000 naziva) gradi se tek pri prvoj pretrazi teksta: izgradnja baze 548 → 209 ms na stvarnim podacima (mjereno u Nodeu).
+  - **Pregledano bez nalaza:** `esc()` ispravan; adrese poslovnica, nazivi i karta escapeani; WhatsApp/SMS poveznice kodirane; uvoz čita ZIP u memoriji (bez raspakiravanja na disk); `dnevno.yml` ima najmanje ovlasti po poslu.
+  - **Testirano:** Node 22/22, Python 47 OK, preglednik „SVE PROVJERE SU PROŠLE” (uključujući XSS, staru stavku „mljeko”, apsurdnu količinu).
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).

@@ -28,7 +28,7 @@ export class Baza {
     this.p = proizvodi.p;               // [naziv, marka, količina, vrsta, grupa, podgrupa, barkod, (ostali barkodovi)]
     this.grupe = grupe;
     this.n = this.p.length;
-    this.trazilica = this.p.map((r) => ' ' + norm(`${r[0]} ${r[1]}`) + ' ');
+    this._trazilica = null;             // gradi se tek pri prvoj pretrazi teksta (≈0,4 s manje pri pokretanju)
     this.poGrupi = new Map();
     this.poBarkodu = new Map();
     this.p.forEach((r, i) => {
@@ -152,6 +152,13 @@ export class Baza {
     poz = 0;
     datoteka.d.forEach((d, k) => { poz += d; cijena[idx[poz]] = datoteka.c[k]; });
     return cijena;
+  }
+
+  // Normalizirani "naziv marka" svakog proizvoda za pretragu teksta. Lijeno: većina korisnika ne pretražuje
+  // tekstom pri pokretanju, a norm() na 225 000 naziva je najskuplji dio izgradnje baze.
+  get trazilica() {
+    if (!this._trazilica) this._trazilica = this.p.map((r) => ' ' + norm(`${r[0]} ${r[1]}`) + ' ');
+    return this._trazilica;
   }
 
   raspon(lanac, i) {

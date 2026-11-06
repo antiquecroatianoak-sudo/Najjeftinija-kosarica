@@ -9,7 +9,7 @@ const NAJVISE_POSLOVNICA = 400;
 
 const LJUSKA = [
   './', 'index.html', 'manifest.webmanifest', 'css/stil.css',
-  'js/app.js', 'js/tekst.js', 'js/popis.js', 'js/usporedba.js', 'js/podaci.js', 'js/greske.js', 'js/karta.js',
+  'js/app.js', 'js/tekst.js', 'js/popis.js', 'js/usporedba.js', 'js/podaci.js', 'js/greske.js', 'js/karta.js', 'js/stanje.js',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'ikone/ikona.svg', 'ikone/ikona-192.png', 'ikone/ikona-512.png',
 ];
 

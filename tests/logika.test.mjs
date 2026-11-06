@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { norm, korijen, prikazPakiranja, eur, uOsnovnu } from '../app/js/tekst.js';
 import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu, osvjeziStavke } from '../app/js/popis.js';
+import { ocistiStanje, ocistiStavku, vratiGrupePoId } from '../app/js/stanje.js';
 import { Baza, pragPoslovnica, ocjenaCijene, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
 
 const KORIJEN = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -315,4 +316,33 @@ test('najniža cijena u 30 dana (NN 75/2025): prava akcija ili je bilo jeftinije
   assert.equal(r.najniza30, 379);
   assert.equal(r.sidrena, 450);
   assert.equal(ocjenaCijene(r, 399).tip, 'bilo-jeftinije');
+});
+
+test('oštećeno ili staro spremljeno stanje ne ruši aplikaciju (krivi tipovi, prevelike količine)', () => {
+  const s = ocistiStanje({ stavke: [null, 5, 'x', { tekst: 'kruh', g: '3', pg: null, kolicina: 'abc', jedinica: 'bačva' },
+    { tekst: 'voda', kolicina: 1e9, jedinica: 'l' }, { tekst: 'a'.repeat(500), kolicina: -2 }],
+  lanci: 'konzum', favoriti: [1, 'x'], povijest: [], usteda: { ukupno: 'NaN', kupnje: null }, lokacija: { radijus: 999 } });
+  assert.equal(s.stavke.length, 3);
+  assert.deepEqual([s.stavke[0].g, s.stavke[0].pg, s.stavke[0].kolicina, s.stavke[0].jedinica], [3, -1, 1, 'pak']);
+  assert.equal(s.stavke[1].kolicina, 1);                        // 1 000 000 000 l nije količina
+  assert.equal(s.stavke[2].tekst.length, 120);
+  assert.equal(s.lanci, null);
+  assert.deepEqual(s.favoriti, ['x']);
+  assert.deepEqual(s.povijest, {});
+  assert.deepEqual(s.usteda, { ukupno: 0, kupnje: [] });
+  assert.equal(s.lokacija.radijus, 5);
+  assert.equal(ocistiStavku(null), null);
+});
+
+test('spremljena stavka pamti ID grupe: nova verzija s preslaganim grupama ne pretvara mlijeko u jogurt', () => {
+  const stare = [{ id: 'mlijeko', pod: [{ id: 'trajno' }, { id: 'svjeze' }] }, { id: 'jogurt', pod: [] }];
+  const nove = [{ id: 'jogurt', pod: [] }, { id: 'kefir', pod: [] }, { id: 'mlijeko', pod: [{ id: 'svjeze' }, { id: 'trajno' }] }];
+  const st = [{ g: 0, pg: 1, gid: 'mlijeko', pgid: 'svjeze', tekst: 'svježe mlijeko' }, { g: 1, pg: -1, gid: 'jogurt', pgid: '', tekst: 'jogurt' },
+    { g: 7, pg: -1, tekst: 'nešto' }, { g: 0, pg: -1, gid: 'nestalo', tekst: 'sok' }];
+  assert.equal(stare[st[0].g].id, 'mlijeko');
+  vratiGrupePoId(st, nove);
+  assert.deepEqual([nove[st[0].g].id, nove[st[0].g].pod[st[0].pg].id], ['mlijeko', 'svjeze']);
+  assert.equal(nove[st[1].g].id, 'jogurt');
+  assert.deepEqual([st[2].g, st[2].upit], [-1, 'nešto']);      // nevaljan stari broj → pretraga teksta
+  assert.deepEqual([st[3].g, st[3].upit], [-1, 'sok']);        // grupa više ne postoji
 });
