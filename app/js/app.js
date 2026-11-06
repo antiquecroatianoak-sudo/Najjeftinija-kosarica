@@ -442,7 +442,9 @@ function zaslonPopis(el) {
         </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci, upiši ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}”.</p></div>`}
     </section>
     ${stavke.length ? '' : plocicePrecaca()}
-    ${stavke.length ? `<div class="donja-traka" role="toolbar" aria-label="Glavne radnje">
+    ${stavke.length ? `${S.zakljucano ? '' : '<div class="glas-oblacic" id="glasOblacic" role="status" aria-live="polite" hidden><b>Slušam…</b><span></span></div>'}
+      <div class="donja-traka" role="toolbar" aria-label="Glavne radnje">
+        ${S.zakljucano ? '' : `<button class="traka-mikrofon" id="mikrofonDolje" aria-label="Dodaj glasom">${IKONE.mikrofon}</button>`}
         <button class="gumb traka-sporedni" data-akcija="dijeli-ploca">${IKONE.whatsapp}<span>Pošalji</span></button>
         ${S.zakljucano
           ? `<button class="gumb glavni traka-glavni" data-idi="rezultati">${IKONE.status}<span>Pogledaj gdje je najjeftinije</span></button>`
@@ -589,17 +591,28 @@ function promjenaPopisa() {
 // ---------------------------------------------------------------- glas
 let prepoznavanje = null;
 function pripremiGlas() {
-  const gumb = $('#mikrofon');
-  const stanje = $('#stanjeGlasa');
-  const prijepis = $('#prijepis');
+  // dva gumba, isti glasovni unos: veliki u kartici gore i u donjoj traci (jedna ruka). Dok sluša, oblačić iznad
+  // donje trake pokazuje što je čuto – vidi se i kad je kartica gore izvan zaslona.
+  const gumbi = ['#mikrofon', '#mikrofonDolje'].map((x) => $(x)).filter(Boolean);
+  const oblacic = $('#glasOblacic');
+  const postavi = (tekst, greska = false) => {
+    const stanje = $('#stanjeGlasa');
+    if (stanje) { stanje.className = 'stanje-glasa' + (greska ? ' greska' : ''); stanje.textContent = tekst; }
+    if (oblacic) { oblacic.querySelector('b').textContent = tekst; oblacic.classList.toggle('greska', greska); }
+  };
+  const prijepisTekst = (tekst) => {
+    const p = $('#prijepis');
+    if (p) p.textContent = tekst;
+    if (oblacic) oblacic.querySelector('span').textContent = tekst;
+  };
+  const slusa = (da) => { gumbi.forEach((g) => g.classList.toggle('slusa', da)); if (oblacic) oblacic.hidden = !da; };
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    stanje.textContent = 'Glasovni unos nije podržan u ovom pregledniku – upiši popis ispod.';
-    gumb.disabled = true;
-    gumb.style.opacity = '.45';
+    postavi('Glasovni unos nije podržan u ovom pregledniku – upiši popis.');
+    gumbi.forEach((g) => { g.disabled = true; g.style.opacity = '.45'; });
     return;
   }
-  gumb.onclick = () => {
+  const pokreni = () => {
     if (prepoznavanje) { prepoznavanje.stop(); return; }
     const r = new SR();
     r.lang = 'hr-HR';
@@ -607,30 +620,32 @@ function pripremiGlas() {
     r.continuous = false;
     r.maxAlternatives = 1;
     let konacno = '';
+    let zadnjePrivremeno = '';
     prepoznavanje = r;
-    gumb.classList.add('slusa');
-    stanje.className = 'stanje-glasa';
-    stanje.textContent = 'Slušam… govori sada';
-    prijepis.textContent = '';
+    slusa(true);
+    postavi('Slušam… govori sada');
+    prijepisTekst('');
     r.onresult = (e) => {
       let privremeno = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) konacno += e.results[i][0].transcript + ' ';
         else privremeno += e.results[i][0].transcript;
       }
-      prijepis.textContent = (konacno + privremeno).trim();
+      zadnjePrivremeno = (konacno + privremeno).trim();
+      prijepisTekst(zadnjePrivremeno);
     };
     r.onerror = (e) => {
       const poruke = {
         'not-allowed': 'Mikrofon nije dopušten. U Chromeu dodirni lokot pokraj adrese → Dopuštenja → Mikrofon → Dopusti.',
-        'service-not-allowed': 'Glasovni unos nije dopušten na ovom uređaju. Upiši popis ispod.',
+        'service-not-allowed': 'Glasovni unos nije dopušten na ovom uređaju. Upiši popis.',
         'no-speech': 'Nisam ništa čuo. Dodirni mikrofon i pokušaj ponovno.',
         'audio-capture': 'Mikrofon nije pronađen.',
-        network: 'Za glasovni unos treba internet. Upiši popis ispod.',
+        network: 'Za glasovni unos treba internet. Upiši popis.',
         aborted: '',
       };
-      stanje.className = 'stanje-glasa greska';
-      stanje.textContent = poruke[e.error] ?? `Glasovni unos nije uspio (${e.error}).`;
+      const tekst = poruke[e.error] ?? `Glasovni unos nije uspio (${e.error}).`;
+      postavi(tekst, true);
+      if (tekst) poruka(tekst);
       if (e.error !== 'aborted' && e.error !== 'no-speech') zabiljezi('glas', e.error, e.message || '');
     };
     // sigurnosni sat: neki Android preglednici nikad ne jave kraj – mikrofon se ne smije zaglaviti u "Slušam…"
@@ -641,28 +656,28 @@ function pripremiGlas() {
     }, 15000);
     r.onend = () => {
       clearTimeout(sat);
-      if (prepoznavanje !== r && !gumb.classList.contains('slusa')) return;
+      if (prepoznavanje !== r && !gumbi.some((g) => g.classList.contains('slusa'))) return;
       r.onend = null;
       prepoznavanje = null;
-      gumb.classList.remove('slusa');
-      const tekst = (konacno || prijepis.textContent).trim();
+      slusa(false);
+      const tekst = (konacno || zadnjePrivremeno).trim();
       if (tekst) {
-        stanje.className = 'stanje-glasa';
         dodajTekst(tekst);
         // zaslon se nakon dodavanja iscrta iznova: prikaži što je čuto i na novom elementu
         const novo = $('#stanjeGlasa');
         if (novo) { novo.className = 'stanje-glasa'; novo.textContent = `Razumio sam: „${tekst}”`; }
-      } else if (!stanje.classList.contains('greska')) {
-        stanje.textContent = 'Dodirni i govori';
+      } else if (!$('#stanjeGlasa') || !$('#stanjeGlasa').classList.contains('greska')) {
+        postavi('Dodirni i govori');
       }
     };
     try { r.start(); } catch (e) {
       prepoznavanje = null;
-      gumb.classList.remove('slusa');
-      stanje.textContent = 'Glasovni unos se nije pokrenuo. Pokušaj ponovno ili upiši.';
+      slusa(false);
+      postavi('Glasovni unos se nije pokrenuo. Pokušaj ponovno ili upiši.', true);
       zabiljezi('glas', 'start nije uspio', e.message);
     }
   };
+  gumbi.forEach((g) => { g.onclick = pokreni; });
 }
 
 // ---------------------------------------------------------------- uređivanje stavke
@@ -714,6 +729,13 @@ function poslovniceUKrugu() {
   return out;
 }
 
+// Lanci s jednim cjenikom za sve poslovnice (dm): u podacima nema pojedinih poslovnica s lokacijom, pa ih krug
+// nikad ne bi uključio. Uz lokaciju ulaze kao lanac s jedinstvenom cijenom (meta: jedan_cjenik; stariji podaci:
+// 1 poslovnica bez koordinata).
+function lanciJednogCjenika() {
+  return P.meta.lanci.filter((l) => l.jedan_cjenik || (l.poslovnica <= 1 && !l.s_koordinatama)).map((l) => l.id);
+}
+
 async function prodavaci() {
   const lanci = odabraniLanci();
   if (!(S.lokacija.ukljucena && S.lokacija.lat != null)) {
@@ -736,6 +758,10 @@ async function prodavaci() {
     // pokaži uobičajene cijene lanaca i jasno reci zašto, uz "Pokušaj ponovno"
     return { nacin: 'lanci', popis: lanci.map((id) => ({ id, lanac: id, naziv: nazivLanca(id), cijena: P.baza.lanci[id].procjena })),
       krugNijeUcitan: odabrane.length };
+  }
+  const jedinstveni = lanciJednogCjenika().filter((id) => lanci.includes(id) && P.baza.lanci[id]);
+  for (const id of jedinstveni) {
+    popis.push({ id, lanac: id, naziv: nazivLanca(id), adresa: '', km: null, jedanCjenik: true, cijena: P.baza.lanci[id].cijena });
   }
   return { nacin: 'poslovnice', popis, uKrugu: krug.length, odrezano: Math.max(0, krug.length - NAJVISE_POSLOVNICA), neuspjele: neuspjele.length };
 }
@@ -844,7 +870,7 @@ async function zaslonRezultati(el) {
   const mjesto = pr.krugNijeUcitan
     ? `Cijene trgovina u krugu ${S.lokacija.radijus} km nisu se učitale na vrijeme (slaba veza) – prikazujem uobičajene cijene lanaca za cijelu Hrvatsku`
     : pr.nacin === 'poslovnice'
-    ? `U krugu ${S.lokacija.radijus} km: ${pr.popis.length} poslovnica${pr.odrezano ? ` (najbližih ${NAJVISE_POSLOVNICA} od ${pr.uKrugu})` : ''}`
+    ? `U krugu ${S.lokacija.radijus} km: ${pr.popis.filter((x) => !x.jedanCjenik).length} poslovnica${pr.odrezano ? ` (najbližih ${NAJVISE_POSLOVNICA} od ${pr.uKrugu})` : ''}${pr.popis.some((x) => x.jedanCjenik) ? ` · uz to ${pr.popis.filter((x) => x.jedanCjenik).map((x) => x.naziv).join(', ')} (ista cijena u svim poslovnicama)` : ''}`
     : 'Cijela Hrvatska · uobičajene cijene lanaca';
   let tijelo = '';
   if (!pr.popis.length) {
@@ -911,7 +937,8 @@ function poslovnicaRijec(n) {
 function karticaTrgovine(r, k, najbolji, uFokusu) {
   const pr = r.prodavac;
   const n = r.iste ? r.iste.length : 1;
-  const adresa = pr.adresa ? (n > 1 ? 'najbliža: ' : '') + esc(pr.adresa) + (pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : '') : 'uobičajena cijena lanca';
+  const adresa = pr.jedanCjenik ? 'ista cijena u svim poslovnicama'
+    : pr.adresa ? (n > 1 ? 'najbliža: ' : '') + esc(pr.adresa) + (pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : '') : 'uobičajena cijena lanca';
   const razlika = k === 0 ? '<span class="tk-najbolja">Najjeftinije</span>'
     : r.nedostaje === najbolji.nedostaje ? `<span class="tk-razlika">+${eur(r.ukupno - najbolji.ukupno)}</span>` : '';
   return `<button role="listitem" class="trgovina-kartica ${uFokusu ? 'u-fokusu' : ''}" data-akcija="otvori-b" data-id="${esc(pr.id)}" aria-pressed="${uFokusu}"
@@ -1413,6 +1440,7 @@ function zaslonVise(el) {
     ${instalacija ? `<button class="gumb glavni puni" data-akcija="instaliraj">${IKONE.plus} Instaliraj aplikaciju na mobitel</button>` : ''}
     <div class="izbor">${kartice.map(([id, ik, n, o]) => `<button data-idi="${id}"><span class="ik">${ik}</span><b>${esc(n)}</b><span>${esc(o)}</span></button>`).join('')}</div>
     <p class="sitno" style="text-align:center;margin-top:14px">Verzija aplikacije ${VERZIJA_APLIKACIJE} · podaci ${esc(P.meta.verzija)} (${datumHR(P.meta.datum)})</p>
+    <button class="gumb puni" data-akcija="provjeri-verziju">${IKONE.zamijeni} Provjeri ima li nove verzije</button>
   </div>`;
 }
 
@@ -1644,6 +1672,8 @@ document.addEventListener('click', (e) => {
   const stavka = id ? S.stavke.find((s) => s.id === id) : null;
   switch (a.dataset.akcija) {
     case 'natrag': natragUnutar(); break;
+    case 'provjeri-verziju': provjeriNovuVerziju(true); break;
+    case 'osvjezi-aplikaciju': location.reload(); break;
     case 'brzo': case 'prijedlog': {
       dodajGrupu(Number(a.dataset.g), Number(a.dataset.pg ?? -1));
       if (a.dataset.akcija === 'prijedlog') {
@@ -1852,6 +1882,36 @@ async function pokreni(rucno = false) {
   }
 }
 
+// Najnovija objavljena verzija čita se izravno s poslužitelja (sw.js, bez spremišta). Ako je mobitel na starijoj:
+// preuzmi novu (service worker) i osvježi; ako se sama ne prebaci, pokaži obavijest „Osvježi”.
+async function procitajObjavljenuVerziju() {
+  const r = await fetch(`sw.js?provjera=${Date.now()}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const m = (await r.text()).match(/const VERZIJA = '([^']+)'/);
+  return m ? m[1] : null;
+}
+async function provjeriNovuVerziju(rucno = false) {
+  let objavljena = null;
+  try { objavljena = await procitajObjavljenuVerziju(); } catch (e) {
+    if (rucno) poruka('Provjera nije uspjela – provjeri internetsku vezu.');
+    return;
+  }
+  if (!objavljena || objavljena === VERZIJA_APLIKACIJE) {
+    if (rucno) poruka(`Imaš najnoviju verziju (${VERZIJA_APLIKACIJE}).`);
+    return;
+  }
+  if (rucno) poruka(`Preuzimam novu verziju ${objavljena}…`);
+  try {
+    const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update();
+  } catch { /* osvježavanje ispod svejedno pomaže */ }
+  // service worker obično sam osvježi stranicu (controllerchange); ako se to ne dogodi, ponudi osvježavanje
+  setTimeout(() => {
+    if (rucno) { location.reload(); return; }
+    obavijest(`Dostupna je nova verzija aplikacije (${esc(objavljena)}). <button class="gumb mali" data-akcija="osvjezi-aplikaciju">Osvježi</button>`);
+  }, rucno ? 4000 : 6000);
+}
+
 if ('serviceWorker' in navigator) {
   // je li stranicom već upravljala neka verzija (prvo postavljanje ne traži osvježavanje, svaka sljedeća nadogradnja da)
   let imaKontrolora = !!navigator.serviceWorker.controller;
@@ -1875,3 +1935,4 @@ if ('serviceWorker' in navigator) {
   });
 }
 pokreni();
+setTimeout(() => provjeriNovuVerziju(false), 5000);      // i bez dodira: zastarjela verzija se otkrije sama

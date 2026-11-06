@@ -647,6 +647,7 @@ class Uvoz:
                 "datum": st["datum"], "napomena": st["napomena"] if pl in lanci_izlaz else "Nema valjanih cijena u cjeniku.",
                 "proizvoda": len(ponude.get(pl, {})), "poslovnica": len(pos),
                 "s_koordinatama": sum(1 for p in pos if p[5] is not None),
+                "jedan_cjenik": pl in JEDAN_CJENIK_ZA_SVE,      # aplikacija ga uz lokaciju uključuje kao lanac
             })
         for g in GLAVNI:
             if g not in lanci_izlaz:

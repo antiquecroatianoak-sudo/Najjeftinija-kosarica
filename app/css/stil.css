@@ -574,3 +574,24 @@ body.ima-traku .sadrzaj { padding-bottom: calc(var(--izbornik) + 104px + env(saf
 @media (max-width: 360px) { .stavka .stavka-trgovina { grid-column: 1 / -1; } }
 .pregled-poruke { min-height: 150px; max-height: 32vh; font-size: .82rem; line-height: 1.4; margin-bottom: 12px; }
 .pregled-poruke { font-family: inherit; white-space: pre-wrap; }
+
+/* mikrofon u donjoj traci (jedna ruka) i oblačić s onim što aplikacija čuje */
+.traka-mikrofon {
+  flex: none; width: 52px; height: 52px; border-radius: 50%; border: 0; display: grid; place-items: center; color: #fff;
+  background: radial-gradient(circle at 30% 30%, #19a493, #0b5d56); box-shadow: 0 8px 20px -8px rgba(11, 93, 86, .6); position: relative;
+}
+.traka-mikrofon svg { width: 24px; height: 24px; }
+.traka-mikrofon.slusa { background: radial-gradient(circle at 30% 30%, #ff7a59, #d64527); }
+.traka-mikrofon.slusa::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 3px solid rgba(214, 69, 39, .45); animation: val 1.6s ease-out infinite; }
+.glas-oblacic {
+  position: fixed; left: 16px; right: 16px; z-index: 26; bottom: calc(var(--izbornik) + 84px + env(safe-area-inset-bottom));
+  max-width: 728px; margin: 0 auto; background: var(--kartica); border: 1px solid var(--rub); border-radius: 16px; padding: 10px 14px;
+  box-shadow: var(--sjena-fokus); display: flex; flex-direction: column; gap: 2px; animation: pojava-gore .2s ease-out;
+}
+.glas-oblacic b { font-size: .9rem; color: var(--glavna); }
+.glas-oblacic.greska b { color: var(--opasnost); }
+.glas-oblacic span { font-size: 1rem; color: var(--tekst); min-height: 1.2em; }
+@media (max-width: 380px) { .donja-traka .traka-sporedni span { display: none; } }
+/* poruke (Dodano…, Vrati) iznad donje trake s gumbima, ne preko nje */
+body.ima-traku .poruka { bottom: calc(var(--izbornik) + 86px + env(safe-area-inset-bottom)); }
+body.ima-traku .glas-oblacic { bottom: calc(var(--izbornik) + 84px + env(safe-area-inset-bottom)); }

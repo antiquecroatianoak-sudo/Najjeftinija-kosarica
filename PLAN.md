@@ -115,3 +115,11 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] 1.7.3: shops of the same chain with identical prices for the whole list are one entry ("ista cijena u 8 poslovnica", nearest shown, full list underneath); different prices stay separate. Real data, 20 km: 60 shops → 28 entries. Tests: Node + browser.
 - [x] × next to every list item removes it, with "Vrati" (undo). Browser tests.
 - [x] 1.7.4: share message in the owner's format (date, store + address, Google Maps link, items with prices, total; for 2+ stores a block per store with its own map link and subtotal, then the overall total). Same message on WhatsApp, phone book, Viber and SMS. Browser tests check the format and that the total equals the sum.
+- [x] Published 1.7.4 (PR #35, run 42251848528 green): shopping message, × remove, one entry per chain with identical prices, clear savings text, automatic updates.
+
+## Round 9 – review of the whole conversation (6 Nov 2026)
+- [x] Microphone also in the bottom bar (one hand); a bubble above the bar shows what was heard.
+- [x] Više → "Provjeri ima li nove verzije" (reads the newest version from the server, downloads it, restarts); the app also checks by itself 5 s after opening.
+- [x] dm (one price list, no store locations) is now included in results with location on.
+- [x] Messages ("Dodano…", "Vrati") appear above the bottom buttons instead of covering them.
+- [~] Store locations: NTL and Gavranović about 62 % found on OpenStreetMap; the rest can't be shown inside the circle yet (decision needed: approximate town location?).
