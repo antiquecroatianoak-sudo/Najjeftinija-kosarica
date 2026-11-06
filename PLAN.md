@@ -90,3 +90,4 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 
 ## Round 6 – only chains with 19+ stores (6 Nov 2026)
 - [x] Chains with fewer than 19 stores are removed in the daily import (owner's decision; dm kept because it publishes one price list for all its 100+ shops). Removed today: Boso, Trgovina Krk, Roto, Dukat, Trgocentar, Vrutak, Bure, Žabac, Djelo Vodice, Jadranka, Lorenco (61 stores, ~39,400 products only they sell). Checked every day, so a chain that grows to 19+ stores comes back automatically. Tests: Python `MaliLanci`.
+- [x] Published: run 42212785056 green, data 12174de0dc. The import log confirms 12 small chains left out (also Branka, which appeared today); 16 chains, 1,384 stores and 185,057 products remain.
