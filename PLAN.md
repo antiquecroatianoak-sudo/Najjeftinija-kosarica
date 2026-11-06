@@ -108,3 +108,4 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - Tests: browser checks for the carousel, celebration and ad banner. Picture: `docs/pregled-1.7.0.png`. Version 1.7.0.
 - [x] One-hand use (owner's 3rd note): fixed action bar just above the bottom menu – list: "Pošalji" + "Zaključaj i usporedi"; results: "Pošalji" + "Kupio/la sam". "Pošalji" opens a bottom panel with WhatsApp / phone book / Viber / SMS tiles.
 - [x] Less clutter: share tiles out of the middle of the list, shorter tips, roomier cards. Browser test checks the bar is visible in the bottom quarter of the screen.
+- [x] Published together: 1.7.0 + Stridon removed – PR #31, run 42233402968 green, data 0179f6270b; 15 chains, 1,448 stores, 163,673 products.
