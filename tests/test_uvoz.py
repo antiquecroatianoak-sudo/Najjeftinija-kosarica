@@ -95,11 +95,11 @@ class Uvoz(unittest.TestCase):
         t = Path(cls.tmp.name)
         arhive, koord = primjer.napravi_sve(t / "ulaz")
         (t / "prije.json").write_text(json.dumps({"proizvoda": 40, "lanci": [{"id": "ntl", "proizvoda": 50}]}))
-        rc = uvoz.main(["--arhiva", *map(str, arhive), "--izlaz", str(t / "izlaz"), "--bez-dopune",
+        rc = uvoz.main(["--najmanje-poslovnica", "1", "--arhiva", *map(str, arhive), "--izlaz", str(t / "izlaz"), "--bez-dopune",
                         "--prethodni", str(t / "prije.json"), "--privremeno", str(t / "tmp"), "--izvjesce", str(t / "greska.md")])
         assert rc == 0, (t / "greska.md").read_text()
         # i još jednom s koordinatama
-        rc = uvoz.main(["--arhiva", *map(str, arhive), "--izlaz", str(t / "izlaz2"), "--dopuna-poslovnica", str(koord),
+        rc = uvoz.main(["--najmanje-poslovnica", "1", "--arhiva", *map(str, arhive), "--izlaz", str(t / "izlaz2"), "--dopuna-poslovnica", str(koord),
                         "--dopuna-proizvoda", str(t / "nema.csv"), "--privremeno", str(t / "tmp")])
         assert rc == 0
         cls.arhive, cls.t = arhive, t
@@ -208,7 +208,7 @@ class Uvoz(unittest.TestCase):
     def test_zastita_objave(self):
         t = self.t
         (t / "veliko.json").write_text(json.dumps({"proizvoda": 1000, "lanci": []}))
-        rc = uvoz.main(["--arhiva", str(self.arhive[0]), "--izlaz", str(t / "izlaz3"), "--bez-dopune",
+        rc = uvoz.main(["--najmanje-poslovnica", "1", "--arhiva", str(self.arhive[0]), "--izlaz", str(t / "izlaz3"), "--bez-dopune",
                         "--prethodni", str(t / "veliko.json"), "--izvjesce", str(t / "g.md"), "--privremeno", str(t / "tmp")])
         self.assertEqual(rc, 2)
         self.assertIn("Izvješće o grešci", (t / "g.md").read_text())
@@ -217,3 +217,54 @@ class Uvoz(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MaliLanci(unittest.TestCase):
+    """Odluka vlasnika 6.11.2026.: lanci s manje od 19 poslovnica ne prikazuju se (osim dm – jedan cjenik za sve)."""
+
+    def test_zadano_19_i_dm_iznimka(self):
+        self.assertEqual(uvoz.NAJMANJE_POSLOVNICA, 19)
+        self.assertIn("dm", uvoz.JEDAN_CJENIK_ZA_SVE)
+
+        class L:   # najmanji lažni lanac: samo ono što _ukloni_male_lance koristi
+            def __init__(self, lanac, trgovine):
+                self.lanac, self.trgovine = lanac, trgovine
+                self.efektivne = {(pl, "p1"): 1 for pl in trgovine}
+                self.redovne, self.naj30, self.sidrene = dict(self.efektivne), {}, {}
+
+        u = uvoz.Uvoz({}, {}, None)
+        u.lanci = [L("konzum", {"konzum": set(range(188))}), L("boso", {"boso": set(range(14))}),
+                   L("dm", {"dm": {1}}), L("studenac", {"studenac": set(range(19))}),
+                   L("spar", {"spar": set(range(119)), "interspar": set(range(5))})]
+        u.status = {pl: {} for x in u.lanci for pl in x.trgovine}
+        u._ukloni_male_lance()
+        self.assertEqual(u.izostavljeni, {"boso": 14, "interspar": 5})
+        ostali = {k[0] for x in u.lanci for k in x.efektivne}
+        self.assertEqual(ostali, {"konzum", "dm", "studenac", "spar"})     # 19 ostaje („manje od 19” ispada)
+        self.assertNotIn("boso", u.status)
+
+    def test_uvoz_bez_malih_lanaca(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = Path(d)
+            arhive, _ = primjer.napravi_sve(t / "ulaz")
+            rc = uvoz.main(["--najmanje-poslovnica", "3", "--arhiva", *map(str, arhive), "--izlaz", str(t / "izlaz"),
+                            "--bez-dopune", "--privremeno", str(t / "tmp"), "--izvjesce", str(t / "g.md")])
+            self.assertEqual(rc, 0, (t / "g.md").read_text() if (t / "g.md").exists() else "")
+            meta = json.loads((t / "izlaz/meta.json").read_text())
+            pr = json.loads((t / "izlaz/proizvodi.json").read_text())
+            pos = json.loads((t / "izlaz/poslovnice.json").read_text())["p"]
+            izost = meta["izostavljeni_lanci"]["lanci"]
+            self.assertTrue(izost and all(n < 3 for n in izost.values()))
+            for pl in izost:
+                self.assertNotIn(pl, pr["l"])
+                self.assertNotIn(pl, [l["id"] for l in meta["lanci"]])
+                self.assertFalse([p for p in pos if p[0] == pl])
+            self.assertTrue(all(l["poslovnica"] >= 3 for l in meta["lanci"]))
+            # svaki proizvod u izlazu ima cijenu u barem jednom preostalom lancu
+            ima = set()
+            for L in pr["l"].values():
+                i = 0
+                for d_ in L["i"]:
+                    i += d_
+                    ima.add(i)
+            self.assertEqual(ima, set(range(len(pr["p"]))))

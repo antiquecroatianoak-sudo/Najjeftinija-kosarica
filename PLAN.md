@@ -86,3 +86,7 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Damaged or old saved data and absurd values from links (e.g. 10^12 packs) can no longer break the app.
 - [x] A slow, older results calculation can no longer overwrite a newer screen; a double tap cannot count savings twice.
 - [x] Faster start: data preparation 548 → 209 ms on real data.
+- [x] Published: version 1.5.0 live (PR #27, publish run 42205274123 green, data 6c116695c3).
+
+## Round 6 – only chains with 19+ stores (6 Nov 2026)
+- [x] Chains with fewer than 19 stores are removed in the daily import (owner's decision; dm kept because it publishes one price list for all its 100+ shops). Removed today: Boso, Trgovina Krk, Roto, Dukat, Trgocentar, Vrutak, Bure, Žabac, Djelo Vodice, Jadranka, Lorenco (61 stores, ~39,400 products only they sell). Checked every day, so a chain that grows to 19+ stores comes back automatically. Tests: Python `MaliLanci`.
