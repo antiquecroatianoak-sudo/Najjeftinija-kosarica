@@ -105,6 +105,21 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(!/od \d+ u košarici/i.test(await s.locator('.zaslon').innerText()), 'kvačica se može maknuti (' + prvaBrza.replace(/\n/g, ' ') + ')');
   await snimi('2b-popis-novo');
 
+  console.log('Zaključan popis po odjelima trgovine');
+  {
+    await s.click('[data-akcija="zakljucaj"]');
+    await s.waitForSelector('.sazetak');
+    await s.click('nav [data-idi="popis"]');
+    await s.waitForSelector('.stavke');
+    const odjeli = await s.locator('.stavke .odjel').allInnerTexts();
+    const red = odjeli.map((x) => x.toLowerCase());
+    provjeri(odjeli.length >= 3 && red.indexOf('voće i povrće') < red.indexOf('kruh i peciva') && red.indexOf('kruh i peciva') < red.indexOf('mliječno i jaja'),
+      'zaključan popis po odjelima: ' + odjeli.join(' → '));
+    await s.click('[data-akcija="otkljucaj"]');
+    await s.waitForSelector('#upisPolje');
+    provjeri(await s.locator('.stavke .odjel').count() === 0, 'otključan popis: bez odjela (redoslijed kako je upisano)');
+  }
+
   console.log('Rezultati');
   await s.click('[data-akcija="zakljucaj"]');
   await s.waitForSelector('.sazetak');

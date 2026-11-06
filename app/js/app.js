@@ -185,6 +185,25 @@ function nazivStavke(s) {
   return s.tekst.replace(/^./, (z) => z.toUpperCase());
 }
 
+// Odjeli trgovine redom kojim se obično prolazi (kao Bring!): na zaključanom popisu stavke su po odjelima.
+const ODJELI = [
+  ['Voće i povrće', ['banane', 'jabuke', 'naranca', 'limun', 'voce-ostalo', 'krumpir', 'luk', 'mrkva', 'rajcica', 'krastavci', 'paprika', 'salata', 'kupus']],
+  ['Kruh i peciva', ['kruh', 'peciva', 'kolaci']],
+  ['Mliječno i jaja', ['mlijeko', 'biljni-napitak', 'jogurt', 'vrhnje', 'maslac', 'sir', 'jaja']],
+  ['Meso, riba i suhomesnato', ['piletina', 'meso', 'riba', 'suhomesnato', 'gotova-jela']],
+  ['Smrznuto', ['smrznuto', 'pomfrit', 'sladoled']],
+  ['Namirnice', ['riza', 'tjestenina', 'brasno', 'secer', 'sol', 'ulje', 'ocat', 'zacini', 'grah', 'zimnica', 'rajcica-konzerva', 'zitarice', 'dzem']],
+  ['Kava, čaj i slatko', ['kava', 'caj', 'napici', 'cokolada', 'keksi', 'slatkisi', 'grickalice', 'proteini']],
+  ['Pića', ['voda', 'sok', 'pivo', 'vino', 'zestoka']],
+  ['Dom, higijena i ostalo', ['bebe', 'ljubimci', 'higijena', 'kozmetika', 'toaletni-papir', 'deterdzent', 'posude', 'ciscenje', 'kucanstvo', 'osvjezivaci', 'insekti']],
+];
+function odjelStavke(s) {
+  if (s.g < 0) return ODJELI.length;                 // pretraga po nazivu: na kraju
+  const id = P.grupe[s.g].id;
+  const i = ODJELI.findIndex(([, grupe]) => grupe.includes(id));
+  return i < 0 ? ODJELI.length : i;
+}
+
 const ZADANE_BRZE = ['kruh', 'mlijeko', 'jaja', 'krumpir', 'banane', 'kava', 'piletina', 'toaletni-papir', 'sir', 'jogurt'];
 
 // "Često kupuješ": najčešće dodavane grupe/podgrupe korisnika, dopunjene uobičajenima (kao Listonic/Bring!)
@@ -221,7 +240,13 @@ function zaslonPopis(el) {
   const imaPovijest = Object.keys(S.povijest || {}).length > 0;
   const uKosari = stavke.filter((s) => s.uKosari).length;
   // redoslijed: još nekupljeno gore, u košarici dolje (način kupnje)
-  const poredane = [...stavke].sort((x, y) => (x.uKosari ? 1 : 0) - (y.uKosari ? 1 : 0));
+  const poredane = [...stavke].sort((x, y) => (S.zakljucano ? odjelStavke(x) - odjelStavke(y) : 0) || (x.uKosari ? 1 : 0) - (y.uKosari ? 1 : 0));
+  const naslovOdjela = (s, k) => {
+    if (!S.zakljucano) return '';
+    const o = odjelStavke(s);
+    if (k > 0 && odjelStavke(poredane[k - 1]) === o) return '';
+    return `<li class="odjel">${esc(o < ODJELI.length ? ODJELI[o][0] : 'Ostalo')}</li>`;
+  };
   el.innerHTML = `<div class="zaslon">
     ${gumbLokacije()}
     ${S.zakljucano ? `<div class="zakljucano">${IKONE.lokot}<span class="razmak">Popis je zaključan. U trgovini označi što je u košarici.</span><button class="gumb mali" data-akcija="otkljucaj">Uredi</button></div>` : `
@@ -245,7 +270,7 @@ function zaslonPopis(el) {
       <div class="redak"><h3 class="razmak">Moj popis${stavke.length ? ` <span class="oznaka">${stavke.length}</span>` : ''}</h3>
       ${uKosari ? `<span class="oznaka zelena">${IKONE.kvacica} ${uKosari} od ${stavke.length} u košarici</span>` : ''}
       ${stavke.length && !S.zakljucano ? '<button class="gumb mali" data-akcija="isprazni">Isprazni</button>' : ''}</div>
-      ${stavke.length ? `<ul class="stavke" style="margin-top:6px">${poredane.map((s) => `
+      ${stavke.length ? `<ul class="stavke" style="margin-top:6px">${poredane.map((s, k) => `${naslovOdjela(s, k)}
         <li class="stavka ${s.uKosari ? 'u-kosari' : ''}">
           <button class="kvacica-kosara" data-akcija="u-kosaru" data-id="${s.id}" role="checkbox" aria-checked="${!!s.uKosari}" aria-label="${s.uKosari ? 'Makni iz košarice' : 'Stavi u košaricu'}">${s.uKosari ? IKONE.kvacica : ''}</button>
           <span class="stavka-ikona" aria-hidden="true">${ikonaStavke(s)}</span>
