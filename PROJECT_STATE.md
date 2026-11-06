@@ -99,6 +99,10 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
 
 - **Spojeno i objavljeno 1.7.0 + bez Stridona** (provjereno 6.11.2026. 15:45 Europe/Zagreb): [PR #31](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/31), merge `9ce57af`; [run 42233402968](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42233402968) `provjere` i `objava` uspješni, „Objavljena verzija podataka: 0179f6270b”; „Gotovo: 163673 proizvoda, 1448 poslovnica, 15 lanaca”; u zapisu nema nijednog retka sa „stridon”. Napomena: prethodni run 42229288974 (PR #30) zapeo je na GitHubovu završnom koraku čišćenja (nakon uspješne objave i provjere) i blokirao red objava; otkazan je ručno (14:2x UTC), nakon čega je nova objava krenula.
 
+- **1.7.1 – popravak prema snimci vlasnika (6.11.2026. 15:43, provjereno 15:51 Europe/Zagreb).** Na vlasnikovu mobitelu (B, lokacija 20 km): ista najbolja trgovina prikazana dvaput (zeleni sažetak + prva kartica karusela), pa je donja traka s gumbima prekrivala karticu i njenu cijenu. Uz to: „Kupio/la sam” nakon odabira druge trgovine u karuselu bilježio je iznos najjeftinije, a ne odabrane.
+  - **Popravljeno:** u B nema zelenog sažetka – karusel je glavni element, ušteda u tankoj traci iznad; „Kupio/la sam” prati trgovinu u fokusu (`data-iznos`, `data-opis`); na mobitelima ≤ 420 px zbijeniji vrh rezultata (bez podnaslova A/B/C). Snimka 360×760 s lokacijom 20 km: `docs/rezultat-b-1.7.1.png` (cijela kartica iznad gumba).
+  - **Testirano:** Python 50 OK, Node 22/22, preglednik „SVE PROVJERE SU PROŠLE” (novo: cijena kartice u fokusu iznad donje trake, nema dvostrukog prikaza, Kupio/la sam bilježi trgovinu u fokusu).
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).

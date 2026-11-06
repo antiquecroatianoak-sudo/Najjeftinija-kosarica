@@ -136,7 +136,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   console.log('Zaključan popis po odjelima trgovine');
   {
     await s.click('[data-akcija="zakljucaj"]');
-    await s.waitForSelector('.sazetak');
+    await s.waitForSelector('.sazetak, #karuselB');
     await s.click('nav [data-idi="popis"]');
     await s.waitForSelector('.stavke');
     const odjeli = await s.locator('.stavke .odjel').allInnerTexts();
@@ -150,8 +150,12 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
 
   console.log('Rezultati');
   await s.click('[data-akcija="zakljucaj"]');
-  await s.waitForSelector('.sazetak');
-  provjeri(/€/.test(await s.locator('.sazetak .iznos').innerText()), 'B: ukupna cijena za jednu trgovinu');
+  await s.waitForSelector('#karuselB');
+  provjeri(/€/.test(await s.locator('#karuselB .u-fokusu .tk-cijena').innerText()), 'B: ukupna cijena za jednu trgovinu');
+  const cijenaB = await s.locator('#karuselB .u-fokusu .tk-cijena').boundingBox();
+  const trakaB = await s.locator('.donja-traka').boundingBox();
+  provjeri(cijenaB.y + cijenaB.height < trakaB.y, 'B: cijena trgovine u fokusu vidljiva iznad donje trake (nije prekrivena)');
+  provjeri(await s.locator('.sazetak').count() === 0, 'B: najbolja trgovina nije prikazana dvaput');
   provjeri(await s.locator('#karuselB .trgovina-kartica').count() >= 3, 'B: karusel trgovina po ukupnoj cijeni');
   provjeri(await s.locator('#karuselB .trgovina-kartica.u-fokusu').count() === 1
     && await s.locator('#karuselB .trgovina-kartica >> nth=0').getAttribute('aria-pressed') === 'true', 'B: prva (najjeftinija) trgovina u fokusu');
@@ -159,6 +163,8 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.locator('#karuselB .trgovina-kartica >> nth=2').click();
   await s.waitForTimeout(700);
   const lanacPoslije = (await s.locator('#detaljiB h3').innerText()).trim();
+  const opisKupnje = await s.locator('.donja-traka [data-akcija="kupljeno"]').getAttribute('data-opis');
+  provjeri(opisKupnje.includes(lanacPoslije.replace('Popis u ', '')), `„Kupio/la sam” bilježi trgovinu u fokusu (${opisKupnje})`);
   provjeri(await s.locator('#karuselB .trgovina-kartica >> nth=2').getAttribute('aria-pressed') === 'true' && lanacPrije !== lanacPoslije,
     `B: dodir/klizanje mijenja trgovinu u fokusu i njen popis („${lanacPrije}” → „${lanacPoslije}”)`);
   await s.locator('#karuselB').evaluate((k) => k.scrollTo({ left: 0 }));
@@ -167,7 +173,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(await s.locator('.oglas .oglas-oznaka').count() === 1, 'oglas: zaobljeni banner s oznakom „Oglas”');
   await snimi('3-rezultat-b');
   await s.click('[data-tab="A"]');
-  await s.waitForSelector('.sazetak');
+  await s.waitForSelector('.sazetak, #karuselB');
   provjeri(await s.locator('.ponuda').count() === 6, 'A: ponuda za svaku stavku');
   const prvaPrije = await s.locator('.ponuda-naziv >> nth=0').innerText();
   const detalji = await s.locator('.ponuda >> nth=0').innerText();
@@ -181,7 +187,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.waitForTimeout(300);
   provjeri(await s.locator('.ponuda-naziv >> nth=0').innerText() === prvaPrije, 'zamjena se može vratiti');
   await s.click('[data-tab="C"]');
-  await s.waitForSelector('.sazetak');
+  await s.waitForSelector('.sazetak, #karuselB');
   provjeri(/\+/.test(await s.locator('.sazetak .gdje').innerText()), 'C: dvije trgovine');
   await snimi('5-rezultat-c');
   await s.click('[data-akcija="kupljeno"]');
@@ -222,12 +228,12 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(/u krugu 10 km/i.test(await s.locator('.naslov-zaslona').innerText()), 'karta prikazuje isti krug');
   await snimi('7-karta');
   await s.click('nav [data-idi="rezultati"]');
-  await s.waitForSelector('.sazetak, .prazno', { timeout: 20000 });
+  await s.waitForSelector('.sazetak, #karuselB, .prazno', { timeout: 20000 });
   const rezKrug = await s.locator('.zaslon').innerText();
   const brojPoslovnica = Number((rezKrug.match(/U krugu 10 km: (\d+) poslovnic/) || [])[1] || 0);
   provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
   await s.click('[data-tab="B"]');
-  await s.waitForSelector('.sazetak');
+  await s.waitForSelector('.sazetak, #karuselB');
   const upute = s.locator('#detaljiB a.upute');
   provjeri(await upute.count() === 1 && /google\.com\/maps\/dir\/\?api=1&destination=4\d\.\d+,1\d\.\d+/.test(await upute.getAttribute('href')), 'B u krugu: „Upute do trgovine” vodi na Google Karte do te poslovnice');
   await snimi('8-rezultat-krug');
@@ -412,7 +418,7 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
     await s3.click('.lok-krug[data-r="20"]');
     await s3.click('[data-akcija="zakljucaj"]');
     const t0 = Date.now();
-    await s3.waitForSelector('.sazetak', { timeout: 25000 });
+    await s3.waitForSelector('.sazetak, #karuselB', { timeout: 25000 });
     const sek = (Date.now() - t0) / 1000;
     provjeri(sek > 10 && sek < 20, `spora veza: rezultati za ${sek.toFixed(1)} s (rok 15 s), zaslon se ne zaglavi`);
     provjeri(/nisu se učitale na vrijeme/.test(await s3.locator('.zaslon').innerText()) && await s3.locator('[data-akcija="ponovno-poslovnice"]').count() === 1, 'spora veza: umjesto praznog zaslona cijene lanaca, jasno objašnjenje i „Pokušaj ponovno”');
