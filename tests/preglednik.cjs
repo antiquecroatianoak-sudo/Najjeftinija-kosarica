@@ -173,6 +173,14 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   await s.click('nav [data-idi="akcije"]');
   await s.waitForSelector('.akcija, .prazno');
   provjeri(await s.locator('.akcija').count() > 0, 'akcije se prikazuju');
+  const akcijeTekst = await s.locator('.zaslon').innerText();
+  provjeri(/najniža cijena u 30 dana/.test(akcijeTekst) && /u 30 dana bilo i/.test(akcijeTekst), 'akcije: „✓ najniža cijena u 30 dana” i „u 30 dana bilo i …”');
+  const sveAkcije = await s.locator('.zaslon > section .akcija').count();
+  await s.check('#praveAkcije');
+  await s.waitForTimeout(200);
+  const prave = await s.locator('.zaslon > section .akcija').count();
+  provjeri(prave > 0 && prave < sveAkcije && !/u 30 dana bilo i/.test(await s.locator('.zaslon').innerText()), `„Samo prave akcije”: ${prave} od ${sveAkcije}`);
+  await s.uncheck('#praveAkcije');
   await snimi('9-akcije');
   await s.click('nav [data-idi="vise"]');
   await s.click('[data-idi="favoriti"]');

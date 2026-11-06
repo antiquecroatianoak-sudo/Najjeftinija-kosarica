@@ -124,8 +124,12 @@ def napravi_arhivu(put: Path, datum: str, bez=(), pomak=0.0):
                 if lanac == "tommy" and bk == "3850112000010" and si == 0:
                     c = 0.0                # cijena 0,00
                 jedinicna = f"{c / osn:.2f}" if osn else ""
+                # NN 75/2025: najniža cijena u 30 dana i sidrena cijena. Kod akcija na parnim proizvodima je u 30 dana
+                # bilo i jeftinije (akcija nije najniža), kod neparnih je akcija najniža cijena.
+                naj30 = c if not akcija else (round(float(akcija) * 0.9, 2) if pi % 2 == 0 else float(akcija))
                 cijene.append({"store_id": s["store_id"], "product_id": pid, "price": f"{c:.2f}", "unit_price": jedinicna,
-                               "best_price_30": "", "anchor_price": "", "special_price": akcija, "available": "",
+                               "best_price_30": f"{naj30:.2f}" if c else "", "anchor_price": f"{round(c * 0.95, 2):.2f}" if c else "",
+                               "special_price": akcija, "available": "",
                                "special_sale_type": "akcija" if akcija else "", "anchor_price_date": ""})
         if lanac in ("plodine", "spar"):
             for naziv, marka, kol, jed, osn, vrsta, cijena in BEZ_BARKODA:

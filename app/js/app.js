@@ -1,7 +1,7 @@
 // Najjeftinija košarica – sučelje aplikacije.
 import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm } from './tekst.js';
 import { pripremiGrupe, rastavi, novaStavkaId, kanon } from './popis.js';
-import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost } from './usporedba.js';
+import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost, ocjenaCijene } from './usporedba.js';
 import { ucitajPodatke, ucitajPoslovnice, pripremiPoslovnice, DRZAVE } from './podaci.js';
 import { ukljuciHvatanje, zabiljezi, izvjesce, obrisiGreske, VERZIJA_APLIKACIJE } from './greske.js';
 
@@ -513,6 +513,14 @@ function znakTrgovine(pr, sAdresom = true) {
   return `<span class="trgovina-znak" style="--boja:${boja(pr.lanac)}"><i></i>${esc(pr.naziv)}</span>${sAdresom && pr.adresa ? `<span>${esc(pr.adresa)}${pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : ''}</span>` : ''}`;
 }
 
+function oznakaCijene(raspon, cijena) {
+  const o = ocjenaCijene(raspon, cijena);
+  if (!o) return '';
+  return o.tip === 'najniza'
+    ? '<span class="oznaka zelena" title="Prema službenom cjeniku trgovine">✓ najniža cijena u 30 dana</span>'
+    : `<span class="oznaka zuta" title="Prema službenom cjeniku trgovine">u 30 dana bilo i ${eur(o.najniza30)}</span>`;
+}
+
 function redakPonude(stavka, ponuda, { prodavac, nacin, ostali = 0, prikaziTrgovinu = true } = {}) {
   const trazeno = `${nazivStavke(stavka)} · ${prikazKolicine(stavka.kolicina, stavka.jedinica)}`;
   if (!ponuda) {
@@ -538,6 +546,7 @@ function redakPonude(stavka, ponuda, { prodavac, nacin, ostali = 0, prikaziTrgov
           ${vrstaNaziv ? `<span>${esc(vrstaNaziv)}</span>` : ''}
           ${ponuda.poPakiranju && stavka.jedinica !== 'pak' && stavka.jedinica !== 'kom' ? '<span class="oznaka zuta">uspoređeno po pakiranju</span>' : ''}
           ${akcija ? '<span class="oznaka crvena">akcija</span>' : ''}
+          ${akcija ? oznakaCijene(raspon, ponuda.cijena) : ''}
           ${P.baza.sumnjivoNiska(ponuda.i, ponuda.cijena) ? '<span class="oznaka zuta">neobično niska cijena – provjeri u trgovini</span>' : ''}
         </div>
         ${prikaziTrgovinu ? `<div class="ponuda-detalji" style="margin-top:5px">${znakTrgovine(pr)}${ostali ? `<span>i još ${ostali} po istoj cijeni</span>` : ''}</div>` : ''}
@@ -772,7 +781,7 @@ function prikaziProizvod(i, izSkenera = false) {
     <div><p class="sitno">${[marka, prikazPakiranja(kol, vrsta), g >= 0 ? P.grupe[g].naziv + (pg >= 0 ? ' · ' + P.grupe[g].pod[pg].naziv : '') : '', barkod ? 'barkod ' + barkod : ''].filter(Boolean).map(esc).join(' · ')}</p></div>
     <table class="tablica"><thead><tr><th>Lanac</th><th class="broj">Uobičajeno</th><th class="broj">Raspon</th></tr></thead><tbody>
       ${redovi.map((x) => `<tr><td>${znakTrgovine({ lanac: x.id, naziv: nazivLanca(x.id) }, false)}${x.raspon.redovna > x.c ? ' <span class="oznaka crvena">akcija</span>' : ''}</td>
-        <td class="broj"><b>${eur(x.c)}</b>${kol && vrsta ? `<br><span class="sitno">${jedinicnaCijena(x.c, kol, vrsta)}</span>` : ''}</td>
+        <td class="broj"><b>${eur(x.c)}</b>${kol && vrsta ? `<br><span class="sitno">${jedinicnaCijena(x.c, kol, vrsta)}</span>` : ''}${x.raspon.najniza30 ? `<br><span class="sitno">najniža u 30 d: ${eur(x.raspon.najniza30)}</span>` : ''}${x.raspon.sidrena ? `<br><span class="sitno">sidrena: ${eur(x.raspon.sidrena)}</span>` : ''}</td>
         <td class="broj sitno">${x.raspon.min !== x.raspon.max ? `${eur(x.raspon.min)}–${eur(x.raspon.max)}` : '–'}<br>${x.raspon.poslovnica} posl.</td></tr>`).join('')}
     </tbody></table>
     ${blizu.length ? `<div><h3>Blizu tebe</h3>${blizu.map(({ x, c }) => `<div class="trgovina-red"><span class="razmak">${znakTrgovine(x)}</span><b>${eur(c)}</b></div>`).join('')}</div>` : ''}
@@ -780,6 +789,7 @@ function prikaziProizvod(i, izSkenera = false) {
       ${izSkenera ? `<button class="gumb glavni razmak" data-akcija="dodaj-proizvod" data-i="${i}">${IKONE.plus} Dodaj na popis</button>` : ''}
       <button class="gumb razmak" data-akcija="prijavi" data-i="${i}">${IKONE.zastava} Prijavi pogrešnu cijenu</button>
     </div>
+    <p class="sitno">„Najniža u 30 d” i „sidrena” (cijena na dan 2.5.2025.) objavljuju trgovine po Odluci NN 75/2025 – tako vidiš je li akcija stvarna.</p>
     <p class="sitno">Cijene su iz službenih dnevnih cjenika trgovina od ${datumHR(P.meta.datum)}. U trgovini može biti drukčije ako je cjenik u međuvremenu promijenjen.</p>`);
 }
 
@@ -807,7 +817,7 @@ function tekstPrijave(i) {
 }
 
 // ---------------------------------------------------------------- AKCIJE
-let filterAkcija = { grupa: -1, upit: '' };
+let filterAkcija = { grupa: -1, upit: '', prave: false };
 function favoritiNaAkciji() {
   const na = [];
   for (const k of S.favoriti || []) {
@@ -841,19 +851,22 @@ function zaslonFavoriti(el) {
 }
 
 function zaslonAkcije(el) {
-  const lista = akcije(P.baza, odabraniLanci(), filterAkcija);
+  const sve = akcije(P.baza, odabraniLanci(), filterAkcija);
+  // "Samo prave akcije": cijena je najniža u zadnjih 30 dana (ako lanac to objavljuje)
+  const lista = filterAkcija.prave ? sve.filter((x) => { const o = ocjenaCijene(P.baza.raspon(x.lanac, x.i), x.cijena); return o && o.tip === 'najniza'; }) : sve;
   const grupeSAkcijom = [...new Set(akcije(P.baza, odabraniLanci(), { najvise: 5000 }).map((x) => P.baza.p[x.i][4]).filter((g) => g >= 0))];
   el.innerHTML = `<div class="zaslon">
     <div class="naslov-zaslona"><div><h2>Akcije ovog tjedna</h2><p>Proizvodi kojima je cijena niža od redovne u većini poslovnica lanca.</p></div></div>
     <div class="redak"><input class="polje" id="akcijeUpit" placeholder="Traži akciju (npr. kava)" value="${esc(filterAkcija.upit)}">
       <select class="polje" id="akcijeGrupa" style="max-width:44%"><option value="-1">Sve grupe</option>${grupeSAkcijom.sort((a, b) => P.grupe[a].naziv.localeCompare(P.grupe[b].naziv, 'hr')).map((g) => `<option value="${g}" ${g === filterAkcija.grupa ? 'selected' : ''}>${esc(P.grupe[g].naziv)}</option>`).join('')}</select></div>
+    <label class="kvacica" style="margin-top:2px"><input type="checkbox" id="praveAkcije" ${filterAkcija.prave ? 'checked' : ''}><span class="razmak"><b>Samo prave akcije</b><br><span class="sitno">cijena je najniža u zadnjih 30 dana (podatak iz službenog cjenika)</span></span></label>
     ${favoritiNaAkciji()}
     ${oglas()}
     <section class="kartica">${lista.length ? lista.slice(0, 150).map((x) => {
       const p = P.baza.p[x.i];
       return `<button class="akcija" data-akcija="proizvod" data-i="${x.i}">
         <span class="popust">−${Math.round(x.popust * 100)}%</span>
-        <span class="razmak"><b style="display:block">${esc(p[0])}</b><span class="sitno">${esc([p[1], prikazPakiranja(p[2], p[3])].filter(Boolean).join(' · '))}</span><br>${znakTrgovine({ lanac: x.lanac, naziv: nazivLanca(x.lanac) }, false)}</span>
+        <span class="razmak"><b style="display:block">${esc(p[0])}</b><span class="sitno">${esc([p[1], prikazPakiranja(p[2], p[3])].filter(Boolean).join(' · '))}</span><br>${znakTrgovine({ lanac: x.lanac, naziv: nazivLanca(x.lanac) }, false)} ${oznakaCijene(P.baza.raspon(x.lanac, x.i), x.cijena)}</span>
         <span class="ponuda-cijena"><b>${eur(x.cijena)}</b><span class="precrtano">${eur(x.redovna)}</span></span></button>`;
     }).join('') : '<div class="prazno"><p>Nema akcija za odabrani filtar.</p></div>'}</section>
     ${lista.length > 150 ? '<p class="sitno">Prikazano je 150 najvećih popusta. Suzi pretragu za više.</p>' : ''}
@@ -861,6 +874,7 @@ function zaslonAkcije(el) {
   let sat;
   $('#akcijeUpit').oninput = (e) => { clearTimeout(sat); sat = setTimeout(() => { filterAkcija.upit = e.target.value; prikazi(); const u = $('#akcijeUpit'); u.focus(); u.setSelectionRange(u.value.length, u.value.length); }, 350); };
   $('#akcijeGrupa').onchange = (e) => { filterAkcija.grupa = Number(e.target.value); prikazi(); };
+  $('#praveAkcije').onchange = (e) => { filterAkcija.prave = e.target.checked; prikazi(); };
 }
 
 // ---------------------------------------------------------------- KARTA
