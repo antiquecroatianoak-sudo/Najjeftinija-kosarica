@@ -115,3 +115,4 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] 1.7.3: shops of the same chain with identical prices for the whole list are one entry ("ista cijena u 8 poslovnica", nearest shown, full list underneath); different prices stay separate. Real data, 20 km: 60 shops → 28 entries. Tests: Node + browser.
 - [x] × next to every list item removes it, with "Vrati" (undo). Browser tests.
 - [x] 1.7.4: share message in the owner's format (date, store + address, Google Maps link, items with prices, total; for 2+ stores a block per store with its own map link and subtotal, then the overall total). Same message on WhatsApp, phone book, Viber and SMS. Browser tests check the format and that the total equals the sum.
+- [x] Published 1.7.4 (PR #35, run 42251848528 green): shopping message, × remove, one entry per chain with identical prices, clear savings text, automatic updates.
