@@ -107,6 +107,11 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
 
 - **1.7.1 objavljeno** (provjereno 6.11.2026. 16:45 Europe/Zagreb): [PR #34](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/34) (popravak radnog toka objave), merge `56d69a6`; [run 42242007549](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/actions/runs/42242007549) `provjere` i `objava` uspješni (deploy 4 min), „Objavljena verzija podataka: 0179f6270b” (isti cjenik kao 1.7.0; nova je aplikacija). Issue #33 zatvoren kao riješen.
 
+- **1.7.2 (6.11.2026., provjereno 16:55 Europe/Zagreb).** Vlasnik nije razumio tekst „Štediš 1,51 € u odnosu na prosjek · do 3,48 € prema najskupljoj”; na snimci je i dalje bio zeleni sažetak iz 1.7.0 – mobitel je imao staru verziju.
+  - **Tekst:** „Ovdje plaćaš 1,51 € manje nego u prosječnoj trgovini i 3,48 € manje nego u najskupljoj.” (A/C: „Plaćaš X manje nego u prosječnoj trgovini”).
+  - **Uzrok stare verzije (popravljeno):** nakon nadogradnje aplikacija se osvježavala samo jednom po kartici (`sessionStorage`), pa je druga nadogradnja istog dana čekala zatvaranje kartice; ako kartica pri otvaranju nije imala service worker, nijedna kasnija nadogradnja nije osvježila stranicu; provjera nove verzije samo pri otvaranju. Sada: osvježi se za svaku novu verziju, a pri povratku u aplikaciju (najviše jednom u 30 min) provjerava se nova verzija.
+  - **Test:** `tests/nadogradnja.cjs` (novi korak u CI): dvije uzastopne nadogradnje u istoj otvorenoj kartici stignu same – na starom kodu pada već na prvoj. Python 50 OK, Node 22/22, preglednik „SVE PROVJERE SU PROŠLE”.
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).

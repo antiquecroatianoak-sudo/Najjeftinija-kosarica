@@ -888,7 +888,7 @@ function prikazA(a, b, pr) {
       <div class="oznaka-mala">Najjeftinije po stavci</div>
       <div class="iznos">${eur(ukupno)}</div>
       <div class="gdje">u ${trgovine.size} ${trgovine.size === 1 ? 'trgovini' : 'trgovina'}${nedostaje ? ` · ${nedostaje} nije pronađeno` : ''}</div>
-      ${u.usteda > 0 ? `<div class="ustedi">Štediš ${eur(u.usteda)} u odnosu na prosjek trgovina</div>` : ''}
+      ${u.usteda > 0 ? `<div class="ustedi">Plaćaš <b>${eur(u.usteda)}</b> manje nego u prosječnoj trgovini</div>` : ''}
     </section>
     <section class="kartica">${a.map((x) => redakPonude(x.stavka, x.najbolja, { nacin: pr.nacin, ostali: x.najbolja ? x.najbolja.istaCijena.length - 1 : 0 })).join('')}</section>
     ${gumbiKupnje(ukupno, u.prosjek, `Najjeftinije po stavci (${trgovine.size} trgovina)`)}`;
@@ -962,7 +962,7 @@ function prikazB(b, pr) {
   // Karusel je glavni element: najbolja trgovina je prva kartica (bez ponovljenog zelenog sažetka iznad –
   // inače kartica s cijenom završi ispod donje trake s gumbima).
   return `<div class="karusel-naslov"><span class="oznaka-naslov">${pr.nacin === 'poslovnice' ? 'Cijeli popis u jednoj poslovnici' : 'Cijeli popis u jednom lancu (procjena)'}</span><span class="sitno">povuci ↔</span></div>
-    ${u.usteda > 0 ? `<div class="ustedi-traka" title="Štediš ${eur(u.usteda)} u odnosu na prosječnu trgovinu, do ${eur(Math.max(0, u.najskuplje - najbolji.ukupno))} prema najskupljoj">Štediš <b>${eur(u.usteda)}</b> · do ${eur(Math.max(0, u.najskuplje - najbolji.ukupno))} prema najskupljoj</div>` : ''}
+    ${u.usteda > 0 ? `<div class="ustedi-traka">Ovdje plaćaš <b>${eur(u.usteda)}</b> manje nego u prosječnoj trgovini${u.najskuplje - najbolji.ukupno > u.usteda ? ` i <b>${eur(u.najskuplje - najbolji.ukupno)}</b> manje nego u najskupljoj` : ''}.</div>` : ''}
     ${!potpuni ? '<p class="savjet">' + IKONE.info + '<span>Nijedna trgovina nema sve stavke. Poredak: najprije one kojima nedostaje najmanje.</span></p>' : ''}
     <div class="karusel" id="karuselB" role="list" aria-label="Trgovine, od najjeftinije">
       ${prvi.map((r, k) => karticaTrgovine(r, k, najbolji, r.prodavac.id === otvoren)).join('')}
@@ -986,7 +986,7 @@ function prikazC(c, b, pr) {
       <div class="oznaka-mala">Najbolja kombinacija dviju ${pr.nacin === 'poslovnice' ? 'poslovnica' : 'trgovina'}</div>
       <div class="iznos">${eur(naj.ukupno)}</div>
       <div class="gdje">${esc(naj.prodavaci[0].naziv)} + ${esc(naj.prodavaci[1].naziv)}${naj.nedostaje ? ` · nema ${naj.nedostaje}` : ''}</div>
-      ${usporedbaB > 0 ? `<div class="ustedi">${eur(usporedbaB)} jeftinije nego sve u ${esc(jednaB.prodavac.naziv)}</div>` : u.usteda > 0 ? `<div class="ustedi">Štediš ${eur(u.usteda)} u odnosu na prosjek</div>` : ''}
+      ${usporedbaB > 0 ? `<div class="ustedi">${eur(usporedbaB)} jeftinije nego sve u ${esc(jednaB.prodavac.naziv)}</div>` : u.usteda > 0 ? `<div class="ustedi">Plaćaš <b>${eur(u.usteda)}</b> manje nego u prosječnoj trgovini</div>` : ''}
     </section>
     ${[0, 1].map((k) => `<section class="kartica"><div class="redak"><span class="razmak">${znakTrgovine(naj.prodavaci[k], false)}<br><span class="sitno">${esc(naj.prodavaci[k].adresa || '')}</span></span><b>${eur(zbroj(k))}</b></div>${gumbUputa(naj.prodavaci[k])}${dio(k)}</section>`).join('')}
     ${nema ? `<section class="kartica">${nema}</section>` : ''}
@@ -1776,11 +1776,25 @@ async function pokreni(rucno = false) {
 }
 
 if ('serviceWorker' in navigator) {
-  const imaoKontrolora = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.register('sw.js', { scope: './' }).catch((e) => zabiljezi('sw', 'Registracija nije uspjela', e.message));
-  // nova verzija aplikacije je preuzela upravljanje: osvježi jednom da se ne miješaju stara i nova
+  // je li stranicom već upravljala neka verzija (prvo postavljanje ne traži osvježavanje, svaka sljedeća nadogradnja da)
+  let imaKontrolora = !!navigator.serviceWorker.controller;
+  let osvjezavam = false;
+  navigator.serviceWorker.register('sw.js', { scope: './' }).then((reg) => {
+    // aplikacija ostaje otvorena danima (Android): kad se korisnik vrati u nju, provjeri ima li nove verzije
+    // (najviše jednom u 30 min) – inače bi stara verzija ostala do potpunog zatvaranja kartice
+    let zadnjaProvjera = Date.now();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && Date.now() - zadnjaProvjera > 30 * 60 * 1000) {
+        zadnjaProvjera = Date.now();
+        reg.update().catch(() => {});
+      }
+    });
+  }).catch((e) => zabiljezi('sw', 'Registracija nije uspjela', e.message));
+  // nova verzija je preuzela upravljanje: osvježi jednom za SVAKU novu verziju (ne samo jednom po kartici –
+  // prije je druga nadogradnja istog dana čekala zatvaranje kartice)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (imaoKontrolora && !sessionStorage.getItem('kosarica-osvjezeno')) { sessionStorage.setItem('kosarica-osvjezeno', '1'); location.reload(); }
+    if (imaKontrolora && !osvjezavam) { osvjezavam = true; location.reload(); }
+    imaKontrolora = true;
   });
 }
 pokreni();

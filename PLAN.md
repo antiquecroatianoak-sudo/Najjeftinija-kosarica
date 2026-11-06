@@ -111,3 +111,4 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Published together: 1.7.0 + Stridon removed – PR #31, run 42233402968 green, data 0179f6270b; 15 chains, 1,448 stores, 163,673 products.
 - [x] 1.7.1 (owner's screenshot): B showed the best store twice and the bottom buttons covered the store card's price – now the carousel is the main element with the saving in a slim strip, compact top on small phones, and "Kupio/la sam" records the store in focus. Browser test checks the price is above the bottom bar.
 - [x] 1.7.1 published (run 42242007549). Publish workflow now survives GitHub Pages slowness (20 min) and re-runs (artifact per attempt).
+- [x] 1.7.2: savings text in plain words ("Ovdje plaćaš 1,51 € manje nego u prosječnoj trgovini…"); new versions now reach an open app by themselves (two updates in one day used to wait for the tab to be closed). Test `tests/nadogradnja.cjs` in CI.
