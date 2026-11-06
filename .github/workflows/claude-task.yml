@@ -14,12 +14,17 @@ concurrency:
 
 jobs:
   claude:
+    # SIGURNOST: samo vlasnik/suradnici smiju pokrenuti posao s pravom pisanja i vlasnikovim tokenom.
+    # Aplikacija javnim korisnicima otvara issue („Prijavi pogrešnu cijenu”), pa bi inače bilo tko mogao
+    # napisati „@claude …” i pokrenuti izmjene repozitorija.
     if: >-
       github.event.issue.pull_request == null &&
       ((github.event_name == 'issues' &&
-        startsWith(github.event.issue.body, '@claude')) ||
+        startsWith(github.event.issue.body, '@claude') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
        (github.event_name == 'issue_comment' &&
-        startsWith(github.event.comment.body, '@claude')))
+        startsWith(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

@@ -8,7 +8,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { norm, korijen, prikazPakiranja, eur, uOsnovnu } from '../app/js/tekst.js';
-import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu } from '../app/js/popis.js';
+import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu, osvjeziStavke } from '../app/js/popis.js';
+import { ocistiStanje, ocistiStavku, vratiGrupePoId } from '../app/js/stanje.js';
 import { Baza, pragPoslovnica, ocjenaCijene, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
 
 const KORIJEN = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -210,6 +211,41 @@ test('prepoznavanje govora: "mljeko", "mleko", jedno krivo slovo – ista grupa 
   assert.ok(blizu('mlieko', 'mleko') && blizu('jogrut', 'jogurt') && !blizu('sir', 'sirup'));
 });
 
+test('stara stavka spremljena kao tekst ("mljeko") ponovno se prepozna kao mlijeko, ne jogurt (prijava vlasnika 6.11.)', () => {
+  pripremiGrupe(grupe);                                                     // grupe objavljenih podataka (primjer)
+  // ovako je stavku spremila starija verzija: g = -1, pretraga teksta "mljeko" → „Mljekara Marina” jogurt
+  const stare = [
+    { id: 'a', tekst: 'mljeko', g: -1, pg: -1, upit: 'mljeko', filtar: '', kolicina: 1, jedinica: 'pak', zadano: true },
+    { id: 'b', tekst: 'mljeko', g: -1, pg: -1, upit: 'mljeko', filtar: '', kolicina: 2, jedinica: 'pak', zadano: false },
+    { id: 'c', tekst: 'xyzabc', g: -1, pg: -1, upit: 'xyzabc', filtar: '', kolicina: 1, jedinica: 'pak', zadano: true },
+    { id: 'd', tekst: 'Coca-Cola 2L', g: -1, pg: -1, upit: '', proizvod: 5, samoTaj: true, kolicina: 1, jedinica: 'pak' },
+  ];
+  assert.equal(osvjeziStavke(stare), 2);
+  assert.equal(grupe[stare[0].g].id, 'mlijeko');
+  assert.deepEqual([stare[0].kolicina, stare[0].jedinica, stare[0].upit], [1, 'l', '']);
+  assert.deepEqual([stare[1].kolicina, stare[1].jedinica], [2, 'l']);     // "2 pakiranja" mlijeka = 2 l
+  assert.equal(stare[2].g, -1);                                             // nepoznato ostaje pretraga
+  assert.equal(stare[3].g, -1);                                             // odabrani proizvod se ne dira
+  // u cijelom tijeku mlijeko nikad ne dovodi do jogurta (prije popravka pretraga "mljeko" nalazila je i jogurt)
+  const kand = baza.kandidati(stare[0]);
+  assert.ok(kand.length && kand.every((i) => baza.p[i][4] === gid('mlijeko') && !/jogurt/i.test(baza.p[i][0])));
+  const [a] = rezultatA(baza, [stare[0]], prodavaciLanaca(baza));
+  assert.ok(/mlijeko/i.test(baza.p[a.najbolja.i][0]) && a.rang.every((r) => !/jogurt/i.test(baza.p[r.i][0])));
+});
+
+test('engleski nazivi namirnica: "milk" je mlijeko (ne Milka), "bread" kruh, "eggs" jaja', () => {
+  const grupe = JSON.parse(readFileSync(join(KORIJEN, 'uvoz', 'grupe.json'), 'utf8')).grupe;
+  pripremiGrupe(grupe);
+  const id = (t) => { const s = rastavi(t)[0]; return s && s.g >= 0 ? grupe[s.g].id : null; };
+  for (const [en, hr] of [['milk', 'mlijeko'], ['Milk', 'mlijeko'], ['two litres of milk', 'mlijeko'], ['bread', 'kruh'], ['eggs', 'jaja'],
+    ['potatoes', 'krumpir'], ['coffee', 'kava'], ['yogurt', 'jogurt'], ['toilet paper', 'toaletni-papir'], ['chicken', 'piletina'],
+    ['cheese', 'sir'], ['butter', 'maslac'], ['sugar', 'secer'], ['bananas', 'banane'], ['apples', 'jabuke'], ['water', 'voda'],
+    ['beer', 'pivo'], ['rice', 'riza'], ['oil', 'ulje'], ['tea', 'caj'], ['onions', 'luk'], ['tomatoes', 'rajcica'], ['flour', 'brasno'],
+    ['juice', 'sok'], ['wine', 'vino'], ['meat', 'meso'], ['fish', 'riba'], ['salt', 'sol'], ['pasta', 'tjestenina'], ['chocolate', 'cokolada'],
+    ['biscuits', 'keksi'], ['carrots', 'mrkva'], ['ice cream', 'sladoled'], ['detergent', 'deterdzent']]) assert.equal(id(en), hr, en);
+  assert.equal(id('Milka čokolada'), 'cokolada');
+});
+
 test('procjena po lancu: proizvod iz samo jedne poslovnice velikog lanca nije cijena lanca', () => {
   assert.equal(pragPoslovnica(188), 2);
   assert.equal(pragPoslovnica(3), 1);
@@ -227,14 +263,46 @@ test('procjena po lancu: proizvod iz samo jedne poslovnice velikog lanca nije ci
   assert.equal(b.lanci.mali.procjena[0], 25);                           // mali lanac: svaki proizvod vrijedi
 });
 
-test('neobično niska cijena se označi, ali se ne briše ni ne premješta', () => {
+test('neobično niska cijena (greška u cjeniku) se nikad ne koristi: ni u A, B, C ni u akcijama', () => {
   const p = [['Pileći batak-zabatak za gastro', '', 1, 'kg', 0, -1, '']];
-  const l = { a: { i: [0], t: [29], n: [0], x: [0], r: [0], s: [1] } };
-  for (let k = 1; k <= 30; k++) { p.push([`Pileći batak ${k}`, '', 1, 'kg', 0, -1, '']); l[`c${k}`] = { i: [k], t: [400 + k], n: [0], x: [0], r: [0], s: [5] }; }
-  const b = new Baza({ p, l }, [{ id: 'piletina', pod: [] }]);
-  assert.equal(b.sumnjivoNiska(0, 29), true);                // 0,29 €/kg prema ~4 €/kg
+  const l = { a: { i: [0, 1], t: [19, 405], n: [0, 0], x: [0, 0], r: [500, 0], s: [1, 1] } };
+  for (let k = 1; k <= 30; k++) { p.push([`Pileći batak ${k}`, '', 1, 'kg', 0, -1, '']); if (k > 1) l[`c${k}`] = { i: [k], t: [400 + k], n: [0], x: [0], r: [0], s: [5] }; }
+  const b = new Baza({ p, l }, [{ id: 'piletina', naziv: 'Piletina', pod: [], zadano: { kolicina: 1, jedinica: 'kg' } }]);
+  assert.equal(b.sumnjivoNiska(0, 19), true);                // 0,19 €/kg prema ~4 €/kg (ispod 1/20)
+  assert.equal(b.sumnjivoNiska(0, 29), false);               // 1/14: može biti stvarna rasprodaja, ostaje
   assert.equal(b.sumnjivoNiska(1, 401), false);
-  assert.equal(b.lanci.a.cijena[0], 29);                     // cijena ostaje u usporedbi
+  assert.equal(b.prihvatljiva(0, 19), false);
+  assert.equal(b.prihvatljiva(1, 0), false);
+  const prodavaci = prodavaciLanaca(b);
+  const stavke = [{ g: 0, pg: -1, kolicina: 1, jedinica: 'kg' }];
+  const A = rezultatA(b, stavke, prodavaci);
+  assert.ok(A[0].najbolja);
+  assert.ok(A[0].rang.every((x) => x.i !== 0));             // greška nije ni na rang-listi
+  const B = rezultatB(b, stavke, prodavaci);
+  const kodA = B.find((r) => r.prodavac.id === 'a');
+  assert.equal(kodA.stavke[0].i, 1);                         // u lancu "a" uzima se stvarni batak, ne greška
+  assert.ok(B.every((r) => !r.stavke[0] || r.stavke[0].i !== 0));
+  assert.ok(rezultatC(B).every((par) => par.podjela.every((x) => !x || x.ponuda.i !== 0)));
+  assert.ok(akcije(b, Object.keys(b.lanci)).every((x) => x.i !== 0));
+  // u podgrupi (ujednačenija) granica je 1/16: 0,29 €/kg prema ~5,6 €/kg je greška
+  const p2 = p.map((x) => [x[0], x[1], x[2], x[3], 0, 0, '']);
+  const l2 = Object.fromEntries(Object.entries(l).map(([id, L]) => [id, { ...L, t: L.t.map((c) => (c === 19 ? 29 : c + 150)) }]));
+  const b2 = new Baza({ p: p2, l: l2 }, [{ id: 'piletina', naziv: 'Piletina', pod: [{ id: 'batak', naziv: 'batak' }] }]);
+  assert.equal(b2.prihvatljiva(0, 29), false);
+  assert.equal(b2.prihvatljiva(0, 299), true);
+});
+
+test('isti proizvod u 3+ lanca: cijena ispod 1/4 uobičajene je greška (npr. vino 0,20 € umjesto 3,99 €)', () => {
+  const p = [['Vino Arabella Merlot 0,75 l', 'Arabella', 0.75, 'l', -1, -1, '']];
+  const l = { k: { i: [0], t: [20], n: [0], x: [0], r: [0], s: [5] }, a: { i: [0], t: [399], n: [0], x: [0], r: [0], s: [5] },
+    b: { i: [0], t: [419], n: [0], x: [0], r: [0], s: [5] }, c: { i: [0], t: [389], n: [0], x: [0], r: [0], s: [5] } };
+  const b = new Baza({ p, l }, []);
+  assert.equal(b.prihvatljiva(0, 20), false);
+  assert.equal(b.prihvatljiva(0, 299), true);                // akcija −25 % je stvarna
+  const B = rezultatB(b, [{ g: -1, pg: -1, proizvod: 0, samoTaj: true, kolicina: 1, jedinica: 'pak' }], prodavaciLanaca(b));
+  const kodK = B.find((r) => r.prodavac.id === 'k');
+  assert.equal(kodK.stavke[0], null);                        // u "k" se vino ne računa po krivih 0,20 €
+  assert.equal(B[0].ukupno, 389);
 });
 
 test('najniža cijena u 30 dana (NN 75/2025): prava akcija ili je bilo jeftinije', () => {
@@ -248,4 +316,33 @@ test('najniža cijena u 30 dana (NN 75/2025): prava akcija ili je bilo jeftinije
   assert.equal(r.najniza30, 379);
   assert.equal(r.sidrena, 450);
   assert.equal(ocjenaCijene(r, 399).tip, 'bilo-jeftinije');
+});
+
+test('oštećeno ili staro spremljeno stanje ne ruši aplikaciju (krivi tipovi, prevelike količine)', () => {
+  const s = ocistiStanje({ stavke: [null, 5, 'x', { tekst: 'kruh', g: '3', pg: null, kolicina: 'abc', jedinica: 'bačva' },
+    { tekst: 'voda', kolicina: 1e9, jedinica: 'l' }, { tekst: 'a'.repeat(500), kolicina: -2 }],
+  lanci: 'konzum', favoriti: [1, 'x'], povijest: [], usteda: { ukupno: 'NaN', kupnje: null }, lokacija: { radijus: 999 } });
+  assert.equal(s.stavke.length, 3);
+  assert.deepEqual([s.stavke[0].g, s.stavke[0].pg, s.stavke[0].kolicina, s.stavke[0].jedinica], [3, -1, 1, 'pak']);
+  assert.equal(s.stavke[1].kolicina, 1);                        // 1 000 000 000 l nije količina
+  assert.equal(s.stavke[2].tekst.length, 120);
+  assert.equal(s.lanci, null);
+  assert.deepEqual(s.favoriti, ['x']);
+  assert.deepEqual(s.povijest, {});
+  assert.deepEqual(s.usteda, { ukupno: 0, kupnje: [] });
+  assert.equal(s.lokacija.radijus, 5);
+  assert.equal(ocistiStavku(null), null);
+});
+
+test('spremljena stavka pamti ID grupe: nova verzija s preslaganim grupama ne pretvara mlijeko u jogurt', () => {
+  const stare = [{ id: 'mlijeko', pod: [{ id: 'trajno' }, { id: 'svjeze' }] }, { id: 'jogurt', pod: [] }];
+  const nove = [{ id: 'jogurt', pod: [] }, { id: 'kefir', pod: [] }, { id: 'mlijeko', pod: [{ id: 'svjeze' }, { id: 'trajno' }] }];
+  const st = [{ g: 0, pg: 1, gid: 'mlijeko', pgid: 'svjeze', tekst: 'svježe mlijeko' }, { g: 1, pg: -1, gid: 'jogurt', pgid: '', tekst: 'jogurt' },
+    { g: 7, pg: -1, tekst: 'nešto' }, { g: 0, pg: -1, gid: 'nestalo', tekst: 'sok' }];
+  assert.equal(stare[st[0].g].id, 'mlijeko');
+  vratiGrupePoId(st, nove);
+  assert.deepEqual([nove[st[0].g].id, nove[st[0].g].pod[st[0].pg].id], ['mlijeko', 'svjeze']);
+  assert.equal(nove[st[1].g].id, 'jogurt');
+  assert.deepEqual([st[2].g, st[2].upit], [-1, 'nešto']);      // nevaljan stari broj → pretraga teksta
+  assert.deepEqual([st[3].g, st[3].upit], [-1, 'sok']);        // grupa više ne postoji
 });

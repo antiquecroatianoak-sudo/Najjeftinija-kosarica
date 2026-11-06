@@ -48,7 +48,56 @@ export function pripremiGrupe(grupe) {
 }
 
 // Prepoznaj grupu/podgrupu za frazu (bez količine).
+// Najčešće namirnice na engleskom (vlasnik i turisti često kažu "milk", "bread"): prijevod prije prepoznavanja.
+const ENGLESKI = [
+  ['toilet paper', 'toaletni papir'], ['olive oil', 'maslinovo ulje'], ['sour cream', 'vrhnje'], ['ice cream', 'sladoled'],
+  ['milk', 'mlijeko'], ['bread', 'kruh'], ['eggs', 'jaja'], ['egg', 'jaja'], ['potatoes', 'krumpir'], ['potato', 'krumpir'],
+  ['butter', 'maslac'], ['cheese', 'sir'], ['yogurt', 'jogurt'], ['yoghurt', 'jogurt'], ['coffee', 'kava'], ['tea', 'caj'],
+  ['sugar', 'secer'], ['salt', 'sol'], ['oil', 'ulje'], ['rice', 'riza'], ['pasta', 'tjestenina'], ['flour', 'brasno'],
+  ['water', 'voda'], ['juice', 'sok'], ['beer', 'pivo'], ['wine', 'vino'], ['chicken', 'piletina'], ['meat', 'meso'],
+  ['fish', 'riba'], ['apples', 'jabuke'], ['apple', 'jabuke'], ['bananas', 'banane'], ['banana', 'banane'],
+  ['tomatoes', 'rajcica'], ['tomato', 'rajcica'], ['onions', 'luk'], ['onion', 'luk'], ['chocolate', 'cokolada'],
+  ['biscuits', 'keksi'], ['cookies', 'keksi'], ['detergent', 'deterdzent'], ['carrots', 'mrkva'], ['carrot', 'mrkva'],
+];
+export function prijevod(fraza) {
+  let n = ` ${norm(fraza)} `;
+  let promjena = false;
+  for (const [en, hr] of ENGLESKI) {
+    if (n.includes(` ${en} `)) { n = n.replace(` ${en} `, ` ${hr} `); promjena = true; }
+  }
+  return promjena ? n.trim() : null;
+}
+
 export function prepoznaj(fraza) {
+  const p = prepoznajHR(fraza);
+  if (p) return p;
+  const hr = prijevod(fraza);
+  return hr ? prepoznajHR(hr) : null;
+}
+
+// Stavka spremljena starijom verzijom kao obična pretraga teksta ("mljeko" → našlo je „Mljekara” jogurt) –
+// pri svakom pokretanju ponovno se prepozna današnjim pravilima. Vraća broj popravljenih stavki.
+export function osvjeziStavke(stavke) {
+  if (!rjecnik) return 0;
+  let n = 0;
+  for (const s of stavke) {
+    if (s.g >= 0 || s.samoTaj || s.proizvod != null) continue;
+    const p = prepoznaj(s.tekst || s.upit || '');
+    if (!p) continue;
+    const g = rjecnik.grupe[p.g];
+    s.g = p.g; s.pg = p.pg; s.upit = ''; s.filtar = posebneRijeci(s.tekst || '', p); s.odbijeni = [];
+    if (s.zadano || s.jedinica === 'pak') {
+      const [zk, zj] = g.zadano;
+      const puta = s.zadano ? 1 : s.kolicina;
+      s.kolicina = Math.round(puta * zk * 1000) / 1000;
+      s.jedinica = zj;
+    }
+    n++;
+  }
+  return n;
+}
+
+function prepoznajHR(fraza) {
   const n = norm(fraza);
   if (!n || !rjecnik) return null;
   if (rjecnik.fraze.has(n)) return rjecnik.fraze.get(n);

@@ -28,7 +28,7 @@ export class Baza {
     this.p = proizvodi.p;               // [naziv, marka, količina, vrsta, grupa, podgrupa, barkod, (ostali barkodovi)]
     this.grupe = grupe;
     this.n = this.p.length;
-    this.trazilica = this.p.map((r) => ' ' + norm(`${r[0]} ${r[1]}`) + ' ');
+    this._trazilica = null;             // gradi se tek pri prvoj pretrazi teksta (≈0,4 s manje pri pokretanju)
     this.poGrupi = new Map();
     this.poBarkodu = new Map();
     this.p.forEach((r, i) => {
@@ -62,14 +62,46 @@ export class Baza {
     }
   }
 
-  // Neobično niska cijena: jedinična cijena ispod 1/8 medijana iste vrste proizvoda (grupa, podgrupa, kg/l).
-  // Ne briše se i ne mijenja poredak (rasprodaje i veća pakiranja su stvarne), nego se kupca upozori.
+  // Neobično niska cijena = gotovo uvijek greška u cjeniku (krivo upisana cijena ili količina). Takva se cijena
+  // NIGDJE ne koristi: ni u A/B/C, zamjeni, akcijama, favoritima ni detaljima (odluka vlasnika 6.11.2026.).
+  // Pravila (izmjereno na stvarnih 438 000 cijena, 6.11.2026.):
+  //  1. isti proizvod u 3+ lanca: cijena ispod 1/4 njegove srednje cijene po lancima;
+  //  2. jedinična cijena (kg/l) ispod 1/16 srednje cijene iste podgrupe (npr. batak 0,29 €/kg prema 5,58 €/kg)
+  //     ili ispod 1/20 srednje cijene cijele grupe kad podgrupe nema (npr. med 1,2 kg za 0,08 €).
+  // Blaža granica (1/8 po vrsti ili 1/4 najjeftinijih 10 %) skrivala je stvarne cijene (losion, suncokretovo ulje),
+  // jer grupe miješaju vrlo različite proizvode, pa nije uzeta.
   sumnjivoNiska(i, cijenaCenti) {
-    const [, , kol, vrsta, g, pg] = this.p[i];
-    if (!(kol > 0) || (vrsta !== 'kg' && vrsta !== 'l') || g < 0) return false;
-    if (!this.mediani) this.mediani = this.izracunajMedijane();
-    const m = this.mediani.get(`${g}|${pg}|${vrsta}`);
-    return m != null && cijenaCenti / kol < m / 8;
+    if (!this.donjaGranica) this.donjaGranica = this.izracunajGranice();
+    return cijenaCenti < this.donjaGranica[i];
+  }
+
+  // Cijena koja smije ući u usporedbu: postoji i nije neobično niska.
+  prihvatljiva(i, cijenaCenti) {
+    return cijenaCenti > 0 && !this.sumnjivoNiska(i, cijenaCenti);
+  }
+
+  // Najniža prihvatljiva cijena pakiranja po proizvodu (0 = bez granice).
+  izracunajGranice() {
+    const mediani = this.izracunajMedijane();
+    const lanci = Object.values(this.lanci);
+    const out = new Float64Array(this.n);
+    const cijene = [];
+    for (let i = 0; i < this.n; i++) {
+      const [, , kol, vrsta, g, pg] = this.p[i];
+      let granica = 0;
+      if (kol > 0 && (vrsta === 'kg' || vrsta === 'l') && g >= 0) {
+        const m = mediani.get(`${g}|${pg}|${vrsta}`);
+        if (m != null) granica = (m / (pg >= 0 ? 16 : 20)) * kol;    // podgrupa je ujednačenija od cijele grupe
+      }
+      cijene.length = 0;
+      for (const L of lanci) { const k = L.lokalno[i]; if (k) cijene.push(L.t[k - 1]); }
+      if (cijene.length >= 3) {
+        cijene.sort((a, b) => a - b);
+        granica = Math.max(granica, cijene[Math.floor(cijene.length / 2)] / 4);
+      }
+      out[i] = granica;
+    }
+    return out;
   }
 
   izracunajMedijane() {
@@ -120,6 +152,13 @@ export class Baza {
     poz = 0;
     datoteka.d.forEach((d, k) => { poz += d; cijena[idx[poz]] = datoteka.c[k]; });
     return cijena;
+  }
+
+  // Normalizirani "naziv marka" svakog proizvoda za pretragu teksta. Lijeno: većina korisnika ne pretražuje
+  // tekstom pri pokretanju, a norm() na 225 000 naziva je najskuplji dio izgradnje baze.
+  get trazilica() {
+    if (!this._trazilica) this._trazilica = this.p.map((r) => ' ' + norm(`${r[0]} ${r[1]}`) + ' ');
+    return this._trazilica;
   }
 
   raspon(lanac, i) {
@@ -209,7 +248,7 @@ function najboljaKod(baza, nacin, cijena) {
   let naj = null;
   for (const o of nacin.opcije) {
     const c = cijena[o.i];
-    if (!c) continue;
+    if (!baza.prihvatljiva(o.i, c)) continue;
     const ponuda = { i: o.i, pakiranja: o.pakiranja, cijena: c, trosak: c * o.pakiranja, poPakiranju: o.poPakiranju };
     if (!naj || bolje(ponuda, naj, baza) < 0) naj = ponuda;
   }
@@ -227,7 +266,7 @@ export function rezultatA(baza, stavke, prodavaci) {
       const isti = [];
       for (const pr of prodavaci) {
         const c = pr.cijena[o.i];
-        if (!c) continue;
+        if (!baza.prihvatljiva(o.i, c)) continue;
         if (!naj || c < naj.cijena) { naj = { cijena: c, prodavac: pr }; isti.length = 0; isti.push(pr); } else if (c === naj.cijena) isti.push(pr);
       }
       if (naj) {
@@ -311,6 +350,7 @@ export function akcije(baza, lanci, { grupa = -1, upit = '', najvise = 300 } = {
       const redovna = L.r[k - 1];
       const t = L.t[k - 1];
       if (!redovna || redovna <= t) continue;
+      if (!baza.prihvatljiva(i, t)) continue;
       if (grupa >= 0 && baza.p[i][4] !== grupa) continue;
       if (dozvoljeni && !dozvoljeni.has(i)) continue;
       out.push({ i, lanac: id, cijena: t, redovna, popust: 1 - t / redovna });

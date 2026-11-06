@@ -328,3 +328,42 @@ select.polje { appearance: none; background-image: linear-gradient(45deg, transp
 .stavke .odjel + .stavka { border-top: 0; }
 .upute { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0 8px; text-decoration: none; }
 .upute svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ---------------------------------------------------------- početni zaslon: boje i velike pločice (1.5.0) */
+.glas { background: linear-gradient(160deg, #e6f6f1 0%, #fff8e6 100%); border: 1px solid #d5ece5; }
+.glas.sazeto { background: linear-gradient(120deg, #e6f6f1 0%, #ffffff 70%); }
+.koraci li:nth-child(1) b { background: #0b8f7f; }
+.koraci li:nth-child(2) b { background: #e08a00; }
+.koraci li:nth-child(3) b { background: #2f6fde; }
+.koraci li b { color: #fff; }
+:root[data-tema="tamna"] .glas, :root[data-tema="tamna"] .glas.sazeto { background: linear-gradient(160deg, #15302b 0%, #2a2613 100%); border-color: #2a3735; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="svijetla"]) .glas, :root:not([data-tema="svijetla"]) .glas.sazeto { background: linear-gradient(160deg, #15302b 0%, #2a2613 100%); border-color: #2a3735; }
+}
+
+.dijeli-kartica h3 { margin-bottom: 10px; }
+.dijeli-kartica .sitno { margin-top: 10px; }
+.plocice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.plocice.precaci { margin: 0; }
+.plocica {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-height: 104px; padding: 14px; border: 0; border-radius: var(--radijus);
+  color: #fff; text-decoration: none; text-align: left; box-shadow: 0 6px 18px rgba(16, 40, 36, .16); font: inherit; cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.plocica:active { transform: scale(.97); box-shadow: 0 2px 8px rgba(16, 40, 36, .2); }
+.plocica b { font-size: 1.02rem; line-height: 1.2; color: #fff; }
+.plocica > span:last-child { font-size: .78rem; line-height: 1.25; color: rgba(255, 255, 255, .9); }
+.plocica .pl-ik { width: 42px; height: 42px; border-radius: 13px; background: rgba(255, 255, 255, .22); display: grid; place-items: center; margin-bottom: 4px; }
+.plocica .pl-ik svg { width: 26px; height: 26px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.plocica .pl-ik svg.puna { fill: #fff; stroke: none; }
+.plocica.wa { background: linear-gradient(145deg, #2fd16c, #149c4a); }
+.plocica.imenik { background: linear-gradient(145deg, #4c8dff, #2459d6); }
+.plocica.viber { background: linear-gradient(145deg, #8a73ff, #5b3fd6); }
+.plocica.ostalo { background: linear-gradient(145deg, #2aa596, #0b5d56); }
+.plocica.akcije { background: linear-gradient(145deg, #ff6b5b, #d63a2b); }
+.plocica.skener { background: linear-gradient(145deg, #4c8dff, #2459d6); }
+.plocica.favoriti { background: linear-gradient(145deg, #ffbe3d, #e08a00); }
+.plocica.obitelj { background: linear-gradient(145deg, #2fd16c, #149c4a); }
+.plocica.wa:only-child { grid-column: 1 / -1; }
+.kontakt-red { margin: 6px 0 8px; }
+@media (min-width: 600px) { .plocice { grid-template-columns: repeat(4, 1fr); } }

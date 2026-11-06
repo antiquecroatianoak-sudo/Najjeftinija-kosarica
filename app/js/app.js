@@ -1,6 +1,7 @@
 // Najjeftinija košarica – sučelje aplikacije.
-import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm } from './tekst.js';
-import { pripremiGrupe, rastavi, novaStavkaId, kanon } from './popis.js';
+import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm, brojZaWhatsApp } from './tekst.js';
+import { pripremiGrupe, rastavi, novaStavkaId, kanon, osvjeziStavke } from './popis.js';
+import { ocistiStanje, vratiGrupePoId } from './stanje.js';
 import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost, ocjenaCijene } from './usporedba.js';
 import { ucitajPodatke, ucitajPoslovnice, pripremiPoslovnice, DRZAVE } from './podaci.js';
 import { ukljuciHvatanje, zabiljezi, izvjesce, obrisiGreske, VERZIJA_APLIKACIJE } from './greske.js';
@@ -39,6 +40,12 @@ const IKONE = {
   kopiraj: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   zastava: '<svg viewBox="0 0 24 24"><path d="M4 22V4M4 4h13l-2 4 2 4H4"/></svg>',
   kvacica: '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+  whatsapp: '<svg viewBox="0 0 24 24" class="puna"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2.1 1-2.4c.3-.3.6-.3.8-.3h.6c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.7 1.2 1.5 1.9 1 .9 1.9 1.2 2.2 1.3.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.8-.1 1.5z"/></svg>',
+  imenik: '<svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7.5 18a4.5 4.5 0 0 1 9 0M2 7h2M2 12h2M2 17h2"/></svg>',
+  viber: '<svg viewBox="0 0 24 24"><path d="M5 4.5C7 2.8 9.5 2.5 12 2.5s5 .3 7 2c1.8 1.6 2.4 3.9 2.4 7s-.6 5.4-2.4 7c-1.6 1.4-3.6 1.8-5.6 1.9L10 23v-2.7c-1.9-.2-3.6-.6-5-1.8C3.2 16.9 2.6 14.6 2.6 11.5S3.2 6.1 5 4.5z"/><path d="M9 7.5c.5 2.5 2.5 5 5.5 6.5l1-1.2 2 1-.5 1.7c-4.5-.5-8-4-8.7-8.2L9.5 7"/></svg>',
+  akcija: '<svg viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
+  zvijezda: '<svg viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>',
+  poruka: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
 };
 
 // ---------------------------------------------------------------- stanje
@@ -59,13 +66,25 @@ let karta = null;
 function ucitajStanje() {
   try {
     const s = JSON.parse(localStorage.getItem(KLJUC) || 'null');
-    return s ? { ...POCETNO, ...s, lokacija: { ...POCETNO.lokacija, ...(s.lokacija || {}) }, usteda: { ...POCETNO.usteda, ...(s.usteda || {}) } } : structuredClone(POCETNO);
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return structuredClone(POCETNO);
+    return ocistiStanje({ ...structuredClone(POCETNO), ...s, lokacija: { ...POCETNO.lokacija, ...(s.lokacija || {}) }, usteda: { ...POCETNO.usteda, ...(s.usteda || {}) } });
   } catch (e) {
     zabiljezi('stanje', 'Spremljeno stanje se ne može pročitati; počinjem iznova', e.message);
     return structuredClone(POCETNO);
   }
 }
+// 2. Stavka pamti i ID grupe/podgrupe (ne samo redni broj): ako nova verzija doda ili presloži grupe,
+//    spremljeni broj bi pokazivao na drugu grupu (npr. mlijeko → jogurt). Pri pokretanju broj se ponovno izračuna iz ID-a.
+function zapamtiIdGrupa() {
+  if (!P) return;
+  for (const s of S.stavke) {
+    const g = s.g >= 0 ? P.grupe[s.g] : null;
+    s.gid = g ? g.id : '';
+    s.pgid = g && s.pg >= 0 && g.pod[s.pg] ? g.pod[s.pg].id : '';
+  }
+}
 function spremi() {
+  zapamtiIdGrupa();
   try { localStorage.setItem(KLJUC, JSON.stringify(S)); } catch (e) { zabiljezi('stanje', 'Spremanje nije uspjelo', e.message); }
 }
 
@@ -168,14 +187,15 @@ function opisStavke(s) {
     if (s.samoTaj && s.proizvod != null) return `${g.ikona} točno ovaj proizvod`;
     if (s.filtar) {
       const ima = P.baza.filtarPronaden(s);
-      return `${g.naziv} · ${ima ? `samo „${esc(s.filtar)}”` : `${pod} <span class="upozorenje">(„${esc(s.filtar)}” nije pronađeno)</span>`}`;
+      return `${esc(g.naziv)} · ${ima ? `samo „${esc(s.filtar)}”` : `${esc(pod)} <span class="upozorenje">(„${esc(s.filtar)}” nije pronađeno)</span>`}`;
     }
     // ne ponavljaj ime: "Mlijeko" + "sve vrste", a ne "Mlijeko" + "Mlijeko · sve vrste"
-    return nazivStavke(s).toLowerCase() === g.naziv.toLowerCase() ? pod : `${g.naziv} · ${pod}`;
+    return esc(nazivStavke(s).toLowerCase() === g.naziv.toLowerCase() ? pod : `${g.naziv} · ${pod}`);
   }
   if (s.samoTaj && s.proizvod != null) return 'točno ovaj proizvod';
   const n = P.baza.trazi(s.upit || s.tekst, 1).length;
-  return n ? `traži „${s.upit || s.tekst}” u nazivima proizvoda` : '<span class="upozorenje">nije pronađeno – dodirni za ispravak</span>';
+  // SIGURNOST: tekst može doći iz tuđe poveznice obiteljskog popisa – bez esc() bio bi umetnuti HTML/skripta
+  return n ? `traži „${esc(s.upit || s.tekst)}” u nazivima proizvoda` : '<span class="upozorenje">nije pronađeno – dodirni za ispravak</span>';
 }
 function ikonaStavke(s) { return s.g >= 0 ? P.grupe[s.g].ikona || '🛒' : '🔎'; }
 function nazivStavke(s) {
@@ -285,6 +305,7 @@ function zaslonPopis(el) {
           </div>
         </li>`).join('')}</ul>` : `<div class="prazno"><div class="velika">🧺</div><p>Popis je prazan. Reci, upiši ili dodirni nešto iz „${imaPovijest ? 'Često kupuješ' : 'Brzo dodaj'}”.</p></div>`}
     </section>
+    ${stavke.length ? plociceDijeljenja() : plocicePrecaca()}
     ${stavke.length ? (S.zakljucano
       ? `<button class="gumb glavni puni" data-idi="rezultati">Pogledaj rezultate</button>`
       : `<button class="gumb glavni puni" data-akcija="zakljucaj">${IKONE.lokot} Zaključaj popis i usporedi cijene</button>
@@ -299,6 +320,67 @@ function zaslonPopis(el) {
     polje.oninput = () => prikaziPrijedloge(polje.value);
     pripremiGlas();
   }
+}
+
+// Velike šarene pločice: slanje popisa (WhatsApp, imenik, Viber, ostalo)
+function plociceDijeljenja() {
+  const t = encodeURIComponent(tekstPopisa());
+  return `<section class="kartica dijeli-kartica">
+    <h3>Pošalji popis obitelji</h3>
+    <div class="plocice">
+      <a class="plocica wa" href="https://wa.me/?text=${t}" target="_blank" rel="noopener" data-dijeli="whatsapp"><span class="pl-ik">${IKONE.whatsapp}</span><b>WhatsApp</b><span>odaberi osobu ili grupu</span></a>
+      <button class="plocica imenik" data-akcija="imenik"><span class="pl-ik">${IKONE.imenik}</span><b>Iz imenika</b><span>dodirni osobu iz kontakata</span></button>
+      <a class="plocica viber" href="viber://forward?text=${t}" data-dijeli="viber"><span class="pl-ik">${IKONE.viber}</span><b>Viber</b><span>pošalji u Viberu</span></a>
+      <button class="plocica ostalo" data-akcija="podijeli-popis"><span class="pl-ik">${IKONE.podijeli}</span><b>SMS i ostalo</b><span>poruka, e-mail, kopiraj</span></button>
+    </div>
+    <p class="sitno">Primatelj dobije popis i poveznicu – kad je dodirne, isti popis otvori se u njegovoj aplikaciji.</p>
+  </section>`;
+}
+
+// Kad je popis prazan: glavne funkcije na dohvat prsta
+function plocicePrecaca() {
+  return `<div class="plocice precaci">
+    <button class="plocica akcije" data-idi="akcije"><span class="pl-ik">${IKONE.akcija}</span><b>Akcije tjedna</b><span>najveći popusti</span></button>
+    <button class="plocica skener" data-idi="skener"><span class="pl-ik">${IKONE.barkod}</span><b>Skeniraj barkod</b><span>cijena u trgovini</span></button>
+    <button class="plocica favoriti" data-idi="favoriti"><span class="pl-ik">${IKONE.zvijezda}</span><b>Favoriti</b><span>${(S.favoriti || []).length} praćenih</span></button>
+    <button class="plocica obitelj" data-idi="obitelj"><span class="pl-ik">${IKONE.obitelj}</span><b>Obiteljski popis</b><span>primi ili pošalji</span></button>
+  </div>`;
+}
+
+// Tekst popisa za slanje (isti za WhatsApp, Viber, SMS i imenik)
+function tekstPopisa() {
+  const link = `${location.origin}${location.pathname}#popis=${kodPopisa()}`;
+  return `🛒 Popis za kupovinu (${S.stavke.length}): ${S.stavke.map(nazivStavke).join(', ')}\nOtvori u aplikaciji Najjeftinija košarica:\n${link}`;
+}
+
+// Imenik: Contact Picker (Chrome na Androidu); inače izbor osobe u WhatsAppu/SMS-u
+async function posaljiIzImenika() {
+  const tekst = tekstPopisa();
+  if (!('contacts' in navigator && navigator.contacts && typeof navigator.contacts.select === 'function')) {
+    ponudiDijeljenje(tekst, 'Pošalji popis');
+    poruka('Ovaj preglednik ne otvara imenik – osobu odaberi u WhatsAppu, Viberu ili SMS-u.');
+    return;
+  }
+  let kontakti;
+  try {
+    kontakti = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+  } catch (e) {
+    zabiljezi('imenik', e.name, e.message);
+    ponudiDijeljenje(tekst, 'Pošalji popis');
+    return;
+  }
+  if (!kontakti || !kontakti.length) return;       // korisnik je odustao
+  const k = kontakti[0];
+  const ime = (k.name && k.name[0]) || 'Kontakt';
+  const brojevi = [...new Set((k.tel || []).map((x) => String(x).trim()).filter(Boolean))];
+  if (!brojevi.length) { poruka(`${ime} nema broj telefona u imeniku.`); return; }
+  const t = encodeURIComponent(tekst);
+  otvoriPlocu(`<h3>Pošalji popis: ${esc(ime)}</h3>
+    ${brojevi.map((b) => `<div class="kontakt-red"><span class="razmak"><b>${esc(b)}</b></span></div>
+      <div class="plocice">
+        <a class="plocica wa" href="https://wa.me/${brojZaWhatsApp(b)}?text=${t}" target="_blank" rel="noopener"><span class="pl-ik">${IKONE.whatsapp}</span><b>WhatsApp</b><span>${esc(ime)}</span></a>
+        <a class="plocica ostalo" href="sms:${encodeURIComponent(b)}?&body=${t}"><span class="pl-ik">${IKONE.poruka}</span><b>SMS</b><span>${esc(ime)}</span></a>
+      </div>`).join('')}`);
 }
 
 // Prijedlozi dok korisnik tipka (grupe i podgrupe koje počinju upisanim, uključujući ijekavski/ekavski zapis)
@@ -579,7 +661,6 @@ function redakPonude(stavka, ponuda, { prodavac, nacin, ostali = 0, prikaziTrgov
           ${ponuda.poPakiranju && stavka.jedinica !== 'pak' && stavka.jedinica !== 'kom' ? '<span class="oznaka zuta">uspoređeno po pakiranju</span>' : ''}
           ${akcija ? '<span class="oznaka crvena">akcija</span>' : ''}
           ${akcija ? oznakaCijene(raspon, ponuda.cijena) : ''}
-          ${P.baza.sumnjivoNiska(ponuda.i, ponuda.cijena) ? '<span class="oznaka zuta">neobično niska cijena – provjeri u trgovini</span>' : ''}
         </div>
         ${prikaziTrgovinu ? `<div class="ponuda-detalji" style="margin-top:5px">${znakTrgovine(pr)}${ostali ? `<span>i još ${ostali} po istoj cijeni</span>` : ''}</div>` : ''}
         ${raspon && raspon.min !== raspon.max ? `<div class="ponuda-detalji"><span>U poslovnicama ${esc(nazivLanca(pr.lanac))}: ${eur(raspon.min)} – ${eur(raspon.max)}</span></div>` : ''}
@@ -595,7 +676,11 @@ function redakPonude(stavka, ponuda, { prodavac, nacin, ostali = 0, prikaziTrgov
   </div>`;
 }
 
+// Svaki prikaz rezultata dobije broj; stariji (sporiji) izračun ne smije prebrisati noviji zaslon
+// (brzo prebacivanje A/B/C ili promjena popisa dok se cijene poslovnica još učitavaju).
+let prikazRezultata = 0;
 async function zaslonRezultati(el) {
+  const moj = ++prikazRezultata;
   if (!S.stavke.length) {
     el.innerHTML = `<div class="zaslon"><div class="kartica prazno"><div class="velika">📋</div><p>Prvo složi popis za kupovinu.</p>
       <button class="gumb glavni" style="margin-top:14px" data-idi="popis">Na popis</button></div></div>`;
@@ -607,10 +692,11 @@ async function zaslonRezultati(el) {
     r = await izracunaj();
   } catch (e) {
     zabiljezi('izracun', e.message, e.stack);
+    if (moj !== prikazRezultata) return;
     el.innerHTML = karticaGreske('Usporedba se nije mogla izračunati.');
     return;
   }
-  if (S.zaslon !== 'rezultati') return;
+  if (S.zaslon !== 'rezultati' || moj !== prikazRezultata) return;
   const { pr, a, b, c } = r;
   const tab = S.rezTab;
   const lanciTekst = `${odabraniLanci().length} od ${sviLanci().length} lanaca`;
@@ -795,7 +881,7 @@ function najjeftinijeKod(i) {
   let naj = null;
   for (const id of odabraniLanci()) {
     const c = P.baza.lanci[id] && P.baza.lanci[id].cijena[i];
-    if (c && (!naj || c < naj.c)) naj = { c, lanac: id, raspon: P.baza.raspon(id, i) };
+    if (c && P.baza.prihvatljiva(i, c) && (!naj || c < naj.c)) naj = { c, lanac: id, raspon: P.baza.raspon(id, i) };
   }
   return naj;
 }
@@ -803,10 +889,11 @@ function najjeftinijeKod(i) {
 function prikaziProizvod(i, izSkenera = false) {
   const p = P.baza.p[i];
   const [naziv, marka, kol, vrsta, g, pg, barkod] = p;
-  const redovi = Object.keys(P.baza.lanci).map((id) => ({ id, c: P.baza.lanci[id].cijena[i], raspon: P.baza.raspon(id, i) }))
-    .filter((x) => x.c).sort((a, b) => a.c - b.c);
+  const sviRedovi = Object.keys(P.baza.lanci).map((id) => ({ id, c: P.baza.lanci[id].cijena[i], raspon: P.baza.raspon(id, i) })).filter((x) => x.c);
+  const redovi = sviRedovi.filter((x) => P.baza.prihvatljiva(i, x.c)).sort((a, b) => a.c - b.c);
+  const izostavljeno = sviRedovi.length - redovi.length;
   const blizu = zadnjiIzracun && zadnjiIzracun.pr.nacin === 'poslovnice'
-    ? zadnjiIzracun.pr.popis.filter((x) => x.cijena[i]).map((x) => ({ x, c: x.cijena[i] })).sort((a, b) => a.c - b.c).slice(0, 6) : [];
+    ? zadnjiIzracun.pr.popis.filter((x) => P.baza.prihvatljiva(i, x.cijena[i])).map((x) => ({ x, c: x.cijena[i] })).sort((a, b) => a.c - b.c).slice(0, 6) : [];
   otvoriPlocu(`
     <div class="redak"><div class="razmak"><h3>${esc(naziv)}</h3></div>
       <button class="gumb mali zvjezdica ${jeFavorit(i) ? 'aktivna' : ''}" data-akcija="favorit" data-i="${i}" aria-pressed="${jeFavorit(i)}">${jeFavorit(i) ? '★ U favoritima' : '☆ Prati cijenu'}</button></div>
@@ -816,6 +903,7 @@ function prikaziProizvod(i, izSkenera = false) {
         <td class="broj"><b>${eur(x.c)}</b>${kol && vrsta ? `<br><span class="sitno">${jedinicnaCijena(x.c, kol, vrsta)}</span>` : ''}${x.raspon.najniza30 ? `<br><span class="sitno">najniža u 30 d: ${eur(x.raspon.najniza30)}</span>` : ''}${x.raspon.sidrena ? `<br><span class="sitno">sidrena: ${eur(x.raspon.sidrena)}</span>` : ''}</td>
         <td class="broj sitno">${x.raspon.min !== x.raspon.max ? `${eur(x.raspon.min)}–${eur(x.raspon.max)}` : '–'}<br>${x.raspon.poslovnica} posl.</td></tr>`).join('')}
     </tbody></table>
+    ${izostavljeno ? `<p class="sitno">${izostavljeno} ${izostavljeno === 1 ? 'cijena nije prikazana jer je' : 'cijene nisu prikazane jer su'} neobično niske (vjerojatno greška u cjeniku trgovine).</p>` : ''}
     ${blizu.length ? `<div><h3>Blizu tebe</h3>${blizu.map(({ x, c }) => `<div class="trgovina-red"><span class="razmak">${znakTrgovine(x)}</span><b>${eur(c)}</b></div>`).join('')}</div>` : ''}
     <div class="redak" style="flex-wrap:wrap">
       ${izSkenera ? `<button class="gumb glavni razmak" data-akcija="dodaj-proizvod" data-i="${i}">${IKONE.plus} Dodaj na popis</button>` : ''}
@@ -1099,7 +1187,7 @@ function procitajKod(kod) {
     const gi = x.g ? P.grupe.findIndex((g) => g.id === x.g) : -1;
     const pg = gi >= 0 && x.p ? P.grupe[gi].pod.findIndex((p) => p.id === x.p) : -1;
     const pr = x.b ? P.baza.poBarkodu.get(x.b) : undefined;
-    return { id: novaStavkaId(), tekst: String(x.t || '').slice(0, 80), g: gi, pg, upit: gi >= 0 ? '' : String(x.t || ''), kolicina: Number(x.k) > 0 ? Number(x.k) : 1,
+    return { id: novaStavkaId(), tekst: String(x.t || '').slice(0, 80), g: gi, pg, upit: gi >= 0 ? '' : String(x.t || ''), kolicina: Number(x.k) > 0 && Number(x.k) <= 1000 ? Number(x.k) : 1,
       jedinica: ['g', 'kg', 'ml', 'l', 'kom', 'pak'].includes(x.j) ? x.j : 'pak', zadano: false, proizvod: pr ?? null, samoTaj: pr != null };
   });
 }
@@ -1120,6 +1208,7 @@ function zaslonObitelj(el) {
 function uveziPopis(kod) {
   try {
     const nove = procitajKod(kod);
+    osvjeziStavke(nove);
     if (!nove.length) throw new Error('prazno');
     otvoriPlocu(`<h3>Primljen popis (${nove.length})</h3><p class="sitno">${esc(nove.map((s) => s.tekst || (s.proizvod != null ? P.baza.p[s.proizvod][0] : '')).join(', '))}</p>
       <button class="gumb glavni puni" data-akcija="uvoz-dodaj">Dodaj na moj popis</button><button class="gumb puni" data-akcija="uvoz-zamijeni">Zamijeni moj popis</button>`, (pl) => {
@@ -1375,6 +1464,8 @@ document.addEventListener('click', (e) => {
     case 'kupljeno': {
       const iznos = Number(a.dataset.iznos);
       const prosjek = Number(a.dataset.prosjek);
+      // dvostruki dodir ili neispravan iznos ne smiju dvaput/krivo upisati uštedu
+      if (S.kupljenoKljuc === kljucIzracuna() + S.rezTab || !Number.isFinite(iznos) || !Number.isFinite(prosjek)) break;
       const usteda = Math.max(0, Math.round(prosjek - iznos));
       S.usteda.ukupno += usteda;
       S.usteda.kupnje.push({ datum: new Date().toISOString(), iznos, usteda, opis: a.dataset.opis });
@@ -1385,11 +1476,8 @@ document.addEventListener('click', (e) => {
     }
     case 'ponisti-ustedu': if (confirm('Obrisati povijest uštede?')) { S.usteda = { ukupno: 0, kupnje: [] }; spremi(); prikazi(); } break;
     case 'podijeli-rezultat': ponudiDijeljenje(tekstRezultata(), 'Pošalji popis i rezultat'); break;
-    case 'podijeli-popis': {
-      const link = `${location.origin}${location.pathname}#popis=${kodPopisa()}`;
-      ponudiDijeljenje(`🛒 Popis za kupovinu (${S.stavke.length}): ${S.stavke.map(nazivStavke).join(', ')}\nOtvori u aplikaciji Najjeftinija košarica:\n${link}`, 'Pošalji popis obitelji');
-      break;
-    }
+    case 'podijeli-popis': ponudiDijeljenje(tekstPopisa(), 'Pošalji popis obitelji'); break;
+    case 'imenik': posaljiIzImenika(); break;
     case 'uvezi-kod': {
       const v = $('#kodPolje').value.trim();
       uveziPopis(v.includes('#popis=') ? v.split('#popis=')[1] : v);
@@ -1456,6 +1544,8 @@ async function pokreni(rucno = false) {
       }
     }
     for (const s of S.stavke) if (s.proizvod != null) s.barkod = baza.p[s.proizvod][6];
+    vratiGrupePoId(S.stavke, d.grupe);
+    if (osvjeziStavke(S.stavke)) zadnjiIzracun = null;      // stare stavke ("mljeko") ponovno prepoznate
     S.verzijaPodataka = d.meta.verzija;
     spremi();
     zadnjiIzracun = null;
