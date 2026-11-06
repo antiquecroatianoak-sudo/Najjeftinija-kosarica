@@ -2,7 +2,7 @@
 import { eur, prikazPakiranja, prikazKolicine, jedinicnaCijena, korakKolicine, norm, brojZaWhatsApp } from './tekst.js';
 import { pripremiGrupe, rastavi, novaStavkaId, kanon, osvjeziStavke } from './popis.js';
 import { ocistiStanje, vratiGrupePoId } from './stanje.js';
-import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost, ocjenaCijene } from './usporedba.js';
+import { Baza, rezultatA, rezultatB, rezultatC, procjenaUstede, akcije, udaljenost, ocjenaCijene, grupirajIstePoslovnice } from './usporedba.js';
 import { ucitajPodatke, ucitajPoslovnice, pripremiPoslovnice, DRZAVE } from './podaci.js';
 import { ukljuciHvatanje, zabiljezi, izvjesce, obrisiGreske, VERZIJA_APLIKACIJE } from './greske.js';
 
@@ -745,7 +745,7 @@ async function izracunaj() {
   if (zadnjiIzracun && zadnjiIzracun.kljuc === kljuc) return zadnjiIzracun;
   const pr = await prodavaci();
   const a = rezultatA(P.baza, S.stavke, pr.popis);
-  const b = rezultatB(P.baza, S.stavke, pr.popis);
+  const b = grupirajIstePoslovnice(rezultatB(P.baza, S.stavke, pr.popis));   // iste cijene u lancu = jedan unos
   const c = rezultatC(b);
   zadnjiIzracun = { kljuc, pr, a, b, c };
   return zadnjiIzracun;
@@ -894,24 +894,36 @@ function prikazA(a, b, pr) {
     ${gumbiKupnje(ukupno, u.prosjek, `Najjeftinije po stavci (${trgovine.size} trgovina)`)}`;
 }
 
+// „4 poslovnice”, „5 poslovnica”, „21 poslovnica”, „22 poslovnice”
+function poslovnicaRijec(n) {
+  const d = n % 10, s = n % 100;
+  if (d === 1 && s !== 11) return 'poslovnica';
+  if (d >= 2 && d <= 4 && (s < 12 || s > 14)) return 'poslovnice';
+  return 'poslovnica';
+}
+
 // Kartica jedne trgovine u karuselu: cijena istaknuta, adresa tanjim fontom, fokusirana kartica naprijed.
 function karticaTrgovine(r, k, najbolji, uFokusu) {
   const pr = r.prodavac;
-  const adresa = pr.adresa ? esc(pr.adresa) + (pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : '') : 'uobičajena cijena lanca';
+  const n = r.iste ? r.iste.length : 1;
+  const adresa = pr.adresa ? (n > 1 ? 'najbliža: ' : '') + esc(pr.adresa) + (pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : '') : 'uobičajena cijena lanca';
   const razlika = k === 0 ? '<span class="tk-najbolja">Najjeftinije</span>'
     : r.nedostaje === najbolji.nedostaje ? `<span class="tk-razlika">+${eur(r.ukupno - najbolji.ukupno)}</span>` : '';
   return `<button role="listitem" class="trgovina-kartica ${uFokusu ? 'u-fokusu' : ''}" data-akcija="otvori-b" data-id="${esc(pr.id)}" aria-pressed="${uFokusu}"
       aria-label="${k + 1}. ${esc(pr.naziv)}, ${eur(r.ukupno)}" style="--boja:${boja(pr.lanac)}">
     <span class="tk-vrh"><span class="mjesto">${k + 1}</span>${razlika}</span>
-    <span class="tk-lanac">${esc(pr.naziv)}</span>
+    <span class="tk-lanac">${esc(pr.naziv)}${n > 1 ? ` <span class="tk-iste">ista cijena u ${n} ${poslovnicaRijec(n)}</span>` : ''}</span>
     <span class="tk-adresa">${adresa}</span>
     <span class="tk-cijena">${eur(r.ukupno)}</span>
     <span class="tk-dno">${r.nedostaje ? `<span class="razlika">nema ${r.nedostaje} ${r.nedostaje === 1 ? 'stavku' : 'stavki'}</span>` : `sve ${S.stavke.length} stavki`}</span>
   </button>`;
 }
 function detaljiB(r, pr) {
+  const iste = r.iste && r.iste.length > 1 ? r.iste : null;
   return `<div class="redak"><h3 class="razmak">Popis u ${esc(r.prodavac.naziv)}</h3><b class="detalji-iznos">${eur(r.ukupno)}</b></div>
     ${gumbUputa(r.prodavac)}
+    ${iste ? `<details class="iste-poslovnice"><summary>Ista cijena u ${iste.length} ${poslovnicaRijec(iste.length)} ${esc(r.prodavac.naziv)}</summary>
+      <ul>${iste.map((x) => `<li><span class="adresa">${esc(x.adresa || '')}</span>${x.km != null ? `<b>${x.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km</b>` : ''}</li>`).join('')}</ul></details>` : ''}
     ${S.stavke.map((s, i) => redakPonude(s, r.stavke[i], { prodavac: r.prodavac, nacin: pr.nacin, prikaziTrgovinu: false })).join('')}`;
 }
 // Karusel: kartica najbliža sredini je u fokusu; ispod se prikazuje njen popis (bez ponovnog crtanja cijelog zaslona).

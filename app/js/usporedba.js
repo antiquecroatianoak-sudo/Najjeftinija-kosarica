@@ -319,8 +319,24 @@ export function rezultatC(rezB, najvisePrikaza = 5) {
 }
 
 // Ušteda: prosjek prodavača koji imaju sve stavke minus odabrani iznos (nikad negativno).
+// Poslovnice istog lanca s IDENTIČNIM ponudama za cijeli popis (isti proizvodi, isti broj pakiranja, iste cijene)
+// spajaju se u jedan unos: prikazuje se najbliža (popis prodavača je već poredan po udaljenosti, a sort je stabilan),
+// a ostale su u `iste`. Čim se ijedna cijena razlikuje, poslovnica ostaje zaseban unos s vlastitim iznosom.
+export function grupirajIstePoslovnice(rezB) {
+  const grupe = new Map();
+  const out = [];
+  for (const r of rezB) {
+    const kljuc = `${r.prodavac.lanac}|${r.stavke.map((p) => (p ? `${p.i}:${p.pakiranja}:${p.cijena}` : '-')).join(',')}`;
+    const g = grupe.get(kljuc);
+    if (g) g.iste.push(r.prodavac);
+    else { const n = { ...r, iste: [r.prodavac] }; grupe.set(kljuc, n); out.push(n); }
+  }
+  out.sve = rezB;            // prosjek uštede i dalje po svim poslovnicama
+  return out;
+}
+
 export function procjenaUstede(rezB, odabraniIznos) {
-  const potpuni = rezB.filter((r) => r.nedostaje === 0);
+  const potpuni = (rezB.sve || rezB).filter((r) => r.nedostaje === 0);
   if (potpuni.length < 2) return { prosjek: 0, usteda: 0, najskuplje: 0 };
   const prosjek = potpuni.reduce((s, r) => s + r.ukupno, 0) / potpuni.length;
   const najskuplje = Math.max(...potpuni.map((r) => r.ukupno));

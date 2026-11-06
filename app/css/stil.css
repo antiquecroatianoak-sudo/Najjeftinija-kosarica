@@ -543,3 +543,14 @@ body.ima-traku .sadrzaj { padding-bottom: calc(var(--izbornik) + 104px + env(saf
   .trgovina-kartica { padding: 12px 14px; }
   .tk-cijena { font-size: 1.8rem; margin-top: 2px; }
 }
+
+/* iste cijene u više poslovnica lanca: jedan unos */
+.tk-iste { display: inline-block; vertical-align: middle; margin-left: 4px; font-size: .68rem; font-weight: 700; letter-spacing: .01em; color: var(--glavna); background: var(--glavna-svijetla); border-radius: 999px; padding: 2px 8px; }
+.iste-poslovnice { margin: 10px 0 4px; border: 1px solid var(--rub); border-radius: 12px; padding: 8px 12px; background: var(--kartica-2); }
+.iste-poslovnice summary { font-weight: 700; font-size: .9rem; color: var(--glavna); cursor: pointer; }
+.iste-poslovnice ul { list-style: none; margin: 8px 0 2px; padding: 0; }
+.iste-poslovnice li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid var(--rub); }
+.iste-poslovnice li:first-child { border-top: 0; }
+.iste-poslovnice li b { font-size: .82rem; white-space: nowrap; color: var(--tekst-2); font-weight: 600; }
+.karusel { align-items: flex-start; }
+.tk-iste { margin: 2px 0 0; }

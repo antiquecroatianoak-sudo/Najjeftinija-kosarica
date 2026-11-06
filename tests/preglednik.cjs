@@ -234,6 +234,8 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
   await s.click('[data-tab="B"]');
   await s.waitForSelector('.sazetak, #karuselB');
+  const karticeKrug = await s.locator('#karuselB .trgovina-kartica').evaluateAll((k) => k.map((x) => x.querySelector('.tk-lanac').firstChild.textContent.trim() + '|' + x.querySelector('.tk-cijena').textContent));
+  provjeri(new Set(karticeKrug).size === karticeKrug.length, `B u krugu: isti lanac s istom cijenom samo jednom (${karticeKrug.length} unosa)`);
   const upute = s.locator('#detaljiB a.upute');
   provjeri(await upute.count() === 1 && /google\.com\/maps\/dir\/\?api=1&destination=4\d\.\d+,1\d\.\d+/.test(await upute.getAttribute('href')), 'B u krugu: „Upute do trgovine” vodi na Google Karte do te poslovnice');
   await snimi('8-rezultat-krug');
