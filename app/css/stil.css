@@ -526,3 +526,20 @@ body.ima-traku .sadrzaj { padding-bottom: calc(var(--izbornik) + 104px + env(saf
 .kartica { padding: 18px; }
 .zaslon > * + * { margin-top: 16px; }
 .savjet { font-size: .85rem; }
+
+/* B: karusel kao glavni element (bez ponovljenog sažetka) */
+.karusel-naslov .oznaka-naslov { font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--glavna); }
+.ustedi-traka {
+  background: #ffd166; color: #1b1500; border-radius: 12px; padding: 8px 12px; font-size: .9rem; font-weight: 600; line-height: 1.3;
+}
+.ustedi-traka b { font-weight: 850; }
+.karusel-naslov + .ustedi-traka { margin-top: 10px; }
+/* manji mobiteli: zbijeniji vrh rezultata, da kartica trgovine stane iznad donje trake */
+@media (max-width: 420px) {
+  .segment button small { display: none; }
+  .segment button { padding: 10px 4px; }
+  .zakljucano { padding-top: 8px; padding-bottom: 8px; }
+  .ustedi-traka { font-size: .85rem; padding: 7px 10px; }
+  .trgovina-kartica { padding: 12px 14px; }
+  .tk-cijena { font-size: 1.8rem; margin-top: 2px; }
+}

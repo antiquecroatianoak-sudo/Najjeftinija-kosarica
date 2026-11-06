@@ -932,6 +932,8 @@ function pripremiKarusel(b, pr) {
     const r = b.find((x) => x.prodavac.id === S.otvorenB);
     const det = $('#detaljiB');
     if (r && det) { det.innerHTML = detaljiB(r, pr); det.classList.remove('pojava'); void det.offsetWidth; det.classList.add('pojava'); }
+    const kup = document.querySelector('.donja-traka [data-akcija="kupljeno"]');
+    if (r && kup) { kup.dataset.iznos = r.ukupno; kup.dataset.opis = `Jedna trgovina: ${r.prodavac.naziv}`; }
   };
   kar.addEventListener('scroll', () => {
     clearTimeout(sat);
@@ -957,21 +959,18 @@ function prikazB(b, pr) {
   const otvoren = S.otvorenB && b.find((r) => r.prodavac.id === S.otvorenB) ? S.otvorenB : najbolji.prodavac.id;
   const prvi = b.slice(0, 12);
   const potpuni = b.filter((r) => r.nedostaje === 0).length;
-  return `<section class="sazetak">
-      <div class="oznaka-mala">${pr.nacin === 'poslovnice' ? 'Cijeli popis u jednoj poslovnici' : 'Cijeli popis u jednom lancu (procjena)'}</div>
-      <div class="iznos">${eur(najbolji.ukupno)}</div>
-      <div class="gdje">${esc(najbolji.prodavac.naziv)}${najbolji.prodavac.adresa ? ` · ${esc(najbolji.prodavac.adresa)}` : ''}${najbolji.nedostaje ? ` · nema ${najbolji.nedostaje} ${najbolji.nedostaje === 1 ? 'stavku' : 'stavki'}` : ''}</div>
-      ${u.usteda > 0 ? `<div class="ustedi">Štediš ${eur(u.usteda)} u odnosu na prosjek · do ${eur(Math.max(0, u.najskuplje - najbolji.ukupno))} prema najskupljoj</div>` : ''}
-    </section>
+  // Karusel je glavni element: najbolja trgovina je prva kartica (bez ponovljenog zelenog sažetka iznad –
+  // inače kartica s cijenom završi ispod donje trake s gumbima).
+  return `<div class="karusel-naslov"><span class="oznaka-naslov">${pr.nacin === 'poslovnice' ? 'Cijeli popis u jednoj poslovnici' : 'Cijeli popis u jednom lancu (procjena)'}</span><span class="sitno">povuci ↔</span></div>
+    ${u.usteda > 0 ? `<div class="ustedi-traka" title="Štediš ${eur(u.usteda)} u odnosu na prosječnu trgovinu, do ${eur(Math.max(0, u.najskuplje - najbolji.ukupno))} prema najskupljoj">Štediš <b>${eur(u.usteda)}</b> · do ${eur(Math.max(0, u.najskuplje - najbolji.ukupno))} prema najskupljoj</div>` : ''}
     ${!potpuni ? '<p class="savjet">' + IKONE.info + '<span>Nijedna trgovina nema sve stavke. Poredak: najprije one kojima nedostaje najmanje.</span></p>' : ''}
-    <div class="karusel-naslov"><h3>Trgovine po ukupnoj cijeni</h3><span class="sitno">povuci lijevo ili desno</span></div>
     <div class="karusel" id="karuselB" role="list" aria-label="Trgovine, od najjeftinije">
       ${prvi.map((r, k) => karticaTrgovine(r, k, najbolji, r.prodavac.id === otvoren)).join('')}
     </div>
     <div class="karusel-tocke" aria-hidden="true">${prvi.map((r) => `<i class="${r.prodavac.id === otvoren ? 'aktivna' : ''}"></i>`).join('')}</div>
     ${b.length > prvi.length ? `<p class="sitno" style="margin:0;text-align:center">I još ${b.length - prvi.length} skupljih.</p>` : ''}
     <section class="kartica" id="detaljiB">${detaljiB(prvi.find((r) => r.prodavac.id === otvoren) || najbolji, pr)}</section>
-    ${gumbiKupnje(najbolji.ukupno, u.prosjek, `Jedna trgovina: ${najbolji.prodavac.naziv}`)}`;
+    ${(() => { const f = prvi.find((r) => r.prodavac.id === otvoren) || najbolji; return gumbiKupnje(f.ukupno, u.prosjek, `Jedna trgovina: ${f.prodavac.naziv}`); })()}`;
 }
 
 function prikazC(c, b, pr) {
