@@ -95,7 +95,7 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
-          timeout: 1200000    # GitHub Pages je 6.11.2026. sinkronizirao datoteke dulje od zadanih 10 min
+          timeout: 600000     # 10 min je najviše što deploy-pages dopušta (veća vrijednost se ionako svede na 10 min)
       - name: Provjeri objavljenu verziju
         run: |
           OCEKIVANO=$(python -c "import json;print(json.load(open('app/data/hr/meta.json'))['verzija'])")
