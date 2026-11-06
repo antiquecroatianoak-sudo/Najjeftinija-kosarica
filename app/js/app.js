@@ -505,7 +505,7 @@ async function prodavaci() {
   for (const { p, km } of odabrane) {
     const d = datoteke.get(p[7]);
     if (!d || !P.baza.lanci[p[0]]) continue;
-    popis.push({ id: `${p[0]}:${p[1]}`, lanac: p[0], naziv: nazivLanca(p[0]), adresa: [p[2], p[3]].filter(Boolean).join(', '), km,
+    popis.push({ id: `${p[0]}:${p[1]}`, lanac: p[0], naziv: nazivLanca(p[0]), adresa: [p[2], p[3]].filter(Boolean).join(', '), km, lat: p[5], lon: p[6],
       cijena: P.baza.cijenePoslovnice(p[0], d) });
   }
   if (!popis.length && odabrane.length) {
@@ -536,6 +536,13 @@ async function izracunaj() {
 // ---------------------------------------------------------------- REZULTATI
 function znakTrgovine(pr, sAdresom = true) {
   return `<span class="trgovina-znak" style="--boja:${boja(pr.lanac)}"><i></i>${esc(pr.naziv)}</span>${sAdresom && pr.adresa ? `<span>${esc(pr.adresa)}${pr.km != null ? ` · ${pr.km.toLocaleString('hr-HR', { maximumFractionDigits: 1 })} km` : ''}</span>` : ''}`;
+}
+
+// Navigacija do stvarne poslovnice (Google Karte otvaraju se u aplikaciji na mobitelu)
+function gumbUputa(pr) {
+  if (!pr || pr.lat == null || pr.lon == null) return '';
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${pr.lat},${pr.lon}&travelmode=driving`;
+  return `<a class="gumb mali upute" href="${url}" target="_blank" rel="noopener">${IKONE.lokacija} Upute do trgovine</a>`;
 }
 
 function oznakaCijene(raspon, cijena) {
@@ -684,7 +691,7 @@ function prikazB(b, pr) {
             ${r.nedostaje ? `<span class="razlika">nema ${r.nedostaje}</span>` : ''}</span></span>
           <span style="text-align:right"><span class="iznos">${eur(r.ukupno)}</span>${k > 0 && r.nedostaje === najbolji.nedostaje ? `<br><span class="razlika">+${eur(r.ukupno - najbolji.ukupno)}</span>` : ''}</span>
         </button>
-        ${r.prodavac.id === otvoren ? `<div class="otvoreno">${S.stavke.map((s, i) => redakPonude(s, r.stavke[i], { prodavac: r.prodavac, nacin: pr.nacin, prikaziTrgovinu: false })).join('')}</div>` : ''}`).join('')}
+        ${r.prodavac.id === otvoren ? `<div class="otvoreno">${gumbUputa(r.prodavac)}${S.stavke.map((s, i) => redakPonude(s, r.stavke[i], { prodavac: r.prodavac, nacin: pr.nacin, prikaziTrgovinu: false })).join('')}</div>` : ''}`).join('')}
       ${b.length > prvi.length ? `<p class="sitno" style="margin-top:8px">I još ${b.length - prvi.length} skupljih.</p>` : ''}
     </section>
     ${gumbiKupnje(najbolji.ukupno, u.prosjek, `Jedna trgovina: ${najbolji.prodavac.naziv}`)}`;
@@ -705,7 +712,7 @@ function prikazC(c, b, pr) {
       <div class="gdje">${esc(naj.prodavaci[0].naziv)} + ${esc(naj.prodavaci[1].naziv)}${naj.nedostaje ? ` · nema ${naj.nedostaje}` : ''}</div>
       ${usporedbaB > 0 ? `<div class="ustedi">${eur(usporedbaB)} jeftinije nego sve u ${esc(jednaB.prodavac.naziv)}</div>` : u.usteda > 0 ? `<div class="ustedi">Štediš ${eur(u.usteda)} u odnosu na prosjek</div>` : ''}
     </section>
-    ${[0, 1].map((k) => `<section class="kartica"><div class="redak"><span class="razmak">${znakTrgovine(naj.prodavaci[k], false)}<br><span class="sitno">${esc(naj.prodavaci[k].adresa || '')}</span></span><b>${eur(zbroj(k))}</b></div>${dio(k)}</section>`).join('')}
+    ${[0, 1].map((k) => `<section class="kartica"><div class="redak"><span class="razmak">${znakTrgovine(naj.prodavaci[k], false)}<br><span class="sitno">${esc(naj.prodavaci[k].adresa || '')}</span></span><b>${eur(zbroj(k))}</b></div>${gumbUputa(naj.prodavaci[k])}${dio(k)}</section>`).join('')}
     ${nema ? `<section class="kartica">${nema}</section>` : ''}
     ${c.length > 1 ? `<section class="kartica"><h3>Druge dobre kombinacije</h3>${c.slice(1).map((x) => `<div class="trgovina-red"><span class="razmak">${esc(x.prodavaci[0].naziv)} + ${esc(x.prodavaci[1].naziv)}${x.nedostaje ? ` <span class="razlika">nema ${x.nedostaje}</span>` : ''}</span><span class="iznos">${eur(x.ukupno)}</span></div>`).join('')}</section>` : ''}
     ${gumbiKupnje(naj.ukupno, u.prosjek, `Dvije trgovine: ${naj.prodavaci[0].naziv} + ${naj.prodavaci[1].naziv}`)}`;

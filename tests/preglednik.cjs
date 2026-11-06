@@ -182,6 +182,10 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   const rezKrug = await s.locator('.zaslon').innerText();
   const brojPoslovnica = Number((rezKrug.match(/U krugu 10 km: (\d+) poslovnic/) || [])[1] || 0);
   provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
+  await s.click('[data-tab="B"]');
+  await s.waitForSelector('.sazetak');
+  const upute = s.locator('.otvoreno a.upute');
+  provjeri(await upute.count() === 1 && /google\.com\/maps\/dir\/\?api=1&destination=4\d\.\d+,1\d\.\d+/.test(await upute.getAttribute('href')), 'B u krugu: „Upute do trgovine” vodi na Google Karte do te poslovnice');
   await snimi('8-rezultat-krug');
 
   console.log('Akcije i Više');
