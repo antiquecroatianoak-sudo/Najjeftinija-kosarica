@@ -58,7 +58,7 @@ export class Baza {
         let j = 0;
         d.i.forEach((delta, k) => { j += delta; if (d.s[k] < prag) procjena[j] = 0; });
       }
-      this.lanci[id] = { id, cijena, procjena, lokalno, t: d.t, n: d.n, x: d.x, r: d.r, s: d.s, indeksi: null };
+      this.lanci[id] = { id, cijena, procjena, lokalno, t: d.t, n: d.n, x: d.x, r: d.r, s: d.s, b: d.b || null, a: d.a || null, indeksi: null };
     }
   }
 
@@ -127,7 +127,8 @@ export class Baza {
     const k = L && L.lokalno[i];
     if (!k) return null;
     const t = L.t[k - 1];
-    return { min: t - L.n[k - 1], max: t + L.x[k - 1], redovna: L.r[k - 1], poslovnica: L.s[k - 1] };
+    return { min: t - L.n[k - 1], max: t + L.x[k - 1], redovna: L.r[k - 1], poslovnica: L.s[k - 1],
+      najniza30: L.b ? L.b[k - 1] : 0, sidrena: L.a ? L.a[k - 1] : 0 };
   }
 
   trazi(upit, najvise = Infinity) {
@@ -317,4 +318,14 @@ export function akcije(baza, lanci, { grupa = -1, upit = '', najvise = 300 } = {
   }
   out.sort((a, b) => b.popust - a.popust || a.cijena - b.cijena);
   return out.slice(0, najvise);
+}
+
+// Je li cijena stvarno povoljna? Po NN 75/2025 trgovac objavljuje najnižu cijenu u zadnjih 30 dana.
+//  'najniza'  – današnja cijena je najniža u 30 dana (prava akcija)
+//  'bilo-jeftinije' – u zadnjih 30 dana bilo je jeftinije (popust je u odnosu na višu "redovnu" cijenu)
+//  null – lanac ne objavljuje podatak
+export function ocjenaCijene(raspon, cijenaCenti) {
+  if (!raspon || !raspon.najniza30) return null;
+  if (cijenaCenti <= raspon.najniza30) return { tip: 'najniza', najniza30: raspon.najniza30 };
+  return { tip: 'bilo-jeftinije', najniza30: raspon.najniza30 };
 }

@@ -67,3 +67,9 @@ Researched: Basket, Trolley, Usporedi cijene (HR) – whole-basket comparison by
 - [x] Shopping mode: circle next to every item → "u košarici" (ticked items go to the bottom, "3 od 10 u košarici"), also on a locked list.
 - [x] Favourites: "☆ Prati cijenu" on every product; Akcije shows "★ Tvoji favoriti na akciji" first; Više → Moji favoriti with today's cheapest price.
 - [x] App version 1.3.0 shown at the bottom of Više; new version always downloads fresh files.
+
+## Round 3 – is the deal real? (6 Nov 2026)
+- [x] Daily update confirmed again: scheduled run 42187631312 (6 Nov, 08:25 UTC) loaded the prices of 6 Nov – 227,574 products, 28 chains; dm, KTC and Lorenco had not published yet, so yesterday's prices were used for them (as designed).
+- [x] Lowest price in the last 30 days and anchor price (both required by NN 75/2025) are now imported per chain. Product details show "najniža u 30 d" and "sidrena" per chain; results and deals show "✓ najniža cijena u 30 dana" or "u 30 dana bilo i X €"; deals screen has "Samo prave akcije". Tests: Python, Node, browser (31 of 61 sample deals are genuine).
+- [x] Locked list (in the shop) is grouped by shop section in the usual walking order – Voće i povrće → Kruh i peciva → Mliječno i jaja → Meso, riba → Smrznuto → Namirnice → Kava, čaj i slatko → Pića → Dom i higijena (idea from Bring!). Browser test checks the order.
+- [x] "Upute do trgovine": with location on, the chosen store (one store and both stores of the best pair) has a button that opens Google Maps directions to that exact shop (idea from Basket). Browser test checks the link.

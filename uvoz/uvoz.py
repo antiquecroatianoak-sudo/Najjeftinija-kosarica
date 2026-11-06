@@ -287,6 +287,8 @@ class Lanac:
         # (podlanac, pid) -> brojači cijena
         self.efektivne: dict[tuple[str, str], Counter] = defaultdict(Counter)
         self.redovne: dict[tuple[str, str], Counter] = defaultdict(Counter)
+        self.naj30: dict[tuple[str, str], Counter] = defaultdict(Counter)
+        self.sidrene: dict[tuple[str, str], Counter] = defaultdict(Counter)
         self.omjeri: dict[str, list[float]] = defaultdict(list)   # pid -> cijena / jedinična cijena
         self.po_pid = Counter()                                    # pid -> broj poslovnica s cijenom
 
@@ -303,17 +305,21 @@ class Lanac:
                 pid = (r.get("product_id") or "").strip()
                 if pid and (r.get("name") or "").strip():
                     self.proizvodi[pid] = r
-        for sid, pid, eff, red, up in self._cijene():
+        for sid, pid, eff, red, up, naj30, sidrena in self._cijene():
             pl = podlanac(self.lanac, self.poslovnice.get(sid, {}))
             self.efektivne[(pl, pid)][eff] += 1
             self.redovne[(pl, pid)][red] += 1
+            if naj30:
+                self.naj30[(pl, pid)][naj30] += 1
+            if sidrena:
+                self.sidrene[(pl, pid)][sidrena] += 1
             self.po_pid[pid] += 1
             if up and len(self.omjeri[pid]) < 25:
                 self.omjeri[pid].append(red / up)
         return self
 
     def _cijene(self):
-        """(poslovnica, proizvod, efektivna cijena u centima, redovna cijena, jedinična cijena u centima)."""
+        """(poslovnica, proizvod, efektivna cijena, redovna cijena, jedinična cijena, najniža u 30 dana, sidrena) – u centima."""
         for r in citaj_csv(self.zf, self.prefiks + "prices.csv"):
             sid = (r.get("store_id") or "").strip()
             pid = (r.get("product_id") or "").strip()
@@ -333,7 +339,10 @@ class Lanac:
             eff = akcija if akcija is not None and akcija < redovna else redovna
             up = broj(r.get("unit_price"))
             up = int(round(up * 100)) if up and up > 0 else None
-            yield sid, pid, eff, redovna, up
+            # NN 75/2025: najniža cijena u zadnjih 30 dana i sidrena cijena (2.5.2025.) – samo ako su objavljene
+            naj30 = cent(r.get("best_price_30"))
+            sidrena = cent(r.get("anchor_price"))
+            yield sid, pid, eff, redovna, up, naj30, sidrena
 
     def cijene_po_poslovnici(self, u_memoriji: bool = False):
         """Drugi prolaz: za svaku poslovnicu rječnik pid -> efektivna cijena.
@@ -343,12 +352,12 @@ class Lanac:
         """
         if u_memoriji:
             sve = defaultdict(dict)
-            for sid, pid, eff, _red, _up in self._cijene():
+            for sid, pid, eff, *_ in self._cijene():
                 sve[sid][pid] = min(eff, sve[sid].get(pid, eff))
             yield from sve.items()
             return
         trenutna, cijene, gotove = None, {}, set()
-        for sid, pid, eff, _red, _up in self._cijene():
+        for sid, pid, eff, *_ in self._cijene():
             if sid != trenutna:
                 if trenutna is not None:
                     gotove.add(trenutna)
@@ -470,7 +479,10 @@ class Uvoz:
                 if odbacene:
                     L.preskoceno["cijena odstupa od uobičajene"] += odbacene
                 red = uobicajena(L.redovne[(pl, pid)])
-                zapis = [t, min(valjane), max(valjane), red if red > t else 0, sum(valjane.values())]
+                b30 = L.naj30.get((pl, pid))
+                sid = L.sidrene.get((pl, pid))
+                zapis = [t, min(valjane), max(valjane), red if red > t else 0, sum(valjane.values()),
+                         uobicajena(b30) if b30 else 0, uobicajena(sid) if sid else 0]
                 staro = ponude[pl].get(gi)
                 if staro is None or zapis[0] < staro[0]:
                     ponude[pl][gi] = zapis
@@ -527,6 +539,14 @@ class Uvoz:
                 "r": [r[1][3] for r in redovi],
                 "s": [r[1][4] for r in redovi],
             }
+            # najniža cijena u 30 dana ("b") i sidrena cijena ("a"), samo ako ih lanac objavljuje
+            if any(r[1][5] for r in redovi):
+                lanci_izlaz[pl]["b"] = [r[1][5] for r in redovi]
+            if any(r[1][6] for r in redovi):
+                lanci_izlaz[pl]["a"] = [r[1][6] for r in redovi]
+
+        s30 = sorted(pl for pl, d in lanci_izlaz.items() if "b" in d)
+        log(f"Najniža cijena u 30 dana objavljena za {len(s30)} od {len(lanci_izlaz)} lanaca: {', '.join(s30)}")
 
         # 4) poslovnice i cijene po poslovnici
         poslovnice = []

@@ -153,6 +153,15 @@ class Uvoz(unittest.TestCase):
             for k, (t, mn, mx, r) in m.items():
                 self.assertGreater(mn, 1, (lanac, k))
 
+    def test_najniza_u_30_dana_i_sidrena(self):
+        konzum = self.pr["l"]["konzum"]
+        self.assertIn("b", konzum)
+        self.assertIn("a", konzum)
+        self.assertEqual(len(konzum["b"]), len(konzum["t"]))
+        # bez akcije najniža u 30 dana je današnja cijena; kod akcija ponekad niža od akcijske (primjer)
+        self.assertTrue(any(b and b < t for b, t in zip(konzum["b"], konzum["t"])))
+        self.assertGreater(sum(1 for a in konzum["a"] if a > 0), len(konzum["a"]) * 0.9)   # proizvod bez sidrene cijene ima 0
+
     def test_akcija(self):
         akcije = [(l, k) for l, m in self.cijene.items() for k, v in m.items() if v[3] > v[0]]
         self.assertTrue(akcije)

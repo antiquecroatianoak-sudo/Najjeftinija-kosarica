@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { norm, korijen, prikazPakiranja, eur, uOsnovnu } from '../app/js/tekst.js';
 import { pripremiGrupe, rastavi, prepoznaj, kanon, blizu } from '../app/js/popis.js';
-import { Baza, pragPoslovnica, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
+import { Baza, pragPoslovnica, ocjenaCijene, rezultatA, rezultatB, rezultatC, nacinKupnje, procjenaUstede, akcije, udaljenost } from '../app/js/usporedba.js';
 
 const KORIJEN = join(dirname(fileURLToPath(import.meta.url)), '..');
 let baza; let grupe; let poslovnice; let izlaz;
@@ -235,4 +235,17 @@ test('neobično niska cijena se označi, ali se ne briše ni ne premješta', () 
   assert.equal(b.sumnjivoNiska(0, 29), true);                // 0,29 €/kg prema ~4 €/kg
   assert.equal(b.sumnjivoNiska(1, 401), false);
   assert.equal(b.lanci.a.cijena[0], 29);                     // cijena ostaje u usporedbi
+});
+
+test('najniža cijena u 30 dana (NN 75/2025): prava akcija ili je bilo jeftinije', () => {
+  assert.deepEqual(ocjenaCijene({ najniza30: 100 }, 99), { tip: 'najniza', najniza30: 100 });
+  assert.deepEqual(ocjenaCijene({ najniza30: 100 }, 100), { tip: 'najniza', najniza30: 100 });
+  assert.deepEqual(ocjenaCijene({ najniza30: 90 }, 100), { tip: 'bilo-jeftinije', najniza30: 90 });
+  assert.equal(ocjenaCijene({ najniza30: 0 }, 100), null);          // lanac ne objavljuje
+  assert.equal(ocjenaCijene(null, 100), null);
+  const b = new Baza({ p: [['Kava', '', 0.25, 'kg', -1, -1, '']], l: { k: { i: [0], t: [399], n: [0], x: [0], r: [499], s: [5], b: [379], a: [450] } } }, []);
+  const r = b.raspon('k', 0);
+  assert.equal(r.najniza30, 379);
+  assert.equal(r.sidrena, 450);
+  assert.equal(ocjenaCijene(r, 399).tip, 'bilo-jeftinije');
 });

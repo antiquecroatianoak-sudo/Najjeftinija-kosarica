@@ -321,3 +321,10 @@ select.polje { appearance: none; background-image: linear-gradient(45deg, transp
 .zvjezdica { white-space: nowrap; }
 .zvjezdica.aktivna { background: var(--naglasak-svijetli); border-color: var(--naglasak); color: #7a4d00; }
 .favoriti-akcija { border: 1.5px solid var(--naglasak); }
+
+/* Zaključan popis po odjelima trgovine */
+.stavke .odjel { list-style: none; margin-top: 12px; padding: 6px 0 2px; font-size: .74rem; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; color: var(--glavna); border-top: 0; }
+.stavke .odjel:first-child { margin-top: 0; }
+.stavke .odjel + .stavka { border-top: 0; }
+.upute { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0 8px; text-decoration: none; }
+.upute svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }

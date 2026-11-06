@@ -105,6 +105,21 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   provjeri(!/od \d+ u košarici/i.test(await s.locator('.zaslon').innerText()), 'kvačica se može maknuti (' + prvaBrza.replace(/\n/g, ' ') + ')');
   await snimi('2b-popis-novo');
 
+  console.log('Zaključan popis po odjelima trgovine');
+  {
+    await s.click('[data-akcija="zakljucaj"]');
+    await s.waitForSelector('.sazetak');
+    await s.click('nav [data-idi="popis"]');
+    await s.waitForSelector('.stavke');
+    const odjeli = await s.locator('.stavke .odjel').allInnerTexts();
+    const red = odjeli.map((x) => x.toLowerCase());
+    provjeri(odjeli.length >= 3 && red.indexOf('voće i povrće') < red.indexOf('kruh i peciva') && red.indexOf('kruh i peciva') < red.indexOf('mliječno i jaja'),
+      'zaključan popis po odjelima: ' + odjeli.join(' → '));
+    await s.click('[data-akcija="otkljucaj"]');
+    await s.waitForSelector('#upisPolje');
+    provjeri(await s.locator('.stavke .odjel').count() === 0, 'otključan popis: bez odjela (redoslijed kako je upisano)');
+  }
+
   console.log('Rezultati');
   await s.click('[data-akcija="zakljucaj"]');
   await s.waitForSelector('.sazetak');
@@ -167,12 +182,24 @@ const provjeri = (uvjet, poruka) => { if (!uvjet) throw new Error('NIJE PROŠLO:
   const rezKrug = await s.locator('.zaslon').innerText();
   const brojPoslovnica = Number((rezKrug.match(/U krugu 10 km: (\d+) poslovnic/) || [])[1] || 0);
   provjeri(brojPoslovnica > 0 && brojPoslovnica === brojUKrugu, `rezultati koriste iste poslovnice u krugu (${brojPoslovnica})`);
+  await s.click('[data-tab="B"]');
+  await s.waitForSelector('.sazetak');
+  const upute = s.locator('.otvoreno a.upute');
+  provjeri(await upute.count() === 1 && /google\.com\/maps\/dir\/\?api=1&destination=4\d\.\d+,1\d\.\d+/.test(await upute.getAttribute('href')), 'B u krugu: „Upute do trgovine” vodi na Google Karte do te poslovnice');
   await snimi('8-rezultat-krug');
 
   console.log('Akcije i Više');
   await s.click('nav [data-idi="akcije"]');
   await s.waitForSelector('.akcija, .prazno');
   provjeri(await s.locator('.akcija').count() > 0, 'akcije se prikazuju');
+  const akcijeTekst = await s.locator('.zaslon').innerText();
+  provjeri(/najniža cijena u 30 dana/.test(akcijeTekst) && /u 30 dana bilo i/.test(akcijeTekst), 'akcije: „✓ najniža cijena u 30 dana” i „u 30 dana bilo i …”');
+  const sveAkcije = await s.locator('.zaslon > section .akcija').count();
+  await s.check('#praveAkcije');
+  await s.waitForTimeout(200);
+  const prave = await s.locator('.zaslon > section .akcija').count();
+  provjeri(prave > 0 && prave < sveAkcije && !/u 30 dana bilo i/.test(await s.locator('.zaslon').innerText()), `„Samo prave akcije”: ${prave} od ${sveAkcije}`);
+  await s.uncheck('#praveAkcije');
   await snimi('9-akcije');
   await s.click('nav [data-idi="vise"]');
   await s.click('[data-idi="favoriti"]');
