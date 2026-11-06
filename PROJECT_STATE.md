@@ -103,6 +103,8 @@ Nalog vlasnika: „Fix all the problems and continue with the app.”
   - **Popravljeno:** u B nema zelenog sažetka – karusel je glavni element, ušteda u tankoj traci iznad; „Kupio/la sam” prati trgovinu u fokusu (`data-iznos`, `data-opis`); na mobitelima ≤ 420 px zbijeniji vrh rezultata (bez podnaslova A/B/C). Snimka 360×760 s lokacijom 20 km: `docs/rezultat-b-1.7.1.png` (cijela kartica iznad gumba).
   - **Testirano:** Python 50 OK, Node 22/22, preglednik „SVE PROVJERE SU PROŠLE” (novo: cijena kartice u fokusu iznad donje trake, nema dvostrukog prikaza, Kupio/la sam bilježi trgovinu u fokusu).
 
+- **Objava 1.7.1 (6.11.2026., provjereno 16:20 Europe/Zagreb):** [PR #32](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/pull/32) spojen (`e30b249`). Run 42238102866: `provjere` uspješne; `objava` pala na koraku deploy-pages – 1. pokušaj: GitHub Pages sinkronizirao datoteke dulje od 10 min (istek); 2. pokušaj (re-run): „Multiple artifacts named github-pages” (poznato ograničenje re-runa). Automatski je otvoren [issue #33](https://github.com/antiquecroatianoak-sudo/Najjeftinija-kosarica/issues/33). Aplikacija je za to vrijeme prikazivala 1.7.0 s ispravnim cijenama. **Popravak radnog toka:** ime paketa sadrži `run_attempt`, rok objave 20 min.
+
 ### Otvoreno / zapreke
 - ~~Za objavu: spojiti granu u `claude/dreamy-hopper-f6e4u0`~~ – riješeno PR-om #16 (vidi gore).
 - Paralelno: druga sesija radi na grani `ccr-c6eb8592-ad02ds` („izvorna Android aplikacija v0.2”, vlastiti radni tok `android.yml`). Vlasnik je za objavu odabrao web aplikaciju (5.11.2026.); Android grana nije spojena i temelji se na staroj aplikaciji (`dc75f54`).

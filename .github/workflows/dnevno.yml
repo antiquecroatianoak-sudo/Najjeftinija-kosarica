@@ -82,12 +82,18 @@ jobs:
             --lokacije "${{ steps.pages.outputs.base_url }}/data/hr/lokacije.json" \
             ${{ inputs.prisilno && '--prisilno' || '' }}
           cat app/data/hr/meta.json | head -c 4000
+      # Ime paketa uključuje broj pokušaja: ponovno pokretanje (re-run) inače stvori drugi paket istog imena
+      # i deploy-pages odbije objavu („Multiple artifacts named github-pages”, 6.11.2026.).
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app
+          name: github-pages-${{ github.run_attempt }}
       - name: Objavi aplikaciju
         id: objava
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
+          timeout: 1200000    # GitHub Pages je 6.11.2026. sinkronizirao datoteke dulje od zadanih 10 min
       - name: Provjeri objavljenu verziju
         run: |
           OCEKIVANO=$(python -c "import json;print(json.load(open('app/data/hr/meta.json'))['verzija'])")
