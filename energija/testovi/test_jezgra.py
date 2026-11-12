@@ -99,8 +99,8 @@ class TestCertifikati(Privremeno):
                 x.sendall(b"ok")
 
         threading.Thread(target=posluzi, daemon=True).start()
-        with ca.kontekst_klijenta().wrap_socket(socket.create_connection(("127.0.0.1", port)),
-                                                server_hostname="localhost") as c:
+        strogi = ssl.create_default_context(cafile=str(ca.ca_pem))  # VERIFY_X509_STRICT (Python 3.13+)
+        with strogi.wrap_socket(socket.create_connection(("127.0.0.1", port)), server_hostname="localhost") as c:
             self.assertEqual(c.recv(2), b"ok")
         tudji = LokalniCA(self.d / "drugi", Trezor(self.d / "drugi"))
         s2 = socket.socket()

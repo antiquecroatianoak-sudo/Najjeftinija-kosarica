@@ -121,7 +121,7 @@ h2 { font-size: 13px; font-weight: 500; color: var(--blago); margin: 0 0 14px; l
 
 .odluke { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
 .odluke li { border: 1px solid var(--rub); border-radius: 12px; padding: 12px; }
-.odluke .pod { font-size: 12px; color: var(--blago); text-transform: capitalize; }
+.odluke .pod { font-size: 12px; color: var(--blago); }
 .odluke b { display: block; font-weight: 600; margin: 2px 0; }
 .odluke .izvor { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--naglasak-blago); color: var(--naglasak); margin-top: 6px; }
 .odluke .izvor.rucno, .odluke .izvor.ai { background: color-mix(in srgb, var(--mreza) 15%, transparent); color: var(--mreza); }

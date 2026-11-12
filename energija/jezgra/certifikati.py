@@ -52,6 +52,7 @@ class LokalniCA:
                 .not_valid_after(_sada() + dt.timedelta(days=TRAJANJE_CA_DANA))
                 .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
                 .add_extension(x509.KeyUsage(False, False, False, False, False, True, True, False, False), critical=True)
+                .add_extension(x509.SubjectKeyIdentifier.from_public_key(self.kljuc.public_key()), critical=False)
                 .sign(self.kljuc, hashes.SHA256())
             )
             _zapisi_tajno(kp, self.kljuc.private_bytes(
@@ -80,6 +81,9 @@ class LokalniCA:
             .not_valid_before(_sada() - dt.timedelta(minutes=5))
             .not_valid_after(_sada() + dt.timedelta(days=TRAJANJE_DANA))
             .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(x509.KeyUsage(True, False, True, False, False, False, False, False, False), critical=True)
+            .add_extension(x509.SubjectKeyIdentifier.from_public_key(kljuc.public_key()), critical=False)
+            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(self.kljuc.public_key()), critical=False)
             .add_extension(x509.ExtendedKeyUsage(
                 [ExtendedKeyUsageOID.CLIENT_AUTH] if klijent else
                 [ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH]), critical=False)

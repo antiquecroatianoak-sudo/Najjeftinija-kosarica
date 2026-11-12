@@ -1,0 +1,30 @@
+# Pokretanje na lokalnom uređaju (Raspberry Pi i sl.):  docker compose -f kontejneri/compose.yaml up -d
+# Ograničenja resursa štite kritičnu automatizaciju: jezgra nikad ne može pojesti cijeli uređaj.
+services:
+  jezgra:
+    build: { context: .., dockerfile: kontejneri/Dockerfile }
+    image: energija-jezgra:0.1
+    restart: always                 # autonomni oporavak; stanje se vraća iz snimke + dnevnika
+    network_mode: host              # multicast otkrivanje, Modbus TCP i MQTT u lokalnoj mreži
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - podaci:/podaci
+      - /mnt/usb:/mnt/usb           # sekundarni medij za šifrirane kopije (ako je priključen)
+    mem_limit: 160m
+    cpus: 1.0
+    pids_limit: 128
+    stop_grace_period: 20s          # vrijeme za zadnju snimku stanja
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  simulacija:                       # samo za demonstraciju, bez stvarnih uređaja
+    profiles: ["demo"]
+    image: energija-jezgra:0.1
+    command: ["--sim", "--brzina", "60", "--port", "8444"]
+    network_mode: host
+    mem_limit: 160m
+    cpus: 0.5
+
+volumes:
+  podaci:

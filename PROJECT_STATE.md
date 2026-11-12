@@ -146,6 +146,9 @@ Spajanje i objava su gotovi (vidi gore); popravci PR #17/#18 objavljeni. Sljede�
 
 ---
 
+## Zaseban projekt na grani sesije: `energija/` (12.11.2026. 20:27 CET, Europe/Zagreb)
+Vlasnik je 12.11.2026. tražio hibridni sustav upravljanja energijom. To **nije dio košarice**; po odluci vlasnika gradi se u zasebnoj mapi `energija/` na grani `ccr-d43c7c5c-hrcpw9` i ne spaja se u zadanu granu. Košarica (`app/`, `uvoz/`, `tests/`, radni tok) nije mijenjana; njezini testovi i dalje prolaze. Stanje tog projekta: `energija/STANJE.md`.
+
 ## Povijesno: stara aplikacija (obrisana 5.11.2026.)
 
 Provjereno: 28.10.2026. 14:36 CET (Europe/Zagreb). Prije nastavka ponovno provjeriti autoritativnu granu i objavu. Ovaj zapis zamjenjuje stare sažetke samo za činjenice ovdje potvrđene.

@@ -174,7 +174,7 @@ function prikaziOdluke(s) {
     naprednoUcitano = true;
   }
   $("rucna-trosila").innerHTML = ["bojler", "uticnice", "hladnjak"].filter((t) => t in (s.releji || {})).map((t) =>
-    `<button type="button" class="gumb sporedno" data-trosilo="${t}" data-ukljuci="${s.releji[t] ? 0 : 1}">${t}: ${s.releji[t] ? "isključi" : "uključi"}</button>`).join("");
+    `<button type="button" class="gumb sporedno" data-trosilo="${t}" data-ukljuci="${s.releji[t] ? 0 : 1}">${{ bojler: "Bojler", uticnice: "Utičnice", hladnjak: "Hladnjak" }[t]}: ${s.releji[t] ? "isključi" : "uključi"}</button>`).join("");
 }
 
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));

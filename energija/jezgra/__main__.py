@@ -125,6 +125,25 @@ def main(argv: list[str] | None = None) -> int:
     Najavljivac({"usluga": "energija-jezgra", "id": j.trezor.id_uredaja(), "https": port,
                  "mqtt": broker.port}).pokreni()
 
+    # tunel: izravno u LAN-u (P2P) uvijek; preko releja samo ako ga je vlasnik dopustio
+    from .api import obrada_tunela
+    from .tunel import TunelJezgre
+
+    def ovlasteni() -> set[bytes]:
+        p = Path(mapa) / "ovlasteni_kljucevi.json"  # javni Ed25519 ključevi uparenih klijenata (hex)
+        try:
+            return {bytes.fromhex(k) for k in json.loads(p.read_text())}
+        except (OSError, ValueError):
+            return set()
+
+    tunel = TunelJezgre(j.trezor, ovlasteni, obrada_tunela(j))
+    tunel_port = tunel.izravno(port=(a.port or cfg["api"]["port"]) + 2)
+    if cfg["tunel"]["relej"] and cfg["tunel"]["dopusteno"]:
+        import ssl as _ssl
+        host, _, rport = cfg["tunel"]["relej"].partition(":")
+        tunel.preko_releja(host, int(rport or 7443), _ssl.create_default_context())
+    print(f"Tunel (LAN P2P) na portu {tunel_port}; relej: {cfg['tunel']['relej'] or 'isključen'}")
+
     nadzor = Nadzornik(j.arhiva, sigurno_stanje=j.sigurno_stanje)
     nadzor.dodaj("upravljanje", j.korak, lambda: max(0.5, 10.0 / (a.brzina if a.sim else 1.0)), kriticno=True, rok_s=30)
     nadzor.dodaj("otkrivanje", registar.skeniraj, lambda: 300.0, rok_s=120)

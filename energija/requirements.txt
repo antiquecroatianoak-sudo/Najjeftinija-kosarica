@@ -1,0 +1,2 @@
+# Jedina vanjska ovisnost: provjerena kriptografija (AES-GCM, X25519, Ed25519, X.509).
+cryptography>=42
