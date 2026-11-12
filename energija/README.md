@@ -23,8 +23,42 @@ python3 -m jezgra --sim --brzina 60 --podaci /tmp/energija-uzivo
 python3 -m unittest discover -s testovi -p "test_*.py"
 ```
 
-Na uređaju (Raspberry Pi ili sličan): `docker compose -f kontejneri/compose.yaml up -d`
-(slika nije izgrađena ni provjerena u ovoj sesiji; vidi `STANJE.md`).
+Na uređaju (Raspberry Pi ili sličan): `docker compose -f kontejneri/compose.yaml up -d`.
+
+## Izolirana provjera cijelog sustava
+
+Provjera bez stvarnog hardvera i bez interneta obuhvaća:
+
+- simulirane Modbus uređaje na **pymodbusu**: SunSpec izmjenjivač/bateriju (jedinica 1) i Eastron SDM brojilo (jedinica 2),
+- MQTT senzore tla i ograde,
+- **lažni Open‑Meteo**,
+- stvarnu sliku jezgre.
+
+Provjera `provjera/provjera_sustava.py` prolazi 15 koraka (16 u Composeu) i završava izlaznim kodom. Koraci uključuju:
+
+- TLS uz strogu provjeru i uparivanje,
+- automatsko prepoznavanje uređaja,
+- prognozu iz lažnog Open‑Meteo,
+- upis ručne snage baterije koji preko Modbusa stiže do izmjenjivača,
+- MQTT naredbu releju,
+- odbijanje ručnog gašenja pastira,
+- potpis izvještaja,
+- mjerenje memorije za AI,
+- u Composeu i dokaz da mreža nema izlaz na internet.
+
+```bash
+pip install -r requirements-provjera.txt                 # + pymodbus 3.8.6
+python3 -m unittest discover -s testovi -p "test_*.py"   # uključuje mokove Open-Meteo i pymodbus interop
+bash provjera/pokreni_lokalno.sh                         # ista topologija kao lokalni procesi
+docker compose -f kontejneri/compose.provjera.yaml up --build --abort-on-container-exit --exit-code-from provjera
+docker compose -f kontejneri/compose.provjera.yaml down -v
+```
+
+Na GitHubu to automatski radi `.github/workflows/energija-provjera.yml`, samo kad se mijenja `energija/`.
+Simulator i lažni servis mogu se pokrenuti i zasebno:
+
+- `python3 -m simulator.modbus_pymodbus --modbus-port 5020 --mqtt-host <jezgra>`
+- `python3 -m simulator.mock_openmeteo --port 8080` (opcija `--kvar N` vraća 503 na prvih N zahtjeva).
 
 ## Što radi
 

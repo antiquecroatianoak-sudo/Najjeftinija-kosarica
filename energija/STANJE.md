@@ -1,5 +1,28 @@
 # Energija – zapis stanja
 
+## 12.11.2026. 20:48 CET (Europe/Zagreb) – pymodbus, mokovi Open-Meteo, izolirana provjera
+
+### Dogovoreno (vlasnik, 12.11.2026.)
+- Simulacija Modbus uređaja pomoću pymodbusa.
+- Mokovi za mrežne pozive prema Open‑Meteo.
+- Docker Compose za izoliranu provjeru cijelog sustava.
+
+### Implementirano
+- `simulator/modbus_pymodbus.py`: SunSpec (modeli 1, 103, 124) na jedinici 1, Eastron SDM na jedinici 2, MQTT senzori, HTTP `/stanje`.
+- `simulator/mock_openmeteo.py`: lažni Open‑Meteo s provjerom parametara, zapisom zahtjeva i opcijom kvara (503).
+- `testovi/test_mokovi_i_pymodbus.py`:
+  - mokovi `urlopen`: uspjeh i parametri upita, URL iz postavki, pad mreže, istek vremena, HTTP 429, neispravan JSON (stara prognoza se zadržava), `null` u nizovima, predmemorija bez ponovnog poziva i učitavanje bez mreže, cijeli tok kiša → bez zalijevanja;
+  - interoperabilnost klijenta jezgre s pymodbusom: otkrivanje, upravljanje baterijom, iznimke za nepostojeće jedinice i registre.
+- `provjera/provjera_sustava.py` i `provjera/pokreni_lokalno.sh`, `kontejneri/compose.provjera.yaml` (mreža `internal: true`), `kontejneri/provjera.Dockerfile`.
+- Radni tok `.github/workflows/energija-provjera.yml`: pokreće se samo na `energija/**`.
+- Jezgra: URL prognoze i MQTT port iz postavki, `ENERGIJA_KOD` (samo za provjeru), ime hosta u SAN‑u certifikata, češće otkrivanje dok Modbus uređaj nije pronađen.
+
+### Testirano
+- Lokalno na `c563411`: 47/47 jediničnih testova; `pokreni_lokalno.sh` 15/15, izlazni kod 0; testovi košarice OK.
+- `docker compose config` za obje Compose datoteke: ispravno.
+- U ovoj sesiji nema Docker daemona, pa je Compose pokrenut samo na GitHubu (ishod u sljedećem zapisu ili u Actions).
+
+
 ## 12.11.2026. 20:27 CET (Europe/Zagreb)
 
 ### Dogovoreno (vlasnik, 12.11.2026.)
