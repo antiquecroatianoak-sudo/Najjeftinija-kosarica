@@ -66,6 +66,12 @@ class License:
     billing_cycle: BillingCycle
     start_date: date
     status: LicenseStatus
+    usage_key: str | None = None   # identifier sent by SSO/login systems; enables usage tracking
+    auto_status: bool = True       # usage tracking may switch active <-> inactive automatically
+
+    @property
+    def tracked(self) -> bool:
+        return self.usage_key is not None
 
     # --- derived values -------------------------------------------------
     @property
@@ -115,6 +121,8 @@ class License:
             "billing_cycle": self.billing_cycle.value,
             "start_date": self.start_date.isoformat(),
             "status": self.status.value,
+            "usage_key": self.usage_key,
+            "auto_status": self.auto_status,
             "monthly_cost": money_str(self.monthly_cost),
         }
 
@@ -137,7 +145,9 @@ def add_months(day: date, months: int) -> date:
 
 
 _REQUIRED = ("name", "category", "cost", "currency", "billing_cycle", "start_date")
-_ALLOWED = set(_REQUIRED) | {"status"}
+_ALLOWED = set(_REQUIRED) | {"status", "usage_key", "auto_status"}
+_READ_ONLY = {"id", "monthly_cost", "last_used_at", "active_users_30d"}
+_USAGE_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 
 def parse_license_fields(data: Mapping[str, Any], *, partial: bool) -> dict[str, Any]:
@@ -152,7 +162,7 @@ def parse_license_fields(data: Mapping[str, Any], *, partial: bool) -> dict[str,
     out: dict[str, Any] = {}
 
     for key in data:
-        if key not in _ALLOWED and key not in ("id", "monthly_cost"):
+        if key not in _ALLOWED and key not in _READ_ONLY:
             errors[key] = "Nepoznato polje."
     if not partial:
         for key in _REQUIRED:
@@ -185,6 +195,17 @@ def parse_license_fields(data: Mapping[str, Any], *, partial: bool) -> dict[str,
         out["status"] = _enum(LicenseStatus, data["status"], "status", errors)
     elif not partial:
         out["status"] = LicenseStatus.ACTIVE
+    if "usage_key" in data and "usage_key" not in errors:
+        raw = data["usage_key"]
+        key = None if raw in (None, "") else str(raw).strip().lower()
+        if key is not None and not _USAGE_KEY_RE.match(key):
+            errors["usage_key"] = "Samo mala slova, brojke, točka, crtica i podvlaka (do 64 znaka)."
+        out["usage_key"] = key
+    if "auto_status" in data and "auto_status" not in errors:
+        if isinstance(data["auto_status"], bool):
+            out["auto_status"] = data["auto_status"]
+        else:
+            errors["auto_status"] = "Očekuje se true ili false."
 
     if errors:
         raise ValidationError(errors)
@@ -226,3 +247,66 @@ def _enum(kind: type[Enum], value: Any, key: str, errors: dict[str, str]):
         allowed = ", ".join(m.value for m in kind)  # type: ignore[attr-defined]
         errors[key] = f"Dopuštene vrijednosti: {allowed}."
         return None
+
+
+# --- Organization (tenant) ----------------------------------------------------
+
+_SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$")
+_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+@dataclass(frozen=True)
+class Organization:
+    id: str
+    name: str
+    slug: str
+    reference_currency: str = "EUR"
+    accent: str = "#1238d6"
+    inactivity_days: int = 30   # no recorded use for this long -> automatically inactive
+    notify_days: int = 14       # notify this many days before a renewal
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"id": self.id, "name": self.name, "slug": self.slug,
+                "reference_currency": self.reference_currency, "accent": self.accent,
+                "inactivity_days": self.inactivity_days, "notify_days": self.notify_days}
+
+
+def parse_org_fields(data: Mapping[str, Any], *, partial: bool) -> dict[str, Any]:
+    if not isinstance(data, Mapping):
+        raise ValidationError({"_": "Očekuje se JSON objekt."})
+    allowed = {"name", "slug", "reference_currency", "accent", "inactivity_days", "notify_days"}
+    errors: dict[str, str] = {k: "Nepoznato polje." for k in data if k not in allowed | {"id"}}
+    out: dict[str, Any] = {}
+    if not partial:
+        for key in ("name", "slug"):
+            if not data.get(key):
+                errors[key] = "Obavezno polje."
+    if "name" in data and "name" not in errors:
+        out["name"] = _text(data["name"], 80, "name", errors)
+    if "slug" in data and "slug" not in errors:
+        slug = str(data["slug"]).strip().lower()
+        if _SLUG_RE.match(slug):
+            out["slug"] = slug
+        else:
+            errors["slug"] = "Mala slova, brojke i crtice (2–40 znakova)."
+    if "reference_currency" in data:
+        cur = str(data["reference_currency"]).strip().upper()
+        if _CURRENCY_RE.match(cur):
+            out["reference_currency"] = cur
+        else:
+            errors["reference_currency"] = "Troslovni ISO kod valute."
+    if "accent" in data:
+        if isinstance(data["accent"], str) and _COLOR_RE.match(data["accent"]):
+            out["accent"] = data["accent"].lower()
+        else:
+            errors["accent"] = "Boja u obliku #rrggbb."
+    for key, lo, hi in (("inactivity_days", 7, 365), ("notify_days", 1, 90)):
+        if key in data:
+            value = data[key]
+            if isinstance(value, int) and not isinstance(value, bool) and lo <= value <= hi:
+                out[key] = value
+            else:
+                errors[key] = f"Cijeli broj od {lo} do {hi}."
+    if errors:
+        raise ValidationError(errors)
+    return out

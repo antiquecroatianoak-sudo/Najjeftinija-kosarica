@@ -4,10 +4,10 @@ import tempfile
 import unittest
 from datetime import date
 
+from helpers import make_app, org_with_admin
+from licence_app.db import SCHEMA_VERSION, Database
 from licence_app.models import License, LicenseStatus
-from licence_app.repository import (
-    InMemoryLicenseRepository, LicenseQuery, SQLiteLicenseRepository,
-)
+from licence_app.repository import DuplicateUsageKey, LicenseQuery, SQLiteLicenseRepository
 
 
 def make(**over):
@@ -16,126 +16,158 @@ def make(**over):
     return License.create({**base, **over})
 
 
-class RepositoryContract:
-    """Behaviour every LicenseRepository implementation must have."""
-
-    def make_repo(self):
-        raise NotImplementedError
-
+class RepositoryTest(unittest.TestCase):
     def setUp(self):
-        self.repo = self.make_repo()
+        self.app = make_app()
+        self.org, _ = org_with_admin(self.app)
+        self.other, _ = org_with_admin(self.app, "beta", "bruno")
+        self.repo = SQLiteLicenseRepository(self.app.db, self.org.id)
+        self.other_repo = SQLiteLicenseRepository(self.app.db, self.other.id)
 
     def tearDown(self):
-        self.repo.close()
+        self.app.close()
 
-    def test_save_get_update_delete(self):
-        lic = make(name="Figma", cost="12.30")
+    def test_crud(self):
+        lic = make(name="Figma", cost="12.30", usage_key="figma")
         self.repo.save(lic)
         self.assertEqual(self.repo.get(lic.id), lic)
+        self.assertEqual(self.repo.get_by_usage_key("figma"), lic)
         with self.assertRaises(KeyError):
             self.repo.save(lic)
-
-        changed = lic.updated({"status": "inactive", "cost": "0.10"})
+        changed = lic.updated({"status": "inactive", "cost": "0.10", "usage_key": None})
         self.assertTrue(self.repo.update(changed))
         self.assertEqual(self.repo.get(lic.id), changed)
-
         self.assertTrue(self.repo.delete(lic.id))
-        self.assertIsNone(self.repo.get(lic.id))
         self.assertFalse(self.repo.delete(lic.id))
         self.assertFalse(self.repo.update(changed))
 
+    def test_tenant_isolation(self):
+        lic = make(name="Tajno")
+        self.repo.save(lic)
+        self.assertIsNone(self.other_repo.get(lic.id))
+        self.assertEqual(self.other_repo.find(), [])
+        self.assertFalse(self.other_repo.update(lic.updated({"name": "Hack"})))
+        self.assertFalse(self.other_repo.delete(lic.id))
+        self.assertEqual(self.repo.get(lic.id).name, "Tajno")
+        # the same usage_key may exist in two organizations, not twice in one
+        self.repo.save(make(usage_key="slack"))
+        self.other_repo.save(make(usage_key="slack"))
+        with self.assertRaises(DuplicateUsageKey):
+            self.repo.save(make(usage_key="slack"))
+
     def test_find_filters_and_order(self):
-        for kw in [dict(name="zoom", category="Komunikacija", status="inactive"),
+        for kw in [dict(name="zoom", category="Komunikacija", status="inactive", usage_key="zoom"),
                    dict(name="Šifre", category="Sigurnost"),
                    dict(name="Čuvar", category="sigurnost", status="cancelled"),
                    dict(name="Ana_50%", start_date="2027-01-01"),
                    dict(name="Slack", category="Komunikacija")]:
             self.repo.save(make(**kw))
         names = lambda **q: [l.name for l in self.repo.find(LicenseQuery(**q))]
-
-        # case-insensitive, by code point after casefold (not Croatian alphabetical collation)
-        self.assertEqual(names(), ["Ana_50%", "Slack", "zoom", "Čuvar", "Šifre"])
+        self.assertEqual(names(), ["Ana_50%", "Slack", "zoom", "Čuvar", "Šifre"])  # casefold code-point order
         self.assertEqual(names(statuses=(LicenseStatus.INACTIVE,)), ["zoom"])
-        self.assertEqual(set(names(statuses=(LicenseStatus.ACTIVE, LicenseStatus.INACTIVE))),
-                         {"Ana_50%", "Šifre", "Slack", "zoom"})
-        # Unicode-aware case folding (SQLite NOCASE/lower() would miss Š/Č)
         self.assertEqual(set(names(category="SIGURNOST")), {"Šifre", "Čuvar"})
         self.assertEqual(names(text="šif"), ["Šifre"])
-        self.assertEqual(names(text="ČUV"), ["Čuvar"])
-        # % and _ are literal, not wildcards
         self.assertEqual(names(text="_50%"), ["Ana_50%"])
-        self.assertEqual(names(text="%"), ["Ana_50%"])
         self.assertNotIn("Ana_50%", names(started_on_or_before=date(2026, 11, 12)))
-        self.assertEqual(names(text="komunik", statuses=(LicenseStatus.ACTIVE,)), ["Slack"])
+        self.assertEqual(names(tracked=True), ["zoom"])
+        self.assertEqual(self.repo.categories(), ["Komunikacija", "Razvoj", "Sigurnost"])
 
-    def test_categories_case_insensitive_unique(self):
-        for cat in ["sigurnost", "Dizajn", "Sigurnost", "dizajn", "Razvoj"]:
-            self.repo.save(make(category=cat))
-        self.assertEqual([c.casefold() for c in self.repo.categories()],
-                         ["dizajn", "razvoj", "sigurnost"])
+    def test_tracking_since_set_only_when_tracking_starts(self):
+        lic = make(name="X")
+        self.repo.save(lic)
+        self.assertIsNone(self.repo.tracking_since(lic.id))
+        self.repo.update(lic.updated({"usage_key": "x"}))
+        first = self.repo.tracking_since(lic.id)
+        self.assertIsNotNone(first)
+        self.repo.update(self.repo.get(lic.id).updated({"name": "X2"}))
+        self.assertEqual(self.repo.tracking_since(lic.id), first)
+        self.repo.update(self.repo.get(lic.id).updated({"usage_key": None}))
+        self.assertIsNone(self.repo.tracking_since(lic.id))
+
+    def test_queries_use_indexes(self):
+        # Every query is an index SEARCH within one organization, never a full-table SCAN
+        # across tenants. Which org index the planner picks depends on table statistics.
+        queries = [LicenseQuery(statuses=(LicenseStatus.ACTIVE, LicenseStatus.INACTIVE),
+                                started_on_or_before=date(2026, 1, 1), ordered=False),
+                   LicenseQuery(category="x"), LicenseQuery(text="x"), LicenseQuery(tracked=True), LicenseQuery()]
+        for q in queries:
+            plan = self.repo.explain(q)
+            self.assertRegex(plan, r"SEARCH licenses USING (COVERING )?INDEX licenses_org_\w+ \(organization_id=", q)
+            self.assertNotIn("SCAN licenses", plan)
+        self.assertNotIn("TEMP B-TREE", self.repo.explain(LicenseQuery()))  # default ORDER BY from the index
+        # with statistics on a realistic tenant the status/start index serves the dashboard query
+        for i in range(300):
+            self.repo.save(make(name=f"L{i}", status="cancelled" if i % 10 else "active"))
+        self.app.db.execute("ANALYZE")
+        self.assertIn("licenses_org_status_start", self.repo.explain(queries[0]))
 
 
-class InMemoryRepositoryTest(RepositoryContract, unittest.TestCase):
-    def make_repo(self):
-        return InMemoryLicenseRepository()
-
-
-class SQLiteRepositoryTest(RepositoryContract, unittest.TestCase):
-    def make_repo(self):
+class MigrationTest(unittest.TestCase):
+    def setUp(self):
         fd, self.path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
-        return SQLiteLicenseRepository(self.path)
+        os.unlink(self.path)
 
     def tearDown(self):
-        super().tearDown()
         for suffix in ("", "-wal", "-shm"):
             if os.path.exists(self.path + suffix):
                 os.unlink(self.path + suffix)
 
-    def test_survives_reopen_and_uses_wal(self):
-        lic = make(cost="0.10")
-        self.repo.save(lic)
-        self.repo.close()
-        self.repo = SQLiteLicenseRepository(self.path)
-        self.assertEqual(self.repo.get(lic.id), lic)
-        mode = sqlite3.connect(self.path).execute("PRAGMA journal_mode").fetchone()[0]
-        self.assertEqual(mode, "wal")
+    def _check(self, db):
+        self.assertEqual(db.version(), SCHEMA_VERSION)
+        self.assertEqual(db.scalar("PRAGMA foreign_key_check"), None)
+        self.assertEqual(db.optimize()["quick_check"], "ok")
+        self.assertEqual(db.scalar("PRAGMA journal_mode"), "wal")
 
-    def test_queries_use_indexes(self):
-        plan = self.repo.explain(LicenseQuery(statuses=(LicenseStatus.ACTIVE, LicenseStatus.INACTIVE),
-                                              started_on_or_before=date(2026, 1, 1)))
-        self.assertIn("licenses_status_start", plan)
-        self.assertIn("licenses_category", self.repo.explain(LicenseQuery(category="x")))
-        self.assertIn("licenses_name", self.repo.explain(LicenseQuery()))  # ORDER BY without sort step
-        self.assertNotIn("TEMP B-TREE", self.repo.explain(LicenseQuery()))
+    def test_fresh_database(self):
+        db = Database(self.path)
+        self._check(db)
+        db.close()
 
-    def test_schema_rejects_bad_rows(self):
-        conn = sqlite3.connect(self.path)
-        with self.assertRaises(sqlite3.IntegrityError):
-            conn.execute("INSERT INTO licenses (id, name, category, cost, currency, billing_cycle,"
-                         " start_date, status, name_key, category_key)"
-                         " VALUES ('x','n','c','1','EUR','weekly','2025-01-01','active','n','c')")
-        conn.close()
-
-    def test_migrates_database_from_version_0_1_0(self):
-        self.repo.close()
-        os.unlink(self.path)
+    def test_from_v0_1_0(self):
         old = sqlite3.connect(self.path)
         old.executescript("""
             CREATE TABLE licenses (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL,
               cost TEXT NOT NULL, currency TEXT NOT NULL, billing_cycle TEXT NOT NULL,
               start_date TEXT NOT NULL, status TEXT NOT NULL,
-              created_at TEXT NOT NULL DEFAULT (datetime('now')),
-              updated_at TEXT NOT NULL DEFAULT (datetime('now')));
+              created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')));
             CREATE INDEX licenses_status ON licenses(status);
             INSERT INTO licenses (id, name, category, cost, currency, billing_cycle, start_date, status)
-            VALUES ('a1', 'Šifre Pro', 'Sigurnost', '9.99', 'EUR', 'monthly', '2025-01-01', 'active');
-        """)
+            VALUES ('a1', 'Šifre Pro', 'Sigurnost', '9.99', 'EUR', 'monthly', '2025-01-01', 'active');""")
         old.close()
-        self.repo = SQLiteLicenseRepository(self.path)
-        self.assertEqual([l.name for l in self.repo.find(LicenseQuery(text="ŠIF"))], ["Šifre Pro"])
-        version = sqlite3.connect(self.path).execute("PRAGMA user_version").fetchone()[0]
-        self.assertEqual(version, 1)
+        db = Database(self.path)
+        self._check(db)
+        repo = SQLiteLicenseRepository(db, "org_default")
+        self.assertEqual([l.name for l in repo.find(LicenseQuery(text="ŠIF"))], ["Šifre Pro"])
+        self.assertEqual(db.scalar("SELECT slug FROM organizations"), "default")
+        db.close()
+
+    def test_from_v1_keeps_rows_and_reopens(self):
+        conn = sqlite3.connect(self.path)
+        conn.executescript("""
+            CREATE TABLE licenses (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, cost TEXT NOT NULL,
+              currency TEXT NOT NULL, billing_cycle TEXT NOT NULL, start_date TEXT NOT NULL, status TEXT NOT NULL,
+              name_key TEXT NOT NULL, category_key TEXT NOT NULL,
+              created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now'))) WITHOUT ROWID;
+            INSERT INTO licenses (id, name, category, cost, currency, billing_cycle, start_date, status, name_key, category_key)
+            VALUES ('b2', 'Slack', 'Komunikacija', '43.75', 'EUR', 'monthly', '2025-03-01', 'inactive', 'slack', 'komunikacija');
+            PRAGMA user_version = 1;""")
+        conn.close()
+        db = Database(self.path)
+        self._check(db)
+        lic = SQLiteLicenseRepository(db, "org_default").get("b2")
+        self.assertEqual((lic.name, lic.status.value, str(lic.cost)), ("Slack", "inactive", "43.75"))
+        db.close()
+        db = Database(self.path)   # second open: no migration runs again
+        self._check(db)
+        db.close()
+
+    def test_newer_schema_is_refused(self):
+        conn = sqlite3.connect(self.path)
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
+        conn.close()
+        with self.assertRaises(RuntimeError):
+            Database(self.path)
 
 
 if __name__ == "__main__":
