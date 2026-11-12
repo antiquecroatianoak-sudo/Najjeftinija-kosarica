@@ -8,3 +8,6 @@ prijava.md
 
 # Licence tima (zaseban projekt u licence/)
 licence/*.db
+licence/.env
+licence/*.db-*
+licence/*.db.key

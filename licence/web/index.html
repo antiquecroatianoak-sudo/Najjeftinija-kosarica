@@ -4,10 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0a0c0f" media="(prefers-color-scheme: dark)">
-  <title>Licence tima</title>
-  <link rel="icon" href="data:,">
+  <meta name="description" content="License Pulse – pregled troškova softverskih licenci i ušteda za manje timove.">
+  <title>License Pulse</title>
+  <link rel="icon" href="img/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/app.css">
   <script type="module" src="js/main.js"></script>
 </head>
@@ -16,10 +15,20 @@
 
   <header class="topbar">
     <div class="wrap topbar__row">
-      <a class="brand" href="#/pregled" aria-label="Licence tima – pregled">
-        <span class="brand__mark" aria-hidden="true"></span>Licence tima
+      <a class="brand" href="#/pregled" aria-label="License Pulse – pregled">
+        <svg class="brand__logo" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" class="brand__bg"/>
+          <path d="M5 17h6l3-8 4 15 3-9 2 2h4" class="brand__pulse"/>
+        </svg>
+        <span class="brand__name">License Pulse</span>
       </a>
+      <span class="org-chip" id="org-name" title="Organizacija">…</span>
       <div class="topbar__actions">
+        <span class="sync" id="sync-state" role="status" aria-live="polite"></span>
+        <button type="button" class="icon-btn bell" id="btn-notifications" aria-label="Obavijesti" aria-keyshortcuts="o">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>
+          <span class="bell__count" id="notif-count">0</span>
+        </button>
         <button type="button" class="icon-btn" id="btn-theme" aria-label="Promijeni temu" title="Tema">
           <span class="theme-icon" aria-hidden="true"></span>
         </button>
@@ -31,21 +40,52 @@
     <nav class="wrap tabs" aria-label="Glavna navigacija">
       <a class="tab" href="#/pregled" data-view="pregled">Pregled</a>
       <a class="tab" href="#/licence" data-view="licence">Licence <span class="tab__count" id="tab-count">0</span></a>
+      <a class="tab" href="#/banka" data-view="banka">Banka</a>
+      <a class="tab" href="#/postavke" data-view="postavke">Postavke</a>
       <span class="tabs__ink" aria-hidden="true"></span>
     </nav>
   </header>
 
   <main id="main" class="wrap" tabindex="-1">
-    <!-- ============ PREGLED ============ -->
+    <!-- ================= PREGLED ================= -->
     <section class="view" id="view-pregled" data-view="pregled" aria-labelledby="h-overview">
       <div class="view__head">
         <h1 id="h-overview">Pregled</h1>
         <p class="muted" id="as-of"></p>
       </div>
 
+      <section class="roi" id="roi" aria-labelledby="h-roi">
+        <div class="roi__main">
+          <p class="roi__eyebrow" id="h-roi">Trenutačni gubitak</p>
+          <p class="roi__loss"><span id="roi-loss">—</span><span class="roi__unit">/ mj.</span></p>
+          <p class="roi__sub" id="roi-sub">na licence koje se plaćaju, a ne koriste</p>
+          <div class="waste-bar" id="waste-bar" role="img" aria-label="Udio neiskorištene potrošnje">
+            <span class="waste-bar__used" id="waste-used"></span><span class="waste-bar__waste" id="waste-waste"></span>
+          </div>
+          <p class="roi__legend"><span><i class="sw sw--used"></i>koristi se</span><span><i class="sw sw--waste"></i>neiskorišteno <b id="waste-pct">0 %</b></span></p>
+          <p class="roi__action" id="roi-action"></p>
+        </div>
+        <div class="roi__calc" aria-labelledby="h-calc">
+          <p class="roi__eyebrow" id="h-calc">Kalkulator povrata ulaganja</p>
+          <label class="range">
+            <span>Otkazujem neaktivne licence: <b id="calc-share-out">100 %</b></span>
+            <input type="range" id="calc-share" min="0" max="100" step="5" value="100">
+          </label>
+          <label class="field">
+            <span class="field__label">Trošak upravljanja mjesečno (vrijeme, alat)</span>
+            <input id="calc-cost" inputmode="decimal" placeholder="0,00" autocomplete="off">
+          </label>
+          <dl class="calc-out">
+            <div><dt>Projicirana ušteda (12 mj.)</dt><dd id="calc-saving">—</dd></div>
+            <div><dt>Neto dobit (12 mj.)</dt><dd id="calc-net">—</dd></div>
+            <div><dt>Povrat ulaganja</dt><dd id="calc-roi">—</dd></div>
+          </dl>
+          <p class="hint" id="calc-note"></p>
+        </div>
+      </section>
+
       <div class="kpis" id="kpis" aria-live="polite">
-        <div class="kpi skeleton"></div><div class="kpi skeleton"></div>
-        <div class="kpi skeleton"></div><div class="kpi skeleton"></div>
+        <div class="kpi skeleton"></div><div class="kpi skeleton"></div><div class="kpi skeleton"></div>
       </div>
 
       <div class="grid2">
@@ -54,7 +94,7 @@
             <h2 id="h-inactive">Neaktivne pretplate</h2>
             <span class="badge badge--warn" id="inactive-count">0</span>
           </header>
-          <p class="panel__hint">Plaćaju se, a tim ih ne koristi. Otkažite ih ili ih ponovno aktivirajte.</p>
+          <p class="panel__hint">Plaćaju se, a tim ih ne koristi. Status se mijenja automatski za licence s praćenjem korištenja.</p>
           <ul class="list" id="inactive-list"><li class="skeleton skeleton--row"></li></ul>
         </article>
 
@@ -72,17 +112,32 @@
         </article>
       </div>
 
+      <div class="grid2">
+        <article class="panel" aria-labelledby="h-forecast">
+          <header class="panel__head"><h2 id="h-forecast">Plan plaćanja – 12 mjeseci</h2><span class="muted small" id="forecast-cur"></span></header>
+          <div class="forecast" id="forecast" role="list"></div>
+          <p class="hint" id="forecast-note"></p>
+        </article>
+        <article class="panel" aria-labelledby="h-negotiate">
+          <header class="panel__head"><h2 id="h-negotiate">Za pregovore</h2><span class="muted small">obnova do 90 dana</span></header>
+          <ul class="list" id="negotiation-list"></ul>
+        </article>
+      </div>
+
       <article class="panel" aria-labelledby="h-categories">
         <header class="panel__head"><h2 id="h-categories">Mjesečni trošak po kategoriji</h2></header>
         <ul class="bars" id="category-bars"></ul>
       </article>
     </section>
 
-    <!-- ============ LICENCE ============ -->
+    <!-- ================= LICENCE ================= -->
     <section class="view" id="view-licence" data-view="licence" aria-labelledby="h-licenses" hidden>
       <div class="view__head">
         <h1 id="h-licenses">Licence</h1>
-        <p class="muted" id="result-count"></p>
+        <div class="view__actions">
+          <button type="button" class="btn btn--sm" id="btn-import" aria-keyshortcuts="i">Uvoz CSV / Excel</button>
+          <a class="btn btn--sm" id="btn-export" href="/api/export.csv" download>Izvoz CSV</a>
+        </div>
       </div>
 
       <form class="toolbar" id="filters" role="search">
@@ -92,45 +147,118 @@
           <input type="search" name="q" placeholder="Pretraži naziv ili kategoriju" autocomplete="off" aria-keyshortcuts="/">
           <kbd class="search__kbd" aria-hidden="true">/</kbd>
         </label>
-        <div class="seg" role="radiogroup" aria-label="Status" id="status-seg">
-          <button type="button" role="radio" data-status="">Sve</button>
-          <button type="button" role="radio" data-status="active">Aktivne</button>
-          <button type="button" role="radio" data-status="inactive">Neaktivne</button>
-          <button type="button" role="radio" data-status="cancelled">Otkazane</button>
-        </div>
-        <input type="hidden" name="status" value="">
         <label class="select">
           <span class="sr-only">Kategorija</span>
           <select name="category"><option value="">Sve kategorije</option></select>
         </label>
       </form>
+      <div class="chips" role="radiogroup" aria-label="Brzi filtri" id="quick-filters">
+        <button type="button" role="radio" data-filter="all" aria-keyshortcuts="1">Sve</button>
+        <button type="button" role="radio" data-filter="active" aria-keyshortcuts="2">Aktivne</button>
+        <button type="button" role="radio" data-filter="inactive" aria-keyshortcuts="3">Neaktivne</button>
+        <button type="button" role="radio" data-filter="cancelled" aria-keyshortcuts="4">Otkazane</button>
+        <button type="button" role="radio" data-filter="expiring" aria-keyshortcuts="5">Ističe ≤ 30 d</button>
+        <button type="button" role="radio" data-filter="tracked" aria-keyshortcuts="6">Praćeno korištenje</button>
+      </div>
+      <p class="muted small" id="result-count"></p>
 
-      <div class="table-card">
+      <div class="table-card" id="table-card">
         <table class="table" id="license-table">
           <thead><tr>
             <th scope="col"><button type="button" class="sort" data-sort="name">Naziv</button></th>
             <th scope="col"><button type="button" class="sort" data-sort="category">Kategorija</button></th>
             <th scope="col" class="num"><button type="button" class="sort" data-sort="cost">Trošak</button></th>
             <th scope="col" class="num"><button type="button" class="sort" data-sort="monthly">Mjesečno</button></th>
-            <th scope="col"><button type="button" class="sort" data-sort="start">Početak</button></th>
+            <th scope="col"><button type="button" class="sort" data-sort="usage">Korištenje</button></th>
+            <th scope="col"><button type="button" class="sort" data-sort="renewal">Obnova</button></th>
             <th scope="col"><button type="button" class="sort" data-sort="status">Status</button></th>
             <th scope="col"><span class="sr-only">Radnje</span></th>
           </tr></thead>
           <tbody>
-            <tr class="skeleton-tr"><td colspan="7"><div class="skeleton skeleton--row"></div></td></tr>
-            <tr class="skeleton-tr"><td colspan="7"><div class="skeleton skeleton--row"></div></td></tr>
+            <tr class="skeleton-tr"><td colspan="8"><div class="skeleton skeleton--row"></div></td></tr>
           </tbody>
         </table>
-        <div class="empty" id="license-empty" hidden>
-          <p class="empty__title" id="empty-title">Još nema licenci</p>
-          <p class="muted" id="empty-text">Dodajte prvu pretplatu da biste pratili troškove.</p>
-          <button type="button" class="btn btn--primary" data-action="new">+ Nova licenca</button>
-        </div>
       </div>
+    </section>
+
+    <!-- ================= BANKA ================= -->
+    <section class="view" id="view-banka" data-view="banka" aria-labelledby="h-bank" hidden>
+      <div class="view__head">
+        <h1 id="h-bank">Banka</h1>
+        <p class="muted">Izvodi se sparuju s licencama automatski – bez ručnog unosa.</p>
+      </div>
+      <div class="grid2">
+        <article class="panel" aria-labelledby="h-bank-import">
+          <header class="panel__head"><h2 id="h-bank-import">Uvoz izvoda</h2></header>
+          <p class="panel__hint">ISO 20022 camt.053 (XML) ili CSV iz internetskog bankarstva. IBAN se ne sprema (tokenizira se), brojevi kartica se maskiraju.</p>
+          <form class="stack" id="bank-form">
+            <label class="field"><span class="field__label">Datoteka izvoda</span>
+              <input type="file" name="file" accept=".xml,.csv,.txt" required></label>
+            <label class="field"><span class="field__label">Naziv računa (neobavezno)</span>
+              <input name="label" maxlength="60" placeholder="npr. Poslovni račun" autocomplete="off"></label>
+            <button type="submit" class="btn btn--primary" id="bank-submit"><span class="btn__label">Uvezi i spari</span></button>
+          </form>
+          <div id="bank-result" aria-live="polite"></div>
+        </article>
+        <article class="panel" aria-labelledby="h-bank-insights">
+          <header class="panel__head"><h2 id="h-bank-insights">Uvidi</h2></header>
+          <div id="bank-insights"></div>
+        </article>
+      </div>
+      <div class="chips" role="radiogroup" aria-label="Status transakcija" id="bank-filter">
+        <button type="button" role="radio" data-status="">Sve</button>
+        <button type="button" role="radio" data-status="suggested">Prijedlozi</button>
+        <button type="button" role="radio" data-status="unmatched">Nesparene</button>
+        <button type="button" role="radio" data-status="matched">Sparene</button>
+        <button type="button" role="radio" data-status="ignored">Zanemarene</button>
+      </div>
+      <div class="table-card">
+        <table class="table" id="bank-table">
+          <thead><tr><th scope="col">Datum</th><th scope="col">Primatelj</th><th scope="col" class="num">Iznos</th>
+            <th scope="col">Licenca</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Radnje</span></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= POSTAVKE ================= -->
+    <section class="view" id="view-postavke" data-view="postavke" aria-labelledby="h-settings" hidden>
+      <div class="view__head"><h1 id="h-settings">Postavke</h1><p class="muted" id="settings-role"></p></div>
+      <div class="grid2">
+        <article class="panel" aria-labelledby="h-org">
+          <header class="panel__head"><h2 id="h-org">Organizacija</h2></header>
+          <form class="stack" id="org-form" novalidate>
+            <label class="field"><span class="field__label">Naziv tvrtke</span><input name="name" maxlength="80" required>
+              <small class="err" data-for="name"></small></label>
+            <div class="form-grid">
+              <label class="field"><span class="field__label">Boja</span><input type="color" name="accent"></label>
+              <label class="field"><span class="field__label">Referentna valuta</span><input name="reference_currency" maxlength="3" list="currency-options">
+                <small class="err" data-for="reference_currency"></small></label>
+              <label class="field"><span class="field__label">Neaktivno nakon (dana bez korištenja)</span><input type="number" name="inactivity_days" min="7" max="365">
+                <small class="err" data-for="inactivity_days"></small></label>
+              <label class="field"><span class="field__label">Obavijest prije obnove (dana)</span><input type="number" name="notify_days" min="1" max="90">
+                <small class="err" data-for="notify_days"></small></label>
+            </div>
+            <button type="submit" class="btn btn--primary">Spremi</button>
+          </form>
+        </article>
+        <article class="panel" aria-labelledby="h-password">
+          <header class="panel__head"><h2 id="h-password">Moja lozinka</h2></header>
+          <form class="stack" id="password-form" novalidate>
+            <input type="text" name="username" autocomplete="username" hidden>
+            <label class="field"><span class="field__label">Trenutačna lozinka</span><input type="password" name="current" autocomplete="current-password" required>
+              <small class="err" data-for="current"></small></label>
+            <label class="field"><span class="field__label">Nova lozinka (najmanje 12 znakova)</span><input type="password" name="password" autocomplete="new-password" minlength="12" required>
+              <small class="err" data-for="password"></small></label>
+            <button type="submit" class="btn">Promijeni lozinku</button>
+          </form>
+        </article>
+      </div>
+      <div id="admin-settings"></div>
     </section>
   </main>
 
-  <!-- ============ OBRAZAC ============ -->
+  <!-- ================= DIJALOZI ================= -->
   <dialog class="dialog" id="license-dialog" aria-labelledby="dlg-title">
     <form method="dialog" id="license-form" novalidate>
       <header class="dialog__head">
@@ -138,26 +266,21 @@
         <button type="button" class="icon-btn" data-close aria-label="Zatvori">✕</button>
       </header>
       <p class="form-error" id="form-error" role="alert" hidden></p>
-
       <div class="form-grid">
         <label class="field field--full"><span class="field__label">Naziv</span>
           <input name="name" required maxlength="120" autocomplete="off" placeholder="npr. Figma Professional">
           <small class="err" data-for="name"></small></label>
-
         <label class="field field--full"><span class="field__label">Kategorija</span>
           <input name="category" required maxlength="60" list="category-options" autocomplete="off" placeholder="npr. Dizajn">
           <datalist id="category-options"></datalist>
           <small class="err" data-for="category"></small></label>
-
         <label class="field"><span class="field__label">Trošak po ciklusu</span>
           <input name="cost" required inputmode="decimal" placeholder="0,00" autocomplete="off">
           <small class="err" data-for="cost"></small></label>
-
         <label class="field"><span class="field__label">Valuta</span>
           <input name="currency" required maxlength="3" value="EUR" autocapitalize="characters" list="currency-options" autocomplete="off">
           <datalist id="currency-options"><option value="EUR"><option value="USD"><option value="GBP"><option value="CHF"></datalist>
           <small class="err" data-for="currency"></small></label>
-
         <fieldset class="field field--full">
           <legend class="field__label">Ciklus naplate</legend>
           <div class="seg seg--block">
@@ -166,13 +289,10 @@
             <label><input type="radio" name="billing_cycle" value="yearly"><span>Godišnje</span></label>
           </div>
           <small class="hint" id="monthly-preview" aria-live="polite"></small>
-          <small class="err" data-for="billing_cycle"></small>
         </fieldset>
-
         <label class="field field--full"><span class="field__label">Datum početka</span>
           <input type="date" name="start_date" required>
           <small class="err" data-for="start_date"></small></label>
-
         <fieldset class="field field--full">
           <legend class="field__label">Status</legend>
           <div class="seg seg--block seg--status">
@@ -181,10 +301,17 @@
             <label><input type="radio" name="status" value="cancelled"><span><i class="dot dot--off"></i>Otkazana</span></label>
           </div>
           <small class="hint" id="status-hint"></small>
-          <small class="err" data-for="status"></small>
+        </fieldset>
+        <fieldset class="field field--full track-box">
+          <legend class="field__label">Praćenje korištenja</legend>
+          <label class="field"><span class="field__label">Ključ za SSO / prijave (neobavezno)</span>
+            <input name="usage_key" maxlength="64" autocomplete="off" placeholder="npr. slack" spellcheck="false">
+            <small class="err" data-for="usage_key"></small></label>
+          <label class="check"><input type="checkbox" name="auto_status" checked>
+            <span>Automatski mijenjaj status prema korištenju</span></label>
+          <small class="hint">Sustav prijava šalje događaje na <code>POST /api/usage</code> s ovim ključem.</small>
         </fieldset>
       </div>
-
       <footer class="dialog__actions">
         <button type="button" class="btn" data-close>Odustani</button>
         <button type="submit" class="btn btn--primary" id="btn-save"><span class="btn__label">Spremi</span></button>
@@ -192,15 +319,59 @@
     </form>
   </dialog>
 
-  <!-- ============ POTVRDA ============ -->
+  <dialog class="dialog dialog--wide" id="import-dialog" aria-labelledby="import-title">
+    <form method="dialog" id="import-form" novalidate>
+      <header class="dialog__head">
+        <h2 id="import-title">Uvoz licenci</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Zatvori">✕</button>
+      </header>
+      <ol class="steps" aria-label="Koraci uvoza">
+        <li data-step="1">Datoteka</li><li data-step="2">Mapiranje</li><li data-step="3">Rezultat</li>
+      </ol>
+      <div id="import-body"></div>
+      <footer class="dialog__actions" id="import-actions"></footer>
+    </form>
+  </dialog>
+
   <dialog class="dialog dialog--sm" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-text">
     <form method="dialog">
       <h2 id="confirm-title">Obrisati licencu?</h2>
       <p id="confirm-text" class="muted"></p>
       <footer class="dialog__actions">
         <button type="submit" class="btn" value="cancel" autofocus>Odustani</button>
-        <button type="submit" class="btn btn--danger" value="ok">Obriši</button>
+        <button type="submit" class="btn btn--danger" value="ok" id="confirm-ok">Obriši</button>
       </footer>
+    </form>
+  </dialog>
+
+  <dialog class="dialog dialog--sm" id="help-dialog" aria-labelledby="help-title">
+    <form method="dialog">
+      <header class="dialog__head"><h2 id="help-title">Prečaci na tipkovnici</h2>
+        <button type="submit" class="icon-btn" aria-label="Zatvori">✕</button></header>
+      <dl class="shortcuts">
+        <div><dt><kbd>N</kbd></dt><dd>Nova licenca</dd></div>
+        <div><dt><kbd>/</kbd></dt><dd>Pretraga licenci</dd></div>
+        <div><dt><kbd>G</kbd> <kbd>P</kbd></dt><dd>Pregled</dd></div>
+        <div><dt><kbd>G</kbd> <kbd>L</kbd></dt><dd>Licence</dd></div>
+        <div><dt><kbd>G</kbd> <kbd>B</kbd></dt><dd>Banka</dd></div>
+        <div><dt><kbd>G</kbd> <kbd>S</kbd></dt><dd>Postavke</dd></div>
+        <div><dt><kbd>1</kbd>–<kbd>6</kbd></dt><dd>Brzi filtri licenci</dd></div>
+        <div><dt><kbd>I</kbd></dt><dd>Uvoz CSV / Excel</dd></div>
+        <div><dt><kbd>E</kbd></dt><dd>Izvoz CSV</dd></div>
+        <div><dt><kbd>O</kbd></dt><dd>Obavijesti</dd></div>
+        <div><dt><kbd>R</kbd></dt><dd>Osvježi podatke</dd></div>
+        <div><dt><kbd>?</kbd></dt><dd>Ova pomoć</dd></div>
+        <div><dt><kbd>Esc</kbd></dt><dd>Zatvori dijalog</dd></div>
+      </dl>
+    </form>
+  </dialog>
+
+  <dialog class="dialog dialog--panel" id="notif-dialog" aria-labelledby="notif-title">
+    <form method="dialog">
+      <header class="dialog__head"><h2 id="notif-title">Obavijesti</h2>
+        <button type="submit" class="icon-btn" aria-label="Zatvori">✕</button></header>
+      <ul class="list" id="notif-list"></ul>
+      <footer class="dialog__actions"><button type="button" class="btn btn--sm" id="notif-read">Označi sve kao pročitano</button></footer>
     </form>
   </dialog>
 

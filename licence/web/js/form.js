@@ -2,7 +2,7 @@ import { ApiError } from './api.js';
 import { CYCLE, STATUS, money, parseAmount } from './format.js';
 import { closeDialog } from './ui.js';
 
-const FIELDS = ['name', 'category', 'cost', 'currency', 'billing_cycle', 'start_date', 'status'];
+const FIELDS = ['name', 'category', 'cost', 'currency', 'billing_cycle', 'start_date', 'status', 'usage_key'];
 
 function localToday() {
   const d = new Date();
@@ -16,6 +16,7 @@ const CHECKS = {
   cost: (v) => (!v ? 'Upišite trošak.' : parseAmount(v) == null ? 'Upišite iznos, npr. 9,99 (najviše dvije decimale).' : ''),
   currency: (v) => (/^[A-Za-z]{3}$/.test(v) ? '' : 'Troslovni kod valute, npr. EUR.'),
   start_date: (v) => (v ? '' : 'Odaberite datum početka.'),
+  usage_key: (v) => (!v || /^[a-z0-9][a-z0-9._-]{0,63}$/.test(v) ? '' : 'Mala slova, brojke, točka, crtica i podvlaka.'),
 };
 
 // Create/edit dialog. `save(data, id|null)` returns a promise; API field errors (422) show inline.
@@ -38,11 +39,13 @@ export class LicenseForm {
     });
     this.form.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.close()));
     this.form.elements.currency.addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+    this.form.elements.usage_key.addEventListener('input', (e) => { e.target.value = e.target.value.toLowerCase(); });
     this.dialog.addEventListener('cancel', (e) => { e.preventDefault(); this.close(); }); // Esc: animated close
     this.dialog.addEventListener('click', (e) => { if (e.target === this.dialog) this.close(); }); // backdrop
   }
 
-  open(license = null) {
+  /** open(existing license) edits it; open(null, prefill) creates a new one with suggested values. */
+  open(license = null, prefill = {}) {
     this.id = license?.id ?? null;
     this.form.reset();
     this.#clearErrors();
@@ -50,11 +53,14 @@ export class LicenseForm {
     document.getElementById('dlg-title').textContent = license ? 'Uredi licencu' : 'Nova licenca';
     const values = license
       ? { ...license, cost: String(license.cost).replace('.', ',') }
-      : { currency: 'EUR', billing_cycle: 'monthly', status: 'active', start_date: localToday() };
+      : { currency: this.defaultCurrency ?? 'EUR', billing_cycle: 'monthly', status: 'active',
+          start_date: localToday(), ...prefill };
     for (const key of FIELDS) if (values[key] != null) this.form.elements[key].value = values[key];
+    this.form.elements.auto_status.checked = license ? license.auto_status !== false : true;
     this.#preview();
     this.dialog.showModal();
-    requestAnimationFrame(() => this.form.elements.name.focus());
+    // synchronous: a deferred focus() could move the caret while the user is already typing
+    this.form.elements.name.focus();
   }
 
   close() {
@@ -87,6 +93,8 @@ export class LicenseForm {
     if (firstBad) { this.form.elements[firstBad].focus(); return; }
     data.cost = parseAmount(data.cost);
     data.currency = data.currency.toUpperCase();
+    data.usage_key = data.usage_key || null;
+    data.auto_status = this.form.elements.auto_status.checked;
 
     this.button.disabled = true;
     this.button.setAttribute('aria-busy', 'true');

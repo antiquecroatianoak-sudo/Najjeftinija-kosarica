@@ -1,90 +1,69 @@
-# Licence tima — praćenje softverskih licenci
+# License Pulse
 
-Zaseban projekt (nije dio aplikacije „Najjeftinija košarica”). Mala SaaS aplikacija za manje timove:
-evidencija pretplata, ukupni trošak, otkrivanje neaktivnih (plaćenih, a nekorištenih) pretplata.
+Pregled troškova softverskih licenci za manje timove: koliko plaćate, što se ne koristi,
+što se uskoro naplaćuje i koliko možete uštedjeti – na prvom zaslonu.
 
-Bez vanjskih paketa: Python 3.11+ (stdlib + SQLite) i web sučelje u čistom JS-u, bez build koraka.
+Zaseban projekt u mapi `licence/` (nije dio aplikacije „Najjeftinija košarica” u ovom repozitoriju).
+Python 3.11+ samo sa standardnom bibliotekom (SQLite), web sučelje u čistom HTML/CSS/JS-u, bez build koraka i bez AI modela.
 
-## Pokretanje
+## Brzi početak
 
 ```bash
 cd licence
-python3 -m licence_app --demo            # http://127.0.0.1:8000, baza licence.db
-python3 -m licence_app --db :memory:     # privremeno, bez spremanja
-python3 -m unittest discover -s tests    # testovi
+LICENCE_ADMIN_USER=admin LICENCE_ADMIN_PASSWORD='lozinka-od-12+' \
+  python3 -m licence_app serve --demo          # http://127.0.0.1:8000 (primjer podataka)
+python3 -m unittest discover -s tests          # 72 testa (model, baza, servisi, API, integracija)
+node tests/e2e.cjs                             # cijeli tok u pregledniku (Playwright + Chromium)
 ```
 
-## Struktura
+Produkcija (Docker, TLS, sigurnosne kopije): [docs/DEPLOY.md](docs/DEPLOY.md).
+
+## Što radi
+
+| Područje | Opis |
+|---|---|
+| Nadzorna ploča | Na vrhu **trenutačni gubitak** (neaktivne licence / mj.), udio otpada, sljedeća naplata koju možete izbjeći i **kalkulator povrata ulaganja** (projicirana ušteda 12 mj. prema stvarnim datumima naplate, neto dobit, ROI %). Zatim ukupni trošak u referentnoj valuti, ističe uskoro (7/30/90 d), plan plaćanja za 12 mjeseci, kandidati za pregovore, trošak po kategoriji. |
+| Licence | Puni CRUD, brzi filtri (aktivne, neaktivne, otkazane, ističe ≤ 30 d, praćeno korištenje), pretraga, sortiranje, uvoz CSV/Excel s mapiranjem stupaca, izvoz CSV. |
+| Praćenje korištenja | Sustav prijava (SSO) ili skripta šalje `POST /api/usage` s API tokenom; licenca bez korištenja N dana automatski postaje neaktivna, a nova prijava je vraća u aktivne. Identiteti korisnika se tokeniziraju. |
+| Valute | ECB referentni tečajevi (automatski svakih 6 h) i ručni tečajevi; svi zbrojevi u referentnoj valuti organizacije. Iznos bez tečaja se nikad ne nagađa – prikazuje se kao nepreračunat. |
+| Obavijesti i automatizacija | Pametne obavijesti prije obnove (posebno za neaktivne: „otkažite prije naplate”), webhookovi s HMAC potpisom i ponovnim pokušajima. |
+| Banka | Uvoz izvoda (ISO 20022 camt.053 ili CSV), automatsko sparivanje plaćanja s licencama, prijedlozi, otkrivanje nepraćenih ponavljajućih pretplata i razlika u cijeni. IBAN se ne sprema. |
+| Više organizacija | Svaka organizacija (tvrtka) ima svoje licence, korisnike, boju i naziv u sučelju, referentnu valutu i pravila. Podaci su strogo odvojeni. |
+| Brzina | Lokalna predmemorija za trenutačni prikaz, optimistična ažuriranja s povratom pri grešci, pozadinska sinkronizacija, rad bez mreže (prikaz spremljenih podataka). |
+
+Prečaci: `N` nova licenca, `/` pretraga, `1`–`6` brzi filtri, `G P/L/B/S` navigacija, `I` uvoz, `E` izvoz, `O` obavijesti, `R` osvježi, `?` pomoć.
+
+## Arhitektura
 
 ```
 licence_app/
-  models.py      entitet License, enumi, validacija, izvedene vrijednosti (mjesečni trošak, sljedeća obnova)
-  repository.py  LicenseRepository (protokol) + SQLite i in-memory implementacija
-  service.py     slučajevi upotrebe: CRUD, filtriranje, nadzorna ploča
-  api.py         REST API (http.server) + posluživanje web/
-  seed.py        primjer podataka (--demo, izmišljeni)
-  __main__.py    pokretanje
-web/
-  index.html, css/app.css
-  js/api.js        klijent za API
-  js/dashboard.js  pregled troškova, neaktivne pretplate, obnove, kategorije
-  js/licenses.js   tablica licenci (na mobitelu kartice)
-  js/form.js       dijalog za dodavanje/uređivanje s greškama po polju
-  js/main.js       povezivanje i osvježavanje
-tests/           model, servis (obje implementacije repozitorija), API preko stvarnog HTTP-a
+  config.py        postavke iz LICENCE_* varijabli; produkcija odbija nesigurnu konfiguraciju
+  db.py            SQLite (WAL), transakcije, verzionirane migracije (v0.1.0 -> v1 -> v2)
+  models.py        License, Organization, validacija (bez I/O)
+  repository.py    licence po organizaciji, filtri u SQL-u na indeksima
+  stores.py        organizacije, korisnici, tokeni, korištenje, cijene, tečajevi, obavijesti, webhookovi, revizija
+  service.py       CRUD, izračuni, detekcija, ROI, analitika, pregovori
+  usage.py         prijem korištenja, automatski status, obavijesti o isteku
+  rates.py         ECB tečajevi i preračun
+  webhooks.py      potpis, isporuka, ponovni pokušaji, SSRF zaštita
+  transfer.py      uvoz CSV/XLSX s mapiranjem, izvoz CSV
+  banking/         izvodi (camt.053, CSV), protokol za žive konektore, sparivanje, servis
+  security.py      lozinke, ograničenje prijava, tokeni, tokenizacija, maskiranje
+  app.py           sastavljanje slojeva, autentifikacija, radni prostor po organizaciji
+  maintenance.py   planer: webhookovi, statusi, tečajevi, optimize, backup, retencija
+  api.py           REST API + statičko sučelje, sigurnosna zaglavlja, CSRF, zapisi
+  __main__.py      serve, create-org, create-user, create-token, backup, check, migrate
+web/               index.html, css/app.css, js/ (api, store, shell, dashboard, licenses, form, importer, bank, settings)
+tests/             unittest + e2e.cjs (Playwright)
 ```
 
-Ovisnosti idu samo prema unutra: `api → service → repository → models`. Model nema I/O.
+Ovisnosti idu prema unutra: `api → app → service/usage/banking → repository/stores → db/models`.
 
-## Podatkovni model — `License`
+Dokumentacija: [DEPLOY](docs/DEPLOY.md) · [SECURITY (sigurnost, usklađenost, lokacija podataka)](docs/SECURITY.md) · [BANKING](docs/BANKING.md) · [API i integracije](docs/API.md) · [Pozicioniranje](docs/POSITIONING.md)
 
-| Polje | Tip | Napomena |
-|---|---|---|
-| `id` | string (32 hex) | UUID4, dodjeljuje poslužitelj |
-| `name` | string ≤120 | |
-| `category` | string ≤60 | slobodan unos, nudi postojeće |
-| `cost` | decimal, ≥0, 2 decimale | iznos **po ciklusu**; čuva se kao tekst (bez float zaokruživanja) |
-| `currency` | ISO 4217 | npr. `EUR` |
-| `billing_cycle` | `monthly` \| `quarterly` \| `yearly` | |
-| `start_date` | datum `GGGG-MM-DD` | |
-| `status` | `active` \| `inactive` \| `cancelled` | zadano `active` |
+## Ograničenja (namjerna ili još neriješena)
 
-Izvedeno (samo za čitanje): `monthly_cost`.
-
-Status znači: **active** — plaća se i koristi; **inactive** — plaća se, ali se ne koristi (kandidat za uštedu);
-**cancelled** — više se ne plaća.
-
-## Pravila nadzorne ploče
-
-- Trošak = licence koje se plaćaju (`active` + `inactive`) i čiji je početak već prošao.
-- Iznosi se **nikad ne preračunavaju između valuta** (tečaj nije poznat) — svaki zbroj je po valuti.
-- Godišnje = mjesečno × 12 (procjena).
-- Neaktivne pretplate: sve `inactive` koje se plaćaju, poredane po mjesečnom trošku; zbroj je „moguća ušteda”.
-- Obnove: sljedeći datum naplate unutar 30 dana (31. 1. + 1 mj. = 28./29. 2., bez pomaka kasnije).
-
-## API
-
-| Metoda | Putanja | |
-|---|---|---|
-| GET | `/api/licenses?status=&category=&q=` | popis s filtrima |
-| POST | `/api/licenses` | stvaranje (201) |
-| GET | `/api/licenses/{id}` | |
-| PUT | `/api/licenses/{id}` | puna zamjena (sva obavezna polja) |
-| PATCH | `/api/licenses/{id}` | djelomična izmjena |
-| DELETE | `/api/licenses/{id}` | 204 |
-| GET | `/api/dashboard` | pregled |
-| GET | `/api/meta` | ciklusi, statusi, postojeće kategorije |
-
-Greške: `{"error": {"code", "message", "fields"?}}` — 400 neispravan JSON, 404, 405, 413 (>64 KB),
-415 (nije JSON), 422 validacija s porukama po polju.
-
-## Mjesta za proširenje (nije implementirano)
-
-- **Timovi / više korisnika (SaaS):** dodati `team_id` u model i tablicu te repozitorij ograničen na tim
-  (npr. `TeamScopedRepository(repo, team_id)`); servis se ne mijenja.
-- **Prijava:** middleware u `api.make_handler` prije `router.resolve`.
-- **Druga baza:** nova klasa koja zadovoljava `LicenseRepository` (npr. Postgres).
-- **Automatska detekcija nekorištenja:** polje `last_used_at` (iz SSO/integracija) i pravilo u servisu
-  koje predlaže prelazak `active → inactive`.
-- **Preračun valuta:** samo uz izričit izvor tečaja; danas namjerno nema.
-- **Migracije sheme:** trenutačno `CREATE TABLE IF NOT EXISTS`; pri prvoj promjeni sheme uvesti verziju (`PRAGMA user_version`).
+- Prijava je HTTP Basic (preglednik pamti podatke do zatvaranja; nema gumba „Odjava”). SSO/OIDC za korisnike nije implementiran.
+- Živa veza s bankom (PSD2) nije implementirana – zahtijeva reguliranog pružatelja; postoji protokol i uvoz izvoda.
+- Poredak po nazivu je po Unicode kodu nakon `casefold`, ne hrvatska abecedna kolacija.
+- Jedan proces sa SQLite bazom: namijenjeno manjim timovima (desetci korisnika, tisuće licenci po organizaciji).

@@ -1,0 +1,26 @@
+# docker compose up -d   (copy .env.example to .env first and fill it in)
+services:
+  licence:
+    build: .
+    image: license-pulse:local
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"     # publish only to localhost; put a TLS reverse proxy in front
+    volumes:
+      - licence-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    mem_limit: 256m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+volumes:
+  licence-data:

@@ -1,22 +1,25 @@
-import { CYCLE, STATUS, date, money, plural } from './format.js';
+import { CYCLE, STATUS, ago, date, money, plural } from './format.js';
 import { badge, h, play, stagger } from './ui.js';
 
 const STATUS_ORDER = { active: 0, inactive: 1, cancelled: 2 };
+const byName = (a, b) => a.name.localeCompare(b.name, 'hr', { sensitivity: 'base' });
 const SORTERS = {
-  name: (a, b) => a.name.localeCompare(b.name, 'hr', { sensitivity: 'base' }),
+  name: byName,
   category: (a, b) => a.category.localeCompare(b.category, 'hr', { sensitivity: 'base' }),
   cost: (a, b) => a.currency.localeCompare(b.currency) || Number(a.cost) - Number(b.cost),
-  monthly: (a, b) => a.currency.localeCompare(b.currency) || Number(a.monthly_cost) - Number(b.monthly_cost),
-  start: (a, b) => a.start_date.localeCompare(b.start_date),
+  // reference currency when a rate exists, so different currencies sort together
+  monthly: (a, b) => Number(a.monthly_ref ?? a.monthly_cost) - Number(b.monthly_ref ?? b.monthly_cost),
+  usage: (a, b) => (a.last_used_at ?? '').localeCompare(b.last_used_at ?? ''),
+  renewal: (a, b) => (a.next_renewal ?? '9999').localeCompare(b.next_renewal ?? '9999'),
   status: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
 };
 
 export const sortState = { key: 'name', dir: 'asc' };
 
 export function sortItems(items) {
-  const cmp = SORTERS[sortState.key] ?? SORTERS.name;
+  const cmp = SORTERS[sortState.key] ?? byName;
   const sign = sortState.dir === 'asc' ? 1 : -1;
-  return [...items].sort((a, b) => sign * cmp(a, b) || SORTERS.name(a, b));
+  return [...items].sort((a, b) => sign * cmp(a, b) || byName(a, b));
 }
 
 export function renderSortHeaders() {
@@ -29,32 +32,44 @@ export function renderSortHeaders() {
   });
 }
 
-// Renders the table. `actions.edit(license)` / `actions.remove(license)`.
-export function renderLicenses(items, actions, { animate = false, flashId = null, filtered = false } = {}) {
-  const tbody = document.querySelector('#license-table tbody');
-  const empty = document.getElementById('license-empty');
-  empty.hidden = items.length > 0;
-  document.querySelector('#license-table thead').hidden = items.length === 0;
-  document.getElementById('empty-title').textContent = filtered ? 'Nema rezultata' : 'Još nema licenci';
-  document.getElementById('empty-text').textContent = filtered
-    ? 'Promijenite pretragu ili filtre.' : 'Dodajte prvu pretplatu da biste pratili troškove.';
-  empty.querySelector('[data-action="new"]').hidden = filtered;
-  document.getElementById('result-count').textContent =
-    `${items.length} ${plural(items.length, 'licenca', 'licence', 'licenci')}${filtered ? ' (filtrirano)' : ''}`;
+function usageCell(l) {
+  if (!l.usage_key) return h('span', { class: 'usage usage--none' }, 'ručno');
+  const last = ago(l.last_used_at);
+  return h('span', { class: 'usage' },
+    last ? `${l.active_users_30d} ${plural(l.active_users_30d, 'korisnik', 'korisnika', 'korisnika')} · ${last}` : 'još nema prijava');
+}
 
-  const rows = sortItems(items).map((l) => h('tr', { 'data-id': l.id },
-    h('td', { class: 'name', 'data-label': 'Naziv' }, l.name),
+// actions: edit(license), remove(license, row)
+export function renderLicenses(items, actions, { animate = false, flashId = null, filtered = false, pending = new Set() } = {}) {
+  const tbody = document.querySelector('#license-table tbody');
+  document.getElementById('result-count').textContent =
+    `${items.length} ${plural(items.length, 'licenca', 'licence', 'licenci')}${filtered ? ' prema filtru' : ''}`;
+
+  if (!items.length) {
+    // the empty state is real content in the table, not a hidden element
+    tbody.replaceChildren(h('tr', { class: 'empty-tr' }, h('td', { colspan: '8', class: 'empty-cell' },
+      h('div', { class: 'empty' },
+        h('p', { class: 'empty__title' }, filtered ? 'Nema rezultata' : 'Još nema licenci'),
+        h('p', { class: 'muted' }, filtered ? 'Promijenite pretragu ili brzi filtar.' : 'Dodajte prvu pretplatu ili uvezite postojeći popis.'),
+        filtered ? null : h('div', { class: 'view__actions' },
+          h('button', { type: 'button', class: 'btn btn--primary', onclick: () => actions.create() }, '+ Nova licenca'),
+          h('button', { type: 'button', class: 'btn', onclick: () => actions.importFile() }, 'Uvoz CSV / Excel'))))));
+    return;
+  }
+
+  const rows = sortItems(items).map((l) => h('tr', { 'data-id': l.id, class: pending.has(l.id) ? 'is-pending' : null },
+    h('td', { class: 'name', 'data-label': 'Naziv' }, l.name, l.usage_key ? h('span', { class: 'track-badge', title: 'Praćenje korištenja' }, l.usage_key) : null),
     h('td', { 'data-label': 'Kategorija' }, l.category),
     h('td', { class: 'num', 'data-label': 'Trošak' },
       money(l.cost, l.currency), h('span', { class: 'muted' }, ` / ${CYCLE[l.billing_cycle]?.label.toLowerCase() ?? l.billing_cycle}`)),
     h('td', { class: 'num', 'data-label': 'Mjesečno' }, money(l.monthly_cost, l.currency)),
-    h('td', { 'data-label': 'Početak' }, date(l.start_date)),
+    h('td', { 'data-label': 'Korištenje' }, usageCell(l)),
+    h('td', { 'data-label': 'Obnova' }, l.next_renewal ? date(l.next_renewal) : '—'),
     h('td', { 'data-label': 'Status' }, badge(l.status, STATUS)),
     h('td', { class: 'actions' },
-      h('button', { type: 'button', class: 'btn btn--sm', onclick: () => actions.edit(l), 'aria-label': `Uredi ${l.name}` }, 'Uredi'),
+      h('button', { type: 'button', class: 'btn btn--sm', onclick: () => actions.edit(l.id), 'aria-label': `Uredi ${l.name}` }, 'Uredi'),
       h('button', { type: 'button', class: 'btn btn--sm btn--ghost-danger', onclick: (e) => actions.remove(l, e.currentTarget.closest('tr')),
-        'aria-label': `Obriši ${l.name}` }, 'Obriši')),
-  ));
+        'aria-label': `Obriši ${l.name}` }, 'Obriši'))));
   tbody.replaceChildren(...rows);
   if (animate) stagger(rows);
   if (flashId) {
@@ -66,11 +81,14 @@ export function renderLicenses(items, actions, { animate = false, flashId = null
 export function renderCategoryOptions(categories) {
   const select = document.querySelector('#filters select[name="category"]');
   const current = select.value;
-  select.replaceChildren(h('option', { value: '' }, 'Sve kategorije'),
-    ...categories.map((c) => h('option', { value: c }, c)));
+  select.replaceChildren(h('option', { value: '' }, 'Sve kategorije'), ...categories.map((c) => h('option', { value: c }, c)));
   select.value = categories.includes(current) ? current : '';
-  document.getElementById('category-options')
-    .replaceChildren(...categories.map((c) => h('option', { value: c })));
+  document.getElementById('category-options').replaceChildren(...categories.map((c) => h('option', { value: c })));
+}
+
+export function setQuickFilter(value) {
+  document.querySelectorAll('#quick-filters [data-filter]').forEach((b) =>
+    b.setAttribute('aria-checked', String(b.dataset.filter === value)));
 }
 
 export function setTabCount(n) {

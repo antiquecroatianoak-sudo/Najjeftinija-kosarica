@@ -97,9 +97,11 @@ export function toast(message, { type = 'info', action, timeout = 4000 } = {}) {
 }
 
 // ---- confirm dialog --------------------------------------------------------
-export function confirmDialog(text) {
+export function confirmDialog(text, okLabel = 'Obriši', title = 'Jeste li sigurni?') {
   const dialog = document.getElementById('confirm-dialog');
   document.getElementById('confirm-text').textContent = text;
+  document.getElementById('confirm-ok').textContent = okLabel;
+  document.getElementById('confirm-title').textContent = title;
   dialog.returnValue = '';
   dialog.showModal();
   return new Promise((resolve) => {

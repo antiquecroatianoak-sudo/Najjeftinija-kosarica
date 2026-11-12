@@ -62,3 +62,23 @@ export const STATUS = {
   inactive: { label: 'Neaktivna', badge: 'badge--warn', dot: 'dot--warn', hint: 'Plaća se, ali se ne koristi – prikazuje se kao moguća ušteda.' },
   cancelled: { label: 'Otkazana', badge: 'badge--off', dot: 'dot--off', hint: 'Više se ne plaća i ne ulazi u troškove.' },
 };
+
+/** "prije 3 dana" from a UTC timestamp ("YYYY-MM-DD HH:MM:SS" or ISO). */
+export function ago(ts) {
+  if (!ts) return null;
+  const then = Date.parse(ts.includes('T') ? ts : `${ts.replace(' ', 'T')}Z`);
+  if (Number.isNaN(then)) return null;
+  const days = Math.floor((Date.now() - then) / 86_400_000);
+  if (days <= 0) return 'danas';
+  if (days === 1) return 'jučer';
+  return `prije ${days} ${plural(days, 'dan', 'dana', 'dana')}`;
+}
+
+export function pct(value) {
+  return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(Number(value))} %`;
+}
+
+export function monthLabel(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Intl.DateTimeFormat(LOCALE, { month: 'short' }).format(new Date(y, m - 1, 1)).replace('.', '');
+}

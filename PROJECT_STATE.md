@@ -6,6 +6,10 @@
 - Izrađena u mapi `licence/` samo na grani `claude/saas-license-tracking-app-zbw0dm`; `app/`, `uvoz/`, `tests/` i radni tokovi nisu mijenjani. Opis: `licence/README.md`.
 - Testirano lokalno: `licence/` 28 testova OK; smoke u pregledniku (CRUD, filtri, neaktivne, 1280 i 360 px, bez JS grešaka) prošao. Postojeće provjere košarice: Python OK, Node 23/23.
 - Nije spojeno, nije objavljeno; **ne spajati u `claude/dreamy-hopper-f6e4u0`**. Pretpostavka: projekt treba premjestiti u vlastiti repozitorij — čeka odluku vlasnika.
+- **Nastavak (12.11.2026. 20:01 Europe/Zagreb), „License Pulse”:** multitenant (organizacije, korisnici, Basic autentifikacija, uloge), praćenje korištenja s automatskim statusom (API tokeni), ECB tečajevi i referentna valuta, ROI kalkulator na vrhu nadzorne ploče, analitika i kandidati za pregovore, obavijesti i potpisani webhookovi, uvoz CSV/XLSX s mapiranjem i izvoz CSV, bankovni modul (camt.053/CSV, tokenizacija IBAN-a, sparivanje), planer održavanja (backup, optimize, retencija), Docker (non-root, read-only). Dokumentacija u `licence/docs/` (DEPLOY, SECURITY s lokacijom podataka i planom pentesta, BANKING, API, POSITIONING).
+  - Testirano lokalno: `licence/` 72 Python testa OK; e2e u pregledniku 49 provjera, 8/8 uzastopnih prolaza nakon popravka krađe fokusa u obrascu; Docker slika izgrađena i pokrenuta (healthy, uid 10001, read-only, 401 bez prijave, trajnost nakon restarta, odbija pokretanje bez tajnog ključa). Provjere košarice nepromijenjene: Python OK, Node 23/23.
+  - Nije provjereno: živi dohvat ECB tečajeva (mreža sesije blokira; testirano na ECB XML formatu), stvarna isporuka webhooka na javni URL (testirano lokalnim primateljem), stvarni izvodi hrvatskih banaka (testirano na camt.053 primjeru), živi PSD2 konektor (samo protokol, nije implementiran), CI ne pokreće testove `licence/`.
+  - Analiza konkurencije bez provjere konkretnih proizvoda (nema pristupa webu u sesiji) – označeno u dokumentu.
 
 ## AKTUALNO: nova aplikacija od nule (5.11.2026.)
 
