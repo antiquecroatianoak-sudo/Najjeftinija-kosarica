@@ -1,0 +1,8 @@
+__pycache__/
+*.db
+*.db-*
+*.db.key
+.env
+node_modules/
+package-lock.json
+e2e-shots/

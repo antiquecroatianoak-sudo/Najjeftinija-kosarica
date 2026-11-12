@@ -3,18 +3,32 @@
 Pregled troškova softverskih licenci za manje timove: koliko plaćate, što se ne koristi,
 što se uskoro naplaćuje i koliko možete uštedjeti – na prvom zaslonu.
 
-Zaseban projekt u mapi `licence/` (nije dio aplikacije „Najjeftinija košarica” u ovom repozitoriju).
+Samostalan projekt. Izdvojen 12. 11. 2026. iz mape `licence/` repozitorija `Najjeftinija-kosarica`
+(povijest commitova je sačuvana).
 Python 3.11+ samo sa standardnom bibliotekom (SQLite), web sučelje u čistom HTML/CSS/JS-u, bez build koraka i bez AI modela.
 
 ## Brzi početak
 
 ```bash
-cd licence
 LICENCE_ADMIN_USER=admin LICENCE_ADMIN_PASSWORD='lozinka-od-12+' \
   python3 -m licence_app serve --demo          # http://127.0.0.1:8000 (primjer podataka)
 python3 -m unittest discover -s tests          # 72 testa (model, baza, servisi, API, integracija)
-node tests/e2e.cjs                             # cijeli tok u pregledniku (Playwright + Chromium)
+npm install && node tests/e2e.cjs             # cijeli tok u pregledniku (Playwright + Chromium)
+tests/docker_smoke.sh                          # Docker: izgradnja, zaštite, zdravlje, prijava, trajnost, backup
 ```
+
+## Provjere (CI)
+
+`.github/workflows/ci.yml` kod svakog pusha i pull requesta pokreće **sve gornje provjere**:
+
+| Posao | Što provjerava |
+|---|---|
+| `unit (3.11)`, `unit (3.13)` | kompilacija paketa + svi Python testovi (model, migracije, servisi, API, sigurnost, integracija) na najstarijoj i najnovijoj podržanoj verziji |
+| `e2e` | stvarni poslužitelj + Chromium: svi prikazi na 4 širine, prijava, ROI, filtri, prečaci, CRUD, uvoz/izvoz, banka, postavke, rad bez mreže, bez JS/CSP grešaka (snimke kao artefakt) |
+| `docker` | izgradnja slike, odbijanje nesigurne konfiguracije, non-root/read-only, zdravlje, 401, CRUD, trajnost nakon restarta, provjera baze, backup |
+
+Da bi provjere bile **obavezne** za spajanje: *Settings → Branches → Add rule* za `main` →
+*Require a pull request before merging* + *Require status checks to pass* (`unit (3.11)`, `unit (3.13)`, `e2e`, `docker`).
 
 Produkcija (Docker, TLS, sigurnosne kopije): [docs/DEPLOY.md](docs/DEPLOY.md).
 

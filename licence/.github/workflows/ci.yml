@@ -1,0 +1,72 @@
+# Every check documented in README.md / docs/DEPLOY.md runs on every push and pull request.
+# Make them required: Settings -> Branches -> branch protection for "main" ->
+# "Require status checks to pass": unit (3.11), unit (3.13), e2e, docker.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit (${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile (syntax check for the whole package)
+        run: python -m compileall -q licence_app
+      - name: Unit and integration tests (model, DB/migrations, services, API, security)
+        run: python -m unittest discover -s tests -v
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Playwright + Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Browser end-to-end (every view, 4 widths, full lifecycle)
+        run: node tests/e2e.cjs e2e-shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e-shots/
+          retention-days: 14
+
+  docker:
+    name: docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image and smoke test (hardened run, health, auth, persistence, backup)
+        run: tests/docker_smoke.sh license-pulse:${{ github.sha }}

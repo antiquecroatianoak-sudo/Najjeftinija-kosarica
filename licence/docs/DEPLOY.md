@@ -3,7 +3,6 @@
 ## 1. Docker (preporučeno)
 
 ```bash
-cd licence
 cp .env.example .env
 python3 -c "import secrets; print(secrets.token_hex(32))"   # upišite u LICENCE_SECRET_KEY
 # upišite LICENCE_ADMIN_PASSWORD (12+ znakova) i naziv tvrtke

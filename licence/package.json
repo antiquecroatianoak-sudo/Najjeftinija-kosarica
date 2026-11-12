@@ -1,0 +1,11 @@
+{
+  "name": "license-pulse-tests",
+  "private": true,
+  "description": "Browser end-to-end tests only; the application itself has no npm dependencies.",
+  "scripts": {
+    "e2e": "node tests/e2e.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}
