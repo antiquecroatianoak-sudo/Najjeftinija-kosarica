@@ -1,0 +1,44 @@
+# Energija (zaseban projekt u mapi energija/, nije dio košarice): testovi i izolirana provjera u Dockeru.
+# Pokreće se samo kad se mijenja energija/ ili ovaj radni tok; ništa ne objavljuje.
+name: Energija – izolirana provjera
+
+on:
+  push:
+    paths: ["energija/**", ".github/workflows/energija-provjera.yml"]
+  pull_request:
+    paths: ["energija/**", ".github/workflows/energija-provjera.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: energija-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provjera:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: energija
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Ovisnosti (cryptography, pymodbus)
+        run: pip install -r requirements-provjera.txt
+      - name: Jedinični testovi (uključuje Open-Meteo mokove i pymodbus)
+        run: python -m unittest discover -s testovi -p "test_*.py"
+      - name: Cjelovita provjera kao lokalni procesi
+        run: bash provjera/pokreni_lokalno.sh
+      - name: Izolirana provjera u Docker Composeu
+        run: docker compose -f kontejneri/compose.provjera.yaml up --build --abort-on-container-exit --exit-code-from provjera
+      - name: Zapisi kontejnera (pri grešci)
+        if: failure()
+        run: docker compose -f kontejneri/compose.provjera.yaml logs --no-color --tail 80
+      - name: Čišćenje
+        if: always()
+        run: docker compose -f kontejneri/compose.provjera.yaml down -v

@@ -1,0 +1,82 @@
+# Izolirana provjera cijelog sustava (bez interneta, bez stvarnog hardvera):
+#   docker compose -f kontejneri/compose.provjera.yaml up --build --abort-on-container-exit --exit-code-from provjera
+#   docker compose -f kontejneri/compose.provjera.yaml down -v
+#
+#   mock-openmeteo ─┐
+#   simulator ──────┼── mreža "izolirano" (internal: nema izlaza na internet) ── jezgra
+#   provjera ───────┘        (pymodbus SunSpec+SDM, MQTT senzori)            (stvarna slika uređaja)
+name: energija-provjera
+
+x-provjera-slika: &provjera-slika
+  build: { context: .., dockerfile: kontejneri/provjera.Dockerfile }
+  image: energija-provjera:0.1
+  networks: [izolirano]
+  mem_limit: 128m
+  cpus: 0.5
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
+services:
+  mock-openmeteo:
+    <<: *provjera-slika
+    command: ["python", "-m", "simulator.mock_openmeteo", "--port", "8080"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8080/zahtjevi',timeout=3)"]
+      interval: 5s
+      retries: 10
+
+  jezgra:
+    build: { context: .., dockerfile: kontejneri/Dockerfile }
+    image: energija-jezgra:0.1
+    hostname: jezgra                  # ulazi u SAN certifikata -> stroga TLS provjera po imenu
+    networks: [izolirano]
+    environment:
+      ENERGIJA_KOD: "482915"          # samo za provjeru: jednokratni kod za uparivanje
+    volumes:
+      - podaci:/podaci
+      - ../provjera/postavke.compose.json:/podaci/postavke.json:ro
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 160m                   # isto ograničenje kao na uređaju (compose.yaml)
+    cpus: 1.0
+    pids_limit: 128
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      mock-openmeteo: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import ssl,urllib.request as u;u.urlopen('https://127.0.0.1:8443/api/zdravlje',context=ssl._create_unverified_context(),timeout=4)"]
+      interval: 5s
+      retries: 20
+
+  simulator:
+    <<: *provjera-slika
+    command: ["python", "-m", "simulator.modbus_pymodbus", "--modbus-port", "5020",
+              "--mqtt-host", "jezgra", "--mqtt-port", "1883", "--http-port", "8081", "--brzina", "60"]
+    depends_on:
+      jezgra: { condition: service_started }
+
+  provjera:
+    <<: *provjera-slika
+    command: ["python", "provjera/provjera_sustava.py"]
+    environment:
+      JEZGRA_URL: https://jezgra:8443
+      SIM_URL: http://simulator:8081
+      OPENMETEO_URL: http://mock-openmeteo:8080
+      CA: /podaci-jezgre/certifikati/ca.pem
+      ENERGIJA_KOD: "482915"
+      PROVJERI_IZOLACIJU: "1"
+      ROK_S: "150"
+    volumes:
+      - podaci:/podaci-jezgre:ro      # samo ca.pem lokalnog CA-a (isti UID 10001)
+    depends_on:
+      jezgra: { condition: service_healthy }
+      simulator: { condition: service_started }
+
+networks:
+  izolirano:
+    internal: true                    # bez izlaza na internet
+
+volumes:
+  podaci:

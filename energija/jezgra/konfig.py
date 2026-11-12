@@ -47,6 +47,8 @@ ZADANO: dict = {
     "kopije": {"odredista": [], "period_s": 3600, "generacija": 5},
     "izvjestaji": {"co2_kg_kwh": 0.18, "tjedno": True, "mjesecno": True},  # pretpostavka faktora mreže
     "api": {"port": 8443, "tls": True},
+    "mqtt": {"port": 1883},
+    "prognoza": {"url": "https://api.open-meteo.com/v1/forecast"},
     "otkrivanje": {"multicast": "239.255.70.70", "port": 47070, "modbus_hostovi": [], "modbus_jedinice": [1, 2, 3]},
     "trosila": [
         # prioritet: 0 = nikad ne isključivati (pastir), veći broj = ranije isključiti

@@ -66,7 +66,8 @@ class Prognoza:
                 upit = urllib.parse.urlencode({
                     "latitude": lok["sirina"], "longitude": lok["duzina"], "forecast_days": 2,
                     "hourly": "shortwave_radiation,temperature_2m,precipitation,cloud_cover", "timeformat": "unixtime"})
-                with urllib.request.urlopen(f"{URL}?{upit}", timeout=15) as r:
+                url = self.cfg.get("prognoza", {}).get("url") or URL
+                with urllib.request.urlopen(f"{url}?{upit}", timeout=15) as r:
                     v = json.loads(r.read())
             h = v["hourly"]
             self.sati = [{"ts": float(t), "zracenje": float(g or 0), "temp": float(tc or 10),

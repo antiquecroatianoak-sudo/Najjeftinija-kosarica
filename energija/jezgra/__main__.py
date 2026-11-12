@@ -89,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     from .mqtt import Broker
 
     cfg = konfig.ucitaj(mapa)
-    broker = Broker(host="0.0.0.0" if not a.sim else "127.0.0.1", port=0 if a.sim else 1883).pokreni()
+    broker = Broker(host="0.0.0.0" if not a.sim else "127.0.0.1", port=0 if a.sim else cfg["mqtt"]["port"]).pokreni()
     uredaji = []
     most = None
     sat = time.time
@@ -146,7 +146,9 @@ def main(argv: list[str] | None = None) -> int:
 
     nadzor = Nadzornik(j.arhiva, sigurno_stanje=j.sigurno_stanje)
     nadzor.dodaj("upravljanje", j.korak, lambda: max(0.5, 10.0 / (a.brzina if a.sim else 1.0)), kriticno=True, rok_s=30)
-    nadzor.dodaj("otkrivanje", registar.skeniraj, lambda: 300.0, rok_s=120)
+    # dok nijedan Modbus uređaj nije pronađen, traži češće (uređaj se možda još pali)
+    nadzor.dodaj("otkrivanje", registar.skeniraj,
+                 lambda: 300.0 if any(u.protokol.startswith("modbus") for u in j.uredaji) else 15.0, rok_s=120)
     nadzor.dodaj("oblak", j.sinkronizacija.korak, lambda: 900.0, rok_s=120)
     j.nadzor = nadzor
 

@@ -34,7 +34,9 @@ class Pristup:
                 self.tokeni = json.loads(self.p.read_text())
             except ValueError:
                 pass
-        self.kod = f"{secrets.randbelow(10 ** 6):06d}"
+        # ENERGIJA_KOD: samo za automatsku izoliranu provjeru (Compose); i dalje jednokratan i vrijedi 15 min
+        zadani = os.environ.get("ENERGIJA_KOD", "")
+        self.kod = zadani if len(zadani) == 6 and zadani.isdigit() else f"{secrets.randbelow(10 ** 6):06d}"
         self.kod_do = time.time() + prozor_s
         self.pokusaji = 0
 

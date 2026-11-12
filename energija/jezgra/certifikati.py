@@ -116,7 +116,10 @@ class LokalniCA:
                 s.close()
             except OSError:
                 pass
-            return self.izdaj("jezgra", dns=["localhost", "energija.local", f"energija-{self.id[:6]}.local"],
+            imena = ["localhost", "energija.local", f"energija-{self.id[:6]}.local"]
+            if socket.gethostname() not in imena:
+                imena.append(socket.gethostname())  # npr. ime servisa u Composeu
+            return self.izdaj("jezgra", dns=imena,
                               ip=sorted(ipovi))
         return cp, kp
 
