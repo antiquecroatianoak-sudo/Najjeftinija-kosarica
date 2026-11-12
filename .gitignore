@@ -5,3 +5,6 @@ node_modules/
 package-lock.json
 izvjesce-greske.md
 prijava.md
+
+# Licence tima (zaseban projekt u licence/)
+licence/*.db

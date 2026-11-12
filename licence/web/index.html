@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Licence tima</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar__inner">
+      <h1 class="brand">Licence tima</h1>
+      <button type="button" class="btn btn--primary" id="btn-new">+ Nova licenca</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <p class="notice" id="notice" role="status" hidden></p>
+
+    <section aria-labelledby="h-overview">
+      <h2 id="h-overview" class="section-title">Pregled <span class="muted" id="as-of"></span></h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2">
+        <article class="panel" aria-labelledby="h-inactive">
+          <h3 id="h-inactive">Neaktivne pretplate <span class="pill pill--warn" id="inactive-count">0</span></h3>
+          <p class="muted small">Plaćaju se, a tim ih ne koristi. Otkazivanjem štedite iznos prikazan uz svaku.</p>
+          <ul class="list" id="inactive-list"></ul>
+        </article>
+        <article class="panel" aria-labelledby="h-renewals">
+          <h3 id="h-renewals">Obnove u sljedećih 30 dana</h3>
+          <ul class="list" id="renewal-list"></ul>
+        </article>
+      </div>
+      <article class="panel" aria-labelledby="h-categories">
+        <h3 id="h-categories">Mjesečni trošak po kategoriji</h3>
+        <ul class="bars" id="category-bars"></ul>
+      </article>
+    </section>
+
+    <section aria-labelledby="h-licenses">
+      <h2 id="h-licenses" class="section-title">Sve licence</h2>
+      <form class="filters" id="filters" role="search">
+        <label class="field field--grow"><span class="sr-only">Pretraži</span>
+          <input type="search" name="q" placeholder="Pretraži naziv ili kategoriju" autocomplete="off"></label>
+        <label class="field"><span class="sr-only">Status</span>
+          <select name="status">
+            <option value="">Svi statusi</option>
+            <option value="active">Aktivne</option>
+            <option value="inactive">Neaktivne</option>
+            <option value="cancelled">Otkazane</option>
+          </select></label>
+        <label class="field"><span class="sr-only">Kategorija</span>
+          <select name="category"><option value="">Sve kategorije</option></select></label>
+      </form>
+      <div class="table-wrap">
+        <table class="table" id="license-table">
+          <thead><tr>
+            <th>Naziv</th><th>Kategorija</th><th class="num">Trošak</th><th>Ciklus</th>
+            <th class="num">Mjesečno</th><th>Početak</th><th>Status</th><th><span class="sr-only">Radnje</span></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="empty" id="license-empty" hidden>Nema licenci za prikaz.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="dialog" id="license-dialog" aria-labelledby="dlg-title">
+    <form method="dialog" id="license-form" novalidate>
+      <h2 id="dlg-title">Nova licenca</h2>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+      <div class="form-grid">
+        <label class="field field--full">Naziv
+          <input name="name" required maxlength="120" autocomplete="off"><small class="err" data-for="name"></small></label>
+        <label class="field field--full">Kategorija
+          <input name="category" required maxlength="60" list="category-options" autocomplete="off">
+          <datalist id="category-options"></datalist><small class="err" data-for="category"></small></label>
+        <label class="field">Trošak po ciklusu
+          <input name="cost" required inputmode="decimal" placeholder="0.00"><small class="err" data-for="cost"></small></label>
+        <label class="field">Valuta
+          <input name="currency" required maxlength="3" value="EUR" autocapitalize="characters" list="currency-options">
+          <datalist id="currency-options"><option value="EUR"><option value="USD"><option value="GBP"><option value="CHF"></datalist>
+          <small class="err" data-for="currency"></small></label>
+        <label class="field">Ciklus naplate
+          <select name="billing_cycle">
+            <option value="monthly">Mjesečno</option>
+            <option value="quarterly">Tromjesečno</option>
+            <option value="yearly">Godišnje</option>
+          </select><small class="err" data-for="billing_cycle"></small></label>
+        <label class="field">Datum početka
+          <input type="date" name="start_date" required><small class="err" data-for="start_date"></small></label>
+        <label class="field field--full">Status
+          <select name="status">
+            <option value="active">Aktivna – koristi se</option>
+            <option value="inactive">Neaktivna – plaća se, ne koristi se</option>
+            <option value="cancelled">Otkazana – ne plaća se</option>
+          </select><small class="err" data-for="status"></small></label>
+      </div>
+      <div class="dialog__actions">
+        <button type="button" class="btn" value="cancel" id="btn-cancel">Odustani</button>
+        <button type="submit" class="btn btn--primary" id="btn-save">Spremi</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

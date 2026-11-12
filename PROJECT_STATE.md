@@ -1,5 +1,12 @@
 # Najjeftinija košarica — glavni zapis stanja
 
+## Napomena: grana `claude/saas-license-tracking-app-zbw0dm` nije košarica (12.11.2026. 11:00 Europe/Zagreb)
+
+- Nalog korisnika (12.11.2026. 11:00): izgraditi zasebnu SaaS aplikaciju za praćenje softverskih licenci. To **nije** dio Najjeftinije košarice.
+- Izrađena u mapi `licence/` samo na grani `claude/saas-license-tracking-app-zbw0dm`; `app/`, `uvoz/`, `tests/` i radni tokovi nisu mijenjani. Opis: `licence/README.md`.
+- Testirano lokalno: `licence/` 28 testova OK; smoke u pregledniku (CRUD, filtri, neaktivne, 1280 i 360 px, bez JS grešaka) prošao. Postojeće provjere košarice: Python OK, Node 23/23.
+- Nije spojeno, nije objavljeno; **ne spajati u `claude/dreamy-hopper-f6e4u0`**. Pretpostavka: projekt treba premjestiti u vlastiti repozitorij — čeka odluku vlasnika.
+
 ## AKTUALNO: nova aplikacija od nule (5.11.2026.)
 
 Provjereno: 5.11.2026. ~11:15 CET (Europe/Zagreb). Ovaj odjeljak je aktualan; odjeljak „Povijesno” niže opisuje obrisanu staru aplikaciju i ostaje samo kao trag.
