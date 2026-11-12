@@ -67,6 +67,9 @@ def main() -> None:
     ap.add_argument("--port", type=int, default=8080)
     ap.add_argument("--kvar", type=int, default=0)
     a = ap.parse_args()
+    import signal
+    import sys
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
     posluzitelj("0.0.0.0", a.port, a.kvar)
     print(f"Lažni Open-Meteo na :{a.port}/v1/forecast", flush=True)
     threading.Event().wait()

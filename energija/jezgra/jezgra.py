@@ -316,8 +316,12 @@ class Jezgra:
         if pumpa_kwh > 0:
             zadaci.append({"id": "pumpa", "snaga_w": self.cfg["navodnjavanje"]["pumpa_kw"] * 1000,
                            "energija_kwh": pumpa_kwh, "od_h": 0, "do_h": 24})
-        ukupno, self.raspored = smjesti_fleksibilna(potr, pv, cijene, zadaci, soc, self.cfg)
-        self.plan = planiraj_bateriju(ukupno, pv, cijene, soc, self.cfg,
+        cfg_plan = self.cfg
+        if self.cfg["politika"].get("trosak_ciklusa_plan") is not None:
+            cfg_plan = dict(self.cfg, baterija=dict(self.cfg["baterija"],
+                                                    trosak_ciklusa_eur_kwh=self.cfg["politika"]["trosak_ciklusa_plan"]))
+        ukupno, self.raspored = smjesti_fleksibilna(potr, pv, cijene, zadaci, soc, cfg_plan)
+        self.plan = planiraj_bateriju(ukupno, pv, cijene, soc, cfg_plan,
                                       self.parametri.get("rezerva_soc", self.cfg["baterija"]["soc_min"]), ts)
         for p, c, g in zip(self.plan, cijene, prog):
             p.update({"cijena": c["kupnja"], "izvor_cijene": c["izvor"], "pv_w": round(g["pv_w"]),
@@ -373,7 +377,7 @@ class Jezgra:
         # 2) naučeni parametri i način rada
         if not self.parametri or int(ts) % 900 < dt:
             self.parametri = self.navike.parametri(ts, self.cfg)
-        rezerva = self.parametri.get("rezerva_soc", b["soc_min"])
+        rezerva = min(0.6, self.parametri.get("rezerva_soc", b["soc_min"]) + self.cfg["politika"]["rezerva_dodatak"])
         opt = resursi.opterecenje()
         visak = pv - potr
         self.nacin = resursi.odaberi_nacin(soc, rezerva, visak, opt["load1"], opt["jezgri"], opt.get("cpu_temp_c"))
@@ -496,26 +500,39 @@ class Jezgra:
             if self.kalibracija.get("faza", "").startswith("mjerenje"):
                 cmd = 0.0
                 odl = ("miruje", "kalibracija brojila", "kalibracija")
-            granica = ts < self.zabrana_punjenja_do or soc >= b["soc_max"] or soc <= b["soc_min"]
-            if cmd is None and granica:
-                cmd = -neto  # na granicama jezgra preuzima i reže smjer koji nije dopušten
+            # proaktivna zabrana punjenja na hladnom (LiFePO4 ispod 0 °C), ne tek kad struja već teče
+            t_bat = o.get("baterija_temp_c")
+            hladno = t_bat is not None and t_bat < b["temp_punjenje_min_c"] + 0.5
+            bez_punjenja = ts < self.zabrana_punjenja_do or soc >= b["soc_max"] or hladno
+            bez_praznjenja = soc <= b["soc_min"]
+            granica = bez_punjenja or bez_praznjenja
             if granica:
-                razlog = ("zabrana punjenja (temperatura/napon)" if ts < self.zabrana_punjenja_do else
+                razlog = ("punjenje zabranjeno na hladnom" if hladno else
+                          "zabrana punjenja (temperatura/napon)" if ts < self.zabrana_punjenja_do else
                           f"gornja granica {b['soc_max']:.0%}" if soc >= b["soc_max"] else f"donja granica {b['soc_min']:.0%}")
                 odl = (odl[0], odl[1] + f"; sigurnosna granica: {razlog}", "zastita" if odl[2] != "rucno" else "rucno")
             self._odluka("baterija", odl[0], odl[1], odl[2], ts, soc=round(soc, 3), cijena=cijena["kupnja"],
                          plan_kw=korak_plana["baterija_kw"] if korak_plana else None)
             if cmd is None:
-                self._postavi("baterija_auto", 1.0, ts, osvjezi_s=60)
+                # Na granicama jezgra NE zadaje snagu (zastarjela bi za jedan korak), nego izmjenjivaču postavi
+                # samo ograničenje smjera; regulaciju u stvarnom vremenu radi izmjenjivač (SunSpec StorCtl_Mod).
+                ogr = (1 if bez_punjenja else 0) | (2 if bez_praznjenja else 0)
+                if ogr:
+                    self._postavi("baterija_ogranicenje", float(ogr), ts, osvjezi_s=60)
+                    self._naredbe_zadnje.pop("baterija_auto", None)
+                else:
+                    self._postavi("baterija_auto", 1.0, ts, osvjezi_s=60)
+                    self._naredbe_zadnje.pop("baterija_ogranicenje", None)
                 self._naredbe_zadnje.pop("baterija_snaga_w", None)
             else:
-                if ts < self.zabrana_punjenja_do or soc >= b["soc_max"]:
+                if bez_punjenja:
                     cmd = min(cmd, 0.0)
-                if soc <= b["soc_min"]:
+                if bez_praznjenja:
                     cmd = max(cmd, 0.0)
                 cmd = max(-b["max_praznjenje_kw"] * 1000, min(b["max_punjenje_kw"] * 1000, cmd))
                 self._postavi("baterija_snaga_w", round(cmd, -1), ts, osvjezi_s=30)
                 self._naredbe_zadnje.pop("baterija_auto", None)
+                self._naredbe_zadnje.pop("baterija_ogranicenje", None)
 
         # 8) zapis i satni zbroj
         uzorak = {"dt": dt, "pv": pv, "potr": potr, "mreza": mreza_w, "bat": bat_w or 0.0, "soc": soc,
@@ -556,7 +573,8 @@ class Jezgra:
         if not cijene_manjka:
             return False
         trosenje = (2 if punjenje else 1) * b["trosak_ciklusa_eur_kwh"]
-        return max(cijene_manjka) * (0.9 if punjenje else 1.0) - trosenje > cijena["kupnja"]
+        faktor = self.cfg["politika"]["cuvanje_faktor"]
+        return max(cijene_manjka) * (0.9 if punjenje else 1.0) * faktor - trosenje > cijena["kupnja"]
 
     @property
     def prisutni(self) -> bool:

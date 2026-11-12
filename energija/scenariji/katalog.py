@@ -1,0 +1,88 @@
+"""Katalog scenarija. Svaki scenarij je deklarativan: vrijeme, tarifa, mreža, ubačeni kvarovi,
+ispadi uređaja i mrežnih servisa – i očekivanja (KPI) koja moraju vrijediti da bi prošao.
+
+Kvarovi (u danima od početka): ("kratki", dionica, od, do), ("prekid", dionica, od, do),
+("suho", None, od, do), ("vegetacija", stopa_po_danu, od, 99).
+Ispadi uređaja: (id_uredaja, od, do) – uređaj ne odgovara (kao Modbus/MQTT istek).
+Mreža (HTTP prema Open-Meteo / tarifama): (servis, vrsta, od, do), vrsta: pad | 503 | istek | neispravan.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Scenarij:
+    ime: str
+    opis: str
+    pocetak: tuple[int, int, int]           # datum (ponedjeljak)
+    dani: float = 7.0
+    korak_s: float = 120.0
+    tarifa: str = "vtnt"                    # vtnt | dinamicka (preko mokanog HTTP-a)
+    mreza: bool = True                      # priključak na elektroenergetsku mrežu
+    kvarovi: list = field(default_factory=list)
+    ispadi_uredaja: list = field(default_factory=list)
+    mreza_kvarovi: list = field(default_factory=list)
+    temp_pomak: float = 0.0
+    starenje: float | None = None           # Ω/dan rast unutarnjeg otpora baterije
+    soc0: float = 0.55
+    vlaga0: float | None = None             # početna vlaga tla (%) u svim zonama
+    ocekivanja: dict = field(default_factory=dict)
+    oznake: tuple = ()
+
+
+OGRADA_TIPICNO = [("kratki", 3, 1.4, 1.55), ("prekid", 2, 3.3, 3.5), ("vegetacija", 0.008, 2.0, 99)]
+
+KATALOG: list[Scenarij] = [
+    Scenarij("proljece_osnovno", "Vikendica u proljeće, VT/NT, tipični kvarovi ograde i rad pumpe na suho",
+             (2026, 3, 16), kvarovi=OGRADA_TIPICNO,
+             ocekivanja={"usteda_min_udio": -0.02, "pastir_dostupnost_min": 0.95, "izolacija_max_min": 20},
+             oznake=("brzi", "ucenje")),
+    Scenarij("bunar_presusio", "Ljeto, suho tlo, bunar presuši u jutro zalijevanja: pumpa ne smije raditi na suho",
+             (2026, 7, 6), dani=2, korak_s=60, vlaga0=22.0, kvarovi=[("suho", None, 0.0, 1.5)],
+             ocekivanja={"suho_reakcija_max_koraka": 2, "zastita_pumpe": True}, oznake=("brzi",)),
+    Scenarij("zima_dinamicka", "Zima, dinamička satna tarifa preko (mokanog) HTTP izvora",
+             (2026, 1, 12), tarifa="dinamicka", kvarovi=OGRADA_TIPICNO,
+             ocekivanja={"usteda_min_udio": 0.10, "pastir_dostupnost_min": 0.95, "tarifa_izvor": "dinamicka"},
+             oznake=("brzi", "ucenje")),
+    Scenarij("jesen_vtnt", "Jesen, VT/NT, bez kvarova (čisti učinak optimizacije)",
+             (2026, 10, 12), ocekivanja={"usteda_min_udio": 0.0}, oznake=("ucenje",)),
+    Scenarij("ljeto_otocno", "Ljeto bez mreže: samo sunce i baterija",
+             (2026, 7, 6), mreza=False, kvarovi=OGRADA_TIPICNO,
+             ocekivanja={"neisporuceno_max_kwh": 0.0, "pastir_dostupnost_min": 0.95}, oznake=("brzi",)),
+    Scenarij("zima_otocno_hladno", "Zima bez mreže, 8 °C hladnije od prosjeka: niska baterija, mraz",
+             (2026, 1, 12), mreza=False, temp_pomak=-8.0, soc0=0.35,
+             ocekivanja={"pastir_dostupnost_min": 0.95}),
+    Scenarij("ispad_izmjenjivaca", "Izmjenjivač (Modbus) ne odgovara 6 h, senzori tla 3 h",
+             (2026, 3, 16), dani=3,
+             ispadi_uredaja=[("sim-izmjenjivac", 1.0, 1.25), ("sim-tlo", 1.5, 1.625)],
+             ocekivanja={"uredaj_oporavak": True}, oznake=("brzi",)),
+    Scenarij("openmeteo_ispadi", "Open-Meteo: pad mreže, zatim HTTP 503, istek i neispravan JSON",
+             (2026, 6, 1), dani=5,
+             mreza_kvarovi=[("prognoza", "pad", 0.0, 1.0), ("prognoza", "503", 1.0, 2.0),
+                            ("prognoza", "istek", 2.0, 2.5), ("prognoza", "neispravan", 2.5, 3.0)],
+             ocekivanja={"prognoza_oporavak": True, "prognoza_zamjena": True}, oznake=("brzi",)),
+    Scenarij("visestruki_kvarovi_ograde", "Tri kvara ograde u nizu (dionice 1, 4, 3), uz vegetaciju",
+             (2026, 5, 4), dani=4,
+             kvarovi=[("kratki", 1, 0.5, 0.6), ("kratki", 4, 1.5, 1.6), ("prekid", 3, 2.5, 2.7),
+                      ("vegetacija", 0.006, 0.0, 99)],
+             ocekivanja={"pastir_dostupnost_min": 0.93, "izolacija_max_min": 20, "izolacija_min_broj": 2},
+             oznake=("brzi",)),
+    Scenarij("starenje_baterije", "Baterija ubrzano stari: prediktivno održavanje mora upozoriti",
+             (2026, 4, 6), dani=9, korak_s=180, starenje=0.004,
+             ocekivanja={"odrzavanje_pokazatelj": "baterija_otpor_mohm"}),
+]
+
+# Skup za provjeru učenja politike: drugi tjedni (drugo vrijeme), isti tipovi lokacija.
+PROVJERA_UCENJA: list[Scenarij] = [
+    Scenarij("val_zima_dinamicka", "Provjera: drugi zimski tjedan, dinamička tarifa", (2026, 2, 9), tarifa="dinamicka"),
+    Scenarij("val_proljece", "Provjera: drugi proljetni tjedan, VT/NT", (2026, 4, 13)),
+    Scenarij("val_jesen", "Provjera: kasna jesen, VT/NT", (2026, 11, 9)),
+]
+
+
+def po_imenu(ime: str) -> Scenarij:
+    for s in KATALOG + PROVJERA_UCENJA:
+        if s.ime == ime:
+            return s
+    raise KeyError(ime)

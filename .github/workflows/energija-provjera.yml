@@ -32,6 +32,11 @@ jobs:
         run: pip install -r requirements-provjera.txt
       - name: Jedinični testovi (uključuje Open-Meteo mokove i pymodbus)
         run: python -m unittest discover -s testovi -p "test_*.py"
+      - name: Scenariji na simulatorima (kvarovi, ispadi uređaja i mreže, sigurnosne invarijante)
+        run: python -m scenariji.pokretac ${{ github.event_name == 'workflow_dispatch' && '--sve' || '--oznaka brzi' }} --izlaz rezultati-scenarija
+      - name: Rezultati scenarija u sažetak
+        if: always()
+        run: test -f rezultati-scenarija/rezultati.md && cat rezultati-scenarija/rezultati.md >> "$GITHUB_STEP_SUMMARY" || true
       - name: Cjelovita provjera kao lokalni procesi
         run: bash provjera/pokreni_lokalno.sh
       - name: Izolirana provjera u Docker Composeu

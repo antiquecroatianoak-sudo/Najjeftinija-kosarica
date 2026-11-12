@@ -60,6 +60,21 @@ Simulator i lažni servis mogu se pokrenuti i zasebno:
 - `python3 -m simulator.modbus_pymodbus --modbus-port 5020 --mqtt-host <jezgra>`
 - `python3 -m simulator.mock_openmeteo --port 8080` (opcija `--kvar N` vraća 503 na prvih N zahtjeva).
 
+## Automatizirani scenariji i učenje politike
+
+Scenariji koriste isti fizikalni simulator s ubačenim kvarovima. Mrežni pozivi idu stvarnim kodom jezgre, uz mokirani `urlopen`. U svakom koraku čuvar provjerava sigurnosne invarijante.
+
+```bash
+python3 -m scenariji.pokretac --oznaka brzi            # brzi podskup (CI)
+python3 -m scenariji.pokretac --izlaz rezultati/       # svi scenariji -> rezultati.json, rezultati.md
+python3 -m scenariji.ucenje_politike --izlaz naucena_politika.json
+python3 -m scenariji.pokretac --postavke naucena_politika.json   # svi scenariji s naučenom politikom
+```
+
+- **Katalog:** `scenariji/katalog.py` – vrijeme, tarifa, rad s mrežom ili bez nje, kvarovi, ispadi uređaja i mreže, očekivanja.
+- **Učenje:** `cuvanje_faktor`, `rezerva_dodatak` i `trosak_ciklusa_plan` uče se na skupu za učenje. Naučena politika predlaže se samo ako je bolja na odvojenim tjednima i bez ijednog sigurnosnog kršenja. Primjenjuje se dodavanjem odjeljka `"politika"` u `postavke.json` na uređaju.
+- **Spremnost:** što je automatski dokazano, a što se mora provjeriti na terenu, opisano je u `SPREMNOST.md`.
+
 ## Što radi
 
 | Područje | Gdje | Ukratko |

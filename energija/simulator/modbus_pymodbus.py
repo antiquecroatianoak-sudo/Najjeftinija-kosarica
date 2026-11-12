@@ -22,7 +22,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from pymodbus.datastore import ModbusSequentialDataBlock, ModbusServerContext, ModbusSlaveContext
-from pymodbus.server import ServerAsyncStop, StartAsyncTcpServer
+from pymodbus.server import ModbusTcpServer, StartAsyncTcpServer
 
 from jezgra import konfig
 from jezgra.mqtt import Klijent
@@ -115,6 +115,8 @@ class Farma:
         mod = procitaj(A124 + 5)
         if mod == 0:
             self.lok.postavi("baterija_auto", 1)
+        elif procitaj(A124 + 12) == 0 and procitaj(A124 + 13) == 0:
+            self.lok.postavi("baterija_ogranicenje", mod)  # samo ograničenje smjera, vlastiti način
         else:
             snaga = 3000 * procitaj(A124 + 13) / 100 - 3000 * procitaj(A124 + 12) / 100
             self.lok.postavi("baterija_snaga_w", snaga)
@@ -130,7 +132,7 @@ class Farma:
 
     def stanje(self) -> dict:
         l = self.lok
-        return {"naredba_bat": l.naredba_bat, "releji": l.releji, "ventili": l.ventili, "soc": l.soc,
+        return {"naredba_bat": l.naredba_bat, "ogranicenje": l.ogranicenje, "releji": l.releji, "ventili": l.ventili, "soc": l.soc,
                 "pastir_sklopke": l.pastir_sklopke, "pastir_povrat": l.pastir_povrat, "pastir_snaga": l.pastir_snaga,
                 "upisi_jezgre": self.upisi_jezgre[-10:], "mqtt_naredbe": self.mqtt_naredbe[-20:],
                 "sim_vrijeme": l.t}
@@ -205,18 +207,36 @@ async def pokreni(farma: Farma, host: str, modbus_port: int, mqtt: MqttMost | No
     await StartAsyncTcpServer(context=farma.kontekst, address=(host, modbus_port))
 
 
-def u_niti(farma: Farma, port: int, host: str = "127.0.0.1") -> threading.Thread:
-    """Za testove: pymodbus poslužitelj u pozadinskoj niti (zaustavlja se s procesom)."""
-    t = threading.Thread(target=lambda: asyncio.run(pokreni(farma, host, port, None, period=0.2)), daemon=True)
-    t.start()
-    return t
+class PosluziteljUNiti:
+    """Za testove: vlastita instanca pymodbus poslužitelja u pozadinskoj niti, s urednim gašenjem."""
+
+    def __init__(self, farma: Farma, port: int, host: str = "127.0.0.1"):
+        self.farma, self.port, self.host = farma, port, host
+        self.petlja: asyncio.AbstractEventLoop | None = None
+        self.srv: ModbusTcpServer | None = None
+        spreman = threading.Event()
+
+        async def radi():
+            self.petlja = asyncio.get_running_loop()
+            self.srv = ModbusTcpServer(context=farma.kontekst, address=(host, port))
+            spreman.set()
+            await self.srv.serve_forever()
+
+        self.nit = threading.Thread(target=lambda: asyncio.run(radi()), daemon=True)
+        self.nit.start()
+        spreman.wait(5)
+
+    def zaustavi(self) -> None:
+        if self.petlja and self.srv:
+            asyncio.run_coroutine_threadsafe(self.srv.shutdown(), self.petlja).result(5)
+        self.nit.join(5)
+
+    def join(self, timeout: float | None = None) -> None:
+        self.nit.join(timeout)
 
 
-def zaustavi() -> None:
-    try:
-        ServerAsyncStop()
-    except Exception:
-        pass
+def u_niti(farma: Farma, port: int, host: str = "127.0.0.1") -> PosluziteljUNiti:
+    return PosluziteljUNiti(farma, port, host)
 
 
 def main() -> None:
@@ -228,6 +248,9 @@ def main() -> None:
     ap.add_argument("--brzina", type=float, default=60.0)
     ap.add_argument("--bez-kvarova", action="store_true")
     a = ap.parse_args()
+    import signal
+    import sys
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))  # uredno gašenje u kontejneru (bez SIGKILL-a)
     farma = Farma(a.brzina, kvarovi=not a.bez_kvarova)
     mqtt = MqttMost(farma, a.mqtt_host, a.mqtt_port)
     http_stanje(farma, a.http_port)

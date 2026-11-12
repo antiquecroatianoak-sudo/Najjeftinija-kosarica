@@ -69,11 +69,16 @@ class SunSpecUredaj(Uredaj):
         return out
 
     def postavi(self, kanal: str, vrijednost: float) -> bool:
-        if kanal not in ("baterija_snaga_w", "baterija_auto") or 124 not in self.modeli:
+        if kanal not in ("baterija_snaga_w", "baterija_auto", "baterija_ogranicenje") or 124 not in self.modeli:
             return False
         a, _ = self.modeli[124]
         if kanal == "baterija_auto":  # StorCtl_Mod = 0: izmjenjivač u vlastitom načinu rada
             self.k.upisi_vise(self.j, a + 5, [0])
+            return True
+        if kanal == "baterija_ogranicenje":  # bitovi StorCtl_Mod uz stopu 0 %: zabrana punjenja/pražnjenja
+            self.k.upisi(self.j, a + 12, 0)
+            self.k.upisi(self.j, a + 13, 0)
+            self.k.upisi_vise(self.j, a + 5, [int(vrijednost) & 3])
             return True
         r = self.k.citaj_holding(self.j, a, 26)
         wmax = max(1.0, r[2] * self.sf(r[18]))

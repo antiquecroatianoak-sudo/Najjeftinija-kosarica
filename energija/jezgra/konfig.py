@@ -48,6 +48,9 @@ ZADANO: dict = {
     "izvjestaji": {"co2_kg_kwh": 0.18, "tjedno": True, "mjesecno": True},  # pretpostavka faktora mreže
     "api": {"port": 8443, "tls": True},
     "mqtt": {"port": 1883},
+    # podesivi parametri politike (zadane vrijednosti; scenariji/ucenje_politike.py ih može predložiti)
+    # (trosak_ciklusa_plan: trošenje baterije koje vidi samo planer; None = stvarna procjena iz "baterija")
+    "politika": {"rezerva_dodatak": 0.0, "cuvanje_faktor": 1.0, "trosak_ciklusa_plan": None},
     "prognoza": {"url": "https://api.open-meteo.com/v1/forecast"},
     "otkrivanje": {"multicast": "239.255.70.70", "port": 47070, "modbus_hostovi": [], "modbus_jedinice": [1, 2, 3]},
     "trosila": [

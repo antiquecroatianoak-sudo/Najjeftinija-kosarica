@@ -210,8 +210,8 @@ class Detektor:
             v0, i0 = self._zadnje_v_i
             di = i - i0
             if abs(di) > 10:
-                r = -(v - v0) / di
-                if 0 < r < 1:
+                r = abs((v - v0) / di)  # neovisno o konvenciji predznaka struje (BMS-ovi se razlikuju)
+                if 0.0005 < r < 1:
                     self._r_uzorci.append(r)
                     del self._r_uzorci[:-200]
         self._zadnje_v_i = (v, i)

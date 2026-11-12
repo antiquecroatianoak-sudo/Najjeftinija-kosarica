@@ -25,11 +25,21 @@ N_DIONICA = 4
 
 
 class Lokacija:
-    def __init__(self, cfg: dict, pocetak: float, sjeme: int = 7, kvarovi: bool = True):
+    ZADANI_KVAROVI = [  # (vrsta, parametar, od_dana, do_dana) – raspored iz prvih simulacija
+        ("kratki", 3, 1.4, 1.55),       # grana na žici ~3,6 h
+        ("prekid", 2, 3.3, 3.5),        # divljač prekinula žicu ~4,8 h
+        ("suho", None, 5.2, 5.4),       # bunar presušio
+        ("vegetacija", 0.008, 2.0, 99), # odvod raste od 2. dana (po danu)
+    ]
+
+    def __init__(self, cfg: dict, pocetak: float, sjeme: int = 7, kvarovi: bool | list = True):
         self.cfg = cfg
         self.t = pocetak
         self.rng = random.Random(sjeme)
-        self.kvarovi = kvarovi
+        # kvarovi: True = zadani raspored, False = bez kvarova, lista = scenarij
+        self.dogadjaji = list(self.ZADANI_KVAROVI) if kvarovi is True else list(kvarovi or [])
+        self.kvarovi = bool(self.dogadjaji)
+        self.temp_pomak = 0.0           # scenarij: hladnije/toplije od klimatskog prosjeka
         b = cfg["baterija"]
         self.kap_kwh = b["kapacitet_kwh"]
         self.soc = 0.55
@@ -58,6 +68,9 @@ class Lokacija:
         self.pocetak_sim = pocetak
         self.bat_napon = 16 * 3.15
         self.bojler_w = 0.0
+        self.suho = False
+        self.ogranicenje = 0
+        self.r_int_rast = 0.00025  # Ω/dan; scenarij "starenje" ubrzava
 
     # ------------------------------------------------------------------ vrijeme / okolina
     def _dan(self, ts: float) -> dict:
@@ -74,7 +87,7 @@ class Lokacija:
     def okolina_temp(self, ts: float) -> float:
         d = self._dan(ts)
         h = time.localtime(ts).tm_hour + time.localtime(ts).tm_min / 60
-        return d["temp"] - 6 + 7 * math.sin((h - 9) / 24 * 2 * math.pi)
+        return d["temp"] - 6 + 7 * math.sin((h - 9) / 24 * 2 * math.pi) + self.temp_pomak
 
     def prisutni(self, ts: float) -> bool:
         lt = time.localtime(ts)
@@ -111,14 +124,17 @@ class Lokacija:
         return {"cijene": out}
 
     # ------------------------------------------------------------------ pastir (električni model)
+    def aktivni(self, vrsta: str, ts: float | None = None):
+        """Parametar aktivnog ubačenog događaja te vrste (ili None)."""
+        dan = ((self.t if ts is None else ts) - self.pocetak_sim) / 86400
+        for v, par, od, do in self.dogadjaji:
+            if v == vrsta and od <= dan < do:
+                return True if par is None else par
+        return None
+
     def _kvarovi_pastira(self, ts: float) -> tuple[int | None, int | None]:
         """(dionica s kratkim spojem, dionica s prekidom) prema ubačenom rasporedu."""
-        if not self.kvarovi:
-            return None, None
-        dan = (ts - self.pocetak_sim) / 86400
-        kratki = 3 if 1.4 <= dan < 1.55 else None     # grana na žici ~3,6 h
-        prekid = 2 if 3.3 <= dan < 3.5 else None       # divljač prekinula žicu ~4,8 h
-        return kratki, prekid
+        return self.aktivni("kratki", ts), self.aktivni("prekid", ts)
 
     def pastir_naponi(self) -> list[float]:
         kratki, prekid = self._kvarovi_pastira(self.t)
@@ -188,7 +204,8 @@ class Lokacija:
             bojler_w = 2000.0
             self.bojler_kwh += 2.0 * dt / 3600
         self.bojler_w = bojler_w
-        suho = self.kvarovi and 5.2 <= (ts - self.pocetak_sim) / 86400 < 5.4  # bunar presušio
+        suho = bool(self.aktivni("suho", ts))  # bunar presušio
+        self.suho = suho
         pumpa_w = 0.0
         if self.releji["pumpa"]:
             pumpa_w = 250.0 if suho else 750.0
@@ -207,6 +224,10 @@ class Lokacija:
             zeljeno = self.naredba_bat
         else:
             zeljeno = -neto  # obični vlastiti način
+            if self.ogranicenje & 1:
+                zeljeno = min(zeljeno, 0.0)
+            if self.ogranicenje & 2:
+                zeljeno = max(zeljeno, 0.0)
         zeljeno = max(-b["max_praznjenje_kw"] * 1000, min(b["max_punjenje_kw"] * 1000, zeljeno))
         if zeljeno > 0 and (self.soc >= 0.99 or self.bat_temp < 0):
             zeljeno = 0.0
@@ -227,7 +248,7 @@ class Lokacija:
         self.bat_snaga_w = zeljeno
         self.soc = min(1.0, max(0.0, self.soc + (zeljeno * (0.95 if zeljeno > 0 else 1 / 0.95)) * dt / 3600 /
                                 (self.kap_kwh * 1000)))
-        self.r_int += 0.00025 * dt / 86400
+        self.r_int += self.r_int_rast * dt / 86400
         napon_otvoreno = 16 * (3.0 + 0.3 * self.soc + 0.05 * math.tanh((self.soc - 0.5) * 6))
         self.bat_struja = zeljeno / max(40.0, napon_otvoreno)
         self.bat_napon = napon_otvoreno + self.bat_struja * self.r_int
@@ -246,7 +267,11 @@ class Lokacija:
                 dodatak += 33.0  # %/h dok ventil i pumpa rade
             self.vlaga[z] = min(48.0, max(5.0, self.vlaga[z] + (dodatak - et * (1.3 if z == "z2" else 1.0)) * dt / 3600))
 
-        self.vegetacija = min(0.09, max(0.0, (ts - self.pocetak_sim) / 86400 - 2.0) * 0.008) if self.kvarovi else 0.0
+        stopa, od = 0.0, 0.0
+        for v, par, od_d, _ in self.dogadjaji:
+            if v == "vegetacija":
+                stopa, od = par, od_d
+        self.vegetacija = min(0.09, max(0.0, (ts - self.pocetak_sim) / 86400 - od) * stopa) if stopa else 0.0
 
     # ------------------------------------------------------------------ očitanja / naredbe
     def ocitanja(self) -> dict[str, float]:
@@ -272,6 +297,10 @@ class Lokacija:
             self.naredba_bat = v
         elif kanal == "baterija_auto":
             self.naredba_bat = None
+            self.ogranicenje = 0
+        elif kanal == "baterija_ogranicenje":  # vlastiti način + ograničenje smjera (bit0 punjenje, bit1 pražnjenje)
+            self.naredba_bat = None
+            self.ogranicenje = int(v) & 3
         elif kanal.startswith("rele_pastir_k"):
             self.pastir_sklopke[int(kanal[13:])] = v >= 0.5
         elif kanal == "rele_pastir_povrat":
@@ -337,7 +366,7 @@ class ProtokolniMost:
         kanali = {k: {"tema": f"sim/{k}"} for k in lok.ocitanja() if not k.startswith(("pv_", "baterija_soc"))}
         upravljanje = {k: {"tema": f"sim/{k}/set"} for k in
                        ["rele_bojler", "rele_pumpa", "rele_uticnice", "rele_hladnjak", "ventil_z1", "ventil_z2",
-                        "rele_pastir_povrat", "rele_pastir_punjenje", "pastir_snaga", "baterija_snaga_w", "baterija_auto"]
+                        "rele_pastir_povrat", "rele_pastir_punjenje", "pastir_snaga", "baterija_snaga_w", "baterija_auto", "baterija_ogranicenje"]
                        + [f"rele_pastir_k{k}" for k in range(1, N_DIONICA + 1)]}
         self.mqtt.objavi("energija/otkrij/sim-farma", json.dumps(
             {"id": "sim-farma", "tip": "farma", "kanali": kanali, "upravljanje": upravljanje}), zadrzi=True)
@@ -370,10 +399,15 @@ class ProtokolniMost:
 
     def _upis(self, jed: int, adr: int, v: list[int]) -> None:
         a = self.a124
-        if adr in (a + 12, a + 13):
+        if a + 5 <= adr <= a + 13:
             h = self.reg.holding
-            snaga = 3000 * h.get(a + 13, 0) / 100 - 3000 * h.get(a + 12, 0) / 100
-            self.lok.postavi("baterija_snaga_w", snaga)
+            mod, izl, ul = h.get(a + 5, 0), h.get(a + 12, 0), h.get(a + 13, 0)
+            if mod == 0:
+                self.lok.postavi("baterija_auto", 1)
+            elif izl == 0 and ul == 0:
+                self.lok.postavi("baterija_ogranicenje", mod)
+            else:
+                self.lok.postavi("baterija_snaga_w", 3000 * ul / 100 - 3000 * izl / 100)
 
     def _naredba(self, tema: str, poruka: bytes) -> None:
         kanal = tema.split("/")[1]

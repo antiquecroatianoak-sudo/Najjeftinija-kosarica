@@ -255,3 +255,82 @@ class TestPymodbusInterop(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(IMA_PYMODBUS, "pymodbus nije instaliran")
+class TestIspadStvarnogModbusa(unittest.TestCase):
+    def test_ispad_i_oporavak_pymodbus_posluzitelja(self):
+        """Pravi pymodbus poslužitelj se ugasi i ponovno upali: jezgra bilježi ispad, ne ruši se, sama se spaja."""
+        from jezgra.jezgra import Jezgra
+        from jezgra.otkrivanje import skeniraj_modbus
+        from simulator.modbus_pymodbus import Farma, u_niti
+
+        def cekaj_port(port, otvoren=True):
+            for _ in range(60):
+                try:
+                    socket.create_connection(("127.0.0.1", port), timeout=0.2).close()
+                    if otvoren:
+                        return True
+                except OSError:
+                    if not otvoren:
+                        return True
+                time.sleep(0.1)
+            return False
+
+        farma, port = Farma(brzina=60, kvarovi=False), slobodan_port()
+        nit = u_niti(farma, port)
+        self.assertTrue(cekaj_port(port))
+        with tempfile.TemporaryDirectory() as d:
+            cfg = copy.deepcopy(konfig.ZADANO)
+            cfg["prognoza"]["url"] = "http://127.0.0.1:9/v1/forecast"
+            j = Jezgra(Path(d), cfg, uredaji=skeniraj_modbus([("127.0.0.1", port)], [1, 2]))
+            j.korak()
+            self.assertFalse(j.offline_uredaji)
+            nit.zaustavi()
+            self.assertTrue(cekaj_port(port, otvoren=False))
+            j.korak()  # uređaji ne odgovaraju
+            self.assertEqual(len(j.offline_uredaji), 2)
+            self.assertIn("baterija", j.odluke)  # jezgra i dalje odlučuje (bez rušenja)
+            nit = u_niti(farma, port)
+            self.assertTrue(cekaj_port(port))
+            j.korak()  # klijent se sam ponovno spaja
+            self.assertFalse(j.offline_uredaji)
+            poruke = [z["d"]["poruka"] for z in j.arhiva.citaj(0, {"uredaj"})]
+            self.assertEqual(sum("nedostupan" in p for p in poruke), 2)
+            self.assertEqual(sum("ponovno dostupan" in p for p in poruke), 2)
+            j.zatvori()
+        nit.zaustavi()
+
+
+class TestCuvarHvataKrsenja(unittest.TestCase):
+    """Test testera: čuvar invarijanti mora prijaviti namjerno loše ponašanje."""
+
+    def test_cuvar(self):
+        from scenariji.pokretac import Cuvar
+        from jezgra.simulacija import Lokacija
+        cfg = copy.deepcopy(konfig.ZADANO)
+        lok = Lokacija(cfg, SADA, kvarovi=False)
+        c = Cuvar(cfg, 60)
+        lok.soc, lok.naredba_bat = 0.10, -1500.0
+        c.provjeri(lok)
+        lok.soc, lok.naredba_bat, lok.bat_temp = 0.5, 800.0, -3.0
+        c.provjeri(lok)
+        lok.naredba_bat, lok.releji["pumpa"], lok.suho = None, True, True
+        c.provjeri(lok)
+        c.provjeri(lok)
+        self.assertEqual([k["vrsta"] for k in c.krsenja], ["praznjenje_ispod_min", "punjenje_na_hladnom"])
+        self.assertEqual(c.suho_max, 2)
+        lok.pastir_sklopke[1] = False  # ograda odspojena bez kvara -> ispravne dionice bez napona
+        for _ in range(40):
+            c.provjeri(lok)
+        self.assertGreater(c.bez_napona_max_min, 30)
+
+    def test_kratki_scenarij_prolazi(self):
+        from scenariji.katalog import po_imenu
+        from scenariji.pokretac import pokreni
+        import dataclasses
+        sc = dataclasses.replace(po_imenu("visestruki_kvarovi_ograde"), dani=1.0, korak_s=120,
+                                 ocekivanja={"izolacija_max_min": 20})  # skraćeno: samo prvi kvar
+        r = pokreni(sc)
+        self.assertTrue(r["prosao"], r["neuspjesi"])
+        self.assertEqual(r["kpi"]["pastir_izolacija"], 1)
