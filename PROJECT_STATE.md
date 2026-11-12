@@ -12,6 +12,9 @@
   - Analiza konkurencije bez provjere konkretnih proizvoda (nema pristupa webu u sesiji) – označeno u dokumentu.
 - **Izdvajanje u zaseban repozitorij (12.11.2026. 20:40 Europe/Zagreb):** nalog vlasnika „Prebaci projekat u zaseban repozitorijum i ažuriraj CI/CD”. Pripremljeno: `git subtree split` mape `licence/` (povijest sačuvana) + CI `licence/.github/workflows/ci.yml` (unit 3.11/3.13, e2e, docker) i `licence/tests/docker_smoke.sh`, commit `48f45f4`. Lokalno prošlo: Python 3.11 i 3.13 72/72, e2e, Docker smoke.
   - Zapreka: novi GitHub repozitorij nije stvoren – sesija ga ne smije sama izraditi; vlasnik treba izraditi prazan repozitorij. Sljedeći korak: push izdvojene povijesti, provjera CI-ja na GitHubu, zatim uklanjanje `licence/` s ove grane uz poveznicu. Gotovo kad CI u novom repozitoriju prođe na sva četiri posla.
+  - **Push obavljen (12.11.2026. 21:17 Europe/Zagreb):** vlasnik izradio `antiquecroatianoak-sudo/licence-service` (privatan, prazan). `main` = `fa052ce` (4 izdvojena commita + CI), potvrđeno `git ls-remote`.
+  - **CI run 43298732546 na `fa052ce`: neuspjeh bez izvođenja** – `unit (3.11)` i `unit (3.13)` završili za 2 s, `runner_id 0`, bez koraka i bez zapisa (404); `e2e` i `docker` preskočeni. Kod nije ni dohvaćen, pa uzrok nije u testovima. Pretpostavka (nije potvrđeno, API ne vraća poruku): ograničenje GitHub Actions za privatni repozitorij na razini računa (kvota minuta / spending limit / plaćanje / Actions isključen). Poruka je vidljiva na stranici runa.
+  - Sljedeći korak: vlasnik provjeri poruku na stranici runa i riješi postavku računa; zatim ponovno pokretanje CI-ja. Mapa `licence/` ostaje ovdje dok CI ne prođe.
 
 ## AKTUALNO: nova aplikacija od nule (5.11.2026.)
 
