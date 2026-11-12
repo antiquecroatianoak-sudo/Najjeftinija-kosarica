@@ -118,3 +118,21 @@ h2 { font-size: 13px; font-weight: 500; color: var(--blago); margin: 0 0 14px; l
   .mreza-kartica { grid-template-columns: 1fr; }
   .siroka { grid-column: auto; }
 }
+
+.odluke { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.odluke li { border: 1px solid var(--rub); border-radius: 12px; padding: 12px; }
+.odluke .pod { font-size: 12px; color: var(--blago); text-transform: capitalize; }
+.odluke b { display: block; font-weight: 600; margin: 2px 0; }
+.odluke .izvor { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--naglasak-blago); color: var(--naglasak); margin-top: 6px; }
+.odluke .izvor.rucno, .odluke .izvor.ai { background: color-mix(in srgb, var(--mreza) 15%, transparent); color: var(--mreza); }
+.odluke .izvor.zastita { background: color-mix(in srgb, var(--upozorenje) 15%, transparent); color: var(--upozorenje); }
+details summary { cursor: pointer; font-weight: 500; list-style: none; }
+details summary::before { content: "▸ "; color: var(--blago); }
+details[open] summary::before { content: "▾ "; }
+.napredno-mreza { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 16px; }
+h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.izbor { display: grid; gap: 6px; margin-bottom: 10px; }
+.rucno { display: grid; gap: 8px; margin-bottom: 10px; }
+.rucno input, .napredno-mreza input[type=number] { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--rub); background: var(--pozadina); color: var(--tekst); font: inherit; }
+.prekidac { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+@media (max-width: 860px) { .napredno-mreza { grid-template-columns: 1fr; } }

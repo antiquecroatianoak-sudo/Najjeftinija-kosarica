@@ -566,3 +566,86 @@ class TestJezgra(Privremeno):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------- rubni AI, odluke, ručno premošćivanje
+class TestRubniAI(Privremeno):
+    def test_int8_prati_float_i_uci_poznati_obrazac(self):
+        from jezgra.rubni_ai import RubniModel, ulazi
+        m = RubniModel()
+        rng = random.Random(4)
+        t0 = 1.7e9
+        for i in range(240):  # hladniji sati od prosjeka -> više potrošnje (grijanje) kad su stanari tu
+            temp = rng.uniform(-5, 15)
+            m.osvjezi_temp(temp)
+            x = ulazi(t0 + i * 3600, None, None, None, 600, temp, 5.0)
+            stvarno = 600 + 80 * (5.0 - temp) + rng.gauss(0, 20)
+            m.dodaj_uzorak(x, stvarno, 600)
+            if i % 24 == 23:
+                m.treniraj()
+        k = m.kvaliteta()
+        self.assertTrue(k["koristi_se"], k)  # naučio je ono što profil ne zna
+        self.assertLess(k["mae_ai_w"], 0.5 * k["mae_profil_w"])
+        razlike = [abs(m.zakljuci(u[:10]) - max(-1500, min(1500, m._float(u[:10])[0] * 2000))) for u in m.uzorci[-50:]]
+        self.assertLess(sum(razlike) / len(razlike), 25.0)  # W; int8 pogreška zanemariva
+        self.assertEqual(k["tezine_bajtova"], 11)
+        self.assertLess(k["zakljucivanje_ms"], 1.0)
+
+    def test_bez_signala_ne_koristi_se(self):
+        from jezgra.rubni_ai import RubniModel, ulazi
+        m = RubniModel()
+        rng = random.Random(5)
+        for i in range(240):
+            m.dodaj_uzorak(ulazi(1.7e9 + i * 3600, None, None, None, 300, 10, 10), 300 + rng.gauss(0, 40), 300)
+            if i % 24 == 23:
+                m.treniraj()
+        self.assertFalse(m.kvaliteta()["koristi_se"])  # čisti šum: ostaje profil navika
+
+    def test_provjera_memorije_odbija(self):
+        from jezgra.rubni_ai import procijeni_resurse, provjera_profila
+        r = procijeni_resurse()
+        self.assertIsNotNone(r["mem_dostupno_mb"])
+        mala = dict(r, mem_dostupno_mb=20.0, cgroup_limit_mb=None, load1=0.1)
+        p = provjera_profila(mala)
+        self.assertFalse(p["dopusteno"])
+        self.assertIn("memorije", p["razlozi"][0])
+        zauzet = dict(r, mem_dostupno_mb=500.0, cgroup_limit_mb=None, load1=10.0, jezgri=2)
+        self.assertFalse(provjera_profila(zauzet)["dopusteno"])
+        self.assertTrue(provjera_profila(dict(r, mem_dostupno_mb=500.0, cgroup_limit_mb=None, load1=0.1))["dopusteno"])
+
+    def test_jezgra_odluke_ai_i_rucno(self):
+        from jezgra.__main__ import brza_simulacija
+        from jezgra.jezgra import Jezgra
+        j, _ = brza_simulacija(self.d, 5.0, korak_s=120.0, ispis=False, sezona="zima", kvarovi=False)
+        k = j.ai.kvaliteta()
+        self.assertGreaterEqual(k["sati_provjere"], 48)
+        self.assertTrue(j.ai_provjera["dopusteno"], j.ai_provjera)
+        self.assertGreater(j.ai.treniranja, 0)
+        for kljuc in ("baterija", "bojler", "pumpa", "pastir", "prognoza"):
+            self.assertIn(kljuc, j.odluke)
+            self.assertTrue(j.odluke[kljuc]["razlog"])
+        # ručno premošćivanje: punjenje 2500 W, ali gornja granica SoC-a ostaje
+        from jezgra.__main__ import SimSat
+        from jezgra.simulacija import Lokacija, izravni_uredaji
+        c = cfg()
+        lok = Lokacija(c, j.sat(), kvarovi=False)
+        sat = SimSat(j.sat())
+        j2 = Jezgra(self.d, c, sat=sat, uredaji=izravni_uredaji(lok))
+        self.assertEqual(j2.napredno["baterija_nacin"], "auto")
+        j2.postavi_napredno({"baterija_nacin": "rucno", "rucna_snaga_w": 9999, "minuta": 10})
+        self.assertEqual(j2.napredno["rucna_snaga_w"], 3000.0)  # ograničeno na snagu baterije
+        lok.soc = 0.5
+        lok.korak(60); sat.t = lok.t; j2.korak()
+        self.assertEqual(lok.naredba_bat, 3000.0)
+        self.assertEqual(j2.odluke["baterija"]["izvor"], "rucno")
+        lok.soc = 0.95
+        lok.korak(60); sat.t = lok.t; j2.korak()
+        self.assertLessEqual(lok.naredba_bat, 0.0)  # sigurnosna granica pobjeđuje ručnu naredbu
+        for _ in range(12):
+            lok.korak(60); sat.t = lok.t; j2.korak()
+        self.assertEqual(j2.napredno["baterija_nacin"], "auto")  # ručno je isteklo
+        j2.postavi_napredno({"ai": False})
+        self.assertFalse(j2.ai_aktivan)
+        with self.assertRaises(ValueError):
+            j2.postavi_napredno({"baterija_nacin": "isprazni_sve"})
+        j2.zatvori()

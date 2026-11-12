@@ -146,10 +146,67 @@ function prikazi(s) {
   $("sustav").innerHTML = sustav.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
 }
 
+const PODSUSTAV = { baterija: "Baterija", bojler: "Bojler", pumpa: "Navodnjavanje", pastir: "Pastir", prognoza: "Prognoza potrošnje" };
+const IZVOR = { plan: "optimizator", pravilo: "pravilo", zastita: "zaštita", rucno: "ručno", ai: "rubni AI", profil: "profil navika", kalibracija: "kalibracija" };
+let naprednoUcitano = false;
+
+function prikaziOdluke(s) {
+  const o = s.odluke || {};
+  $("odluke").innerHTML = Object.entries(o).map(([k, d]) => `<li><span class="pod">${PODSUSTAV[k] || k}</span>
+    <b>${esc(d.odluka)}</b><span class="blago">${esc(d.razlog)}</span><br><span class="izvor ${d.izvor}">${IZVOR[d.izvor] || d.izvor}</span></li>`).join("")
+    || '<li class="blago">Odluke se pojavljuju nakon prvog ciklusa.</li>';
+  const ai = s.ai || {}, k = ai.kvaliteta || {}, p = ai.provjera || {};
+  $("ai-stanje").textContent = ai.aktivan ? (k.koristi_se ? "Aktivan i koristi se – točniji od profila navika." :
+    "Aktivan, uči i provjerava se; dok nije točniji, koristi se profil navika.") :
+    (s.napredno && !s.napredno.ai ? "Isključen ručno." : "Nije primijenjen: " + (p.razlozi || []).join("; "));
+  const r = p.resursi || {};
+  $("ai-detalji").innerHTML = [
+    ["Slobodna memorija", fmt(p.slobodno_mb, 0, " MB")], ["Memorija jezgre (RSS)", fmt(r.rss_mb, 1, " MB")],
+    ["Opterećenje CPU", r.load1 === null || r.load1 === undefined ? "–" : `${fmt(r.load1, 2)} / ${r.jezgri} jezgre`],
+    ["Težine modela", fmt(k.tezine_bajtova, 0, " B (int8)")], ["Zaključivanje", fmt(k.zakljucivanje_ms, 2, " ms")],
+    ["Točnost AI / profil", k.mae_ai_w === null ? "–" : `${fmt(k.mae_ai_w, 0)} W / ${fmt(k.mae_profil_w, 0)} W (${k.sati_provjere} h)`],
+  ].map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("");
+  if (!naprednoUcitano && s.napredno) {
+    $("ai-ukljucen").checked = !!s.napredno.ai;
+    const r2 = document.querySelector(`input[name=bn][value="${s.napredno.baterija_nacin}"]`);
+    if (r2) r2.checked = true;
+    $("rucno-polja").hidden = s.napredno.baterija_nacin !== "rucno";
+    naprednoUcitano = true;
+  }
+  $("rucna-trosila").innerHTML = ["bojler", "uticnice", "hladnjak"].filter((t) => t in (s.releji || {})).map((t) =>
+    `<button type="button" class="gumb sporedno" data-trosilo="${t}" data-ukljuci="${s.releji[t] ? 0 : 1}">${t}: ${s.releji[t] ? "isključi" : "uključi"}</button>`).join("");
+}
+
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+document.querySelectorAll("input[name=bn]").forEach((r) => r.addEventListener("change", () => {
+  $("rucno-polja").hidden = r.value !== "rucno" || !r.checked;
+}));
+$("spremi-napredno").addEventListener("click", async () => {
+  const nacin = (document.querySelector("input[name=bn]:checked") || {}).value || "auto";
+  const tijelo = { ai: $("ai-ukljucen").checked, baterija_nacin: nacin,
+    rucna_snaga_w: Number($("rucno-w").value), minuta: Number($("rucno-min").value) };
+  const r = await api("/api/postavke", { method: "POST", body: JSON.stringify(tijelo) });
+  $("napredno-poruka").textContent = r.ok ? "Primijenjeno." : "Nije primijenjeno: " + ((await r.json()).greska || r.status);
+  osvjezi();
+});
+$("ai-provjera").addEventListener("click", async () => {
+  await api("/api/ai/provjera", { method: "POST" });
+  osvjezi();
+});
+$("rucna-trosila").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-trosilo]");
+  if (!b) return;
+  await api("/api/naredba", { method: "POST", body: JSON.stringify({ trosilo: b.dataset.trosilo, ukljuci: b.dataset.ukljuci === "1", minuta: 30 }) });
+  osvjezi();
+});
+
 async function osvjezi() {
   try {
     const r = await api("/api/stanje");
-    prikazi(await r.json());
+    const s = await r.json();
+    prikazi(s);
+    prikaziOdluke(s);
     $("podnozje").textContent = "Radi lokalno · bez interneta nastavlja autonomno";
   } catch (e) {
     if (e.message !== "uparivanje") $("podnozje").textContent = "Jezgra trenutačno nije dostupna – pokušavam ponovno…";

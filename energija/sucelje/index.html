@@ -91,6 +91,48 @@
       <dl id="sustav" class="sustav"></dl>
     </article>
 
+    <article class="kartica siroka">
+      <h2>Zašto sustav ovo radi</h2>
+      <ul id="odluke" class="odluke"></ul>
+    </article>
+
+    <article class="kartica siroka">
+      <details id="napredno">
+        <summary>Napredne postavke</summary>
+        <div class="napredno-mreza">
+          <div>
+            <h3>Rubni AI</h3>
+            <label class="prekidac"><input type="checkbox" id="ai-ukljucen"> Prognoza potrošnje kvantiziranim modelom</label>
+            <p class="blago" id="ai-stanje">–</p>
+            <dl id="ai-detalji" class="sustav"></dl>
+            <button type="button" class="gumb sporedno" id="ai-provjera">Ponovno izmjeri memoriju i CPU</button>
+          </div>
+          <div>
+            <h3>Baterija – ručno premošćivanje</h3>
+            <div class="izbor" role="radiogroup" id="bat-nacin">
+              <label><input type="radio" name="bn" value="auto"> Automatski (preporučeno)</label>
+              <label><input type="radio" name="bn" value="vlastita"> Samo vlastita potrošnja</label>
+              <label><input type="radio" name="bn" value="bez_punjenja_iz_mreze"> Ne puni iz mreže</label>
+              <label><input type="radio" name="bn" value="rucno"> Ručna snaga</label>
+            </div>
+            <div class="rucno" id="rucno-polja" hidden>
+              <label>Snaga (W, + puni / − prazni) <input type="number" id="rucno-w" step="100" value="0"></label>
+              <label>Trajanje (min) <input type="number" id="rucno-min" min="5" max="480" value="60"></label>
+            </div>
+            <button type="button" id="spremi-napredno">Primijeni</button>
+            <p class="blago">Sigurnosne granice (napon, temperatura, najmanja i najveća napunjenost) i zaštita pastira
+              uvijek imaju prednost i ne mogu se isključiti.</p>
+            <p id="napredno-poruka" class="blago" role="status"></p>
+          </div>
+          <div>
+            <h3>Trošila – ručno</h3>
+            <div class="gumbi" id="rucna-trosila"></div>
+            <p class="blago">Ručna naredba traje 30 min, zatim se vraća automatika. Pumpa radi samo kroz navodnjavanje.</p>
+          </div>
+        </div>
+      </details>
+    </article>
+
     <article class="kartica">
       <h2>Izvještaj o učinku</h2>
       <p class="blago">Potpisan ključem jezgre – kupac može provjeriti da brojke nisu mijenjane.</p>

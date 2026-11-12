@@ -67,7 +67,8 @@ class Lokacija:
             kisa = r.random() < 0.22
             self._dan_vrijeme[d] = {"naoblaka": r.uniform(0.0, 0.85) if not kisa else r.uniform(0.7, 0.95),
                                     "kisa_mm": r.uniform(3, 14) if kisa else 0.0, "kisa_sat": r.randint(10, 20),
-                                    "temp": r.uniform(14, 29)}
+                                    "temp": 13 - 11 * math.cos(2 * math.pi * (time.gmtime(d * 86400).tm_yday - 20) / 365)
+                                            + r.uniform(-6, 6)}  # dnevni maksimum; siječanj ~2 °C, srpanj ~24 °C
         return self._dan_vrijeme[d]
 
     def okolina_temp(self, ts: float) -> float:
@@ -176,6 +177,9 @@ class Lokacija:
             p += 90.0 if (int(ts) // 600) % 5 < 2 else 0.0
         if self.prisutni(ts):
             p += 140 + (1600 if h in (8, 13, 19) and self.rng.random() < 0.6 else 0) + self.rng.uniform(0, 150)
+            t_vani = self.okolina_temp(ts)
+            if t_vani < 10:  # električno grijanje: ovisi o vremenu, ne o rasporedu
+                p += min(2000.0, 160.0 * (10 - t_vani))
             self.bojler_kwh = max(0.0, self.bojler_kwh - 0.25 * dt / 3600)
         if not self.releji["uticnice"]:
             p = min(p, 100.0)

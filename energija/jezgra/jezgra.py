@@ -26,6 +26,7 @@ from .optimizator import planiraj_bateriju, smjesti_fleksibilna
 from .pastir import Pastir
 from .pohrana import Dnevnik, Snimka
 from .prognoza import Prognoza
+from .rubni_ai import RubniModel, provjera_profila, ulazi
 from .sifra import Trezor
 from .sinkronizacija import Sinkronizacija
 from .tarife import Tarife
@@ -92,6 +93,14 @@ class Jezgra:
         self._naredbe_zadnje: dict[str, tuple[float, float]] = {}
         self._kes_ustede: tuple[float, dict] | None = None
         self.u_sigurnom = False
+        # rubni AI + napredne postavke (ručno premošćivanje) + transparentne odluke
+        self.ai = RubniModel(st.get("ai"))
+        self.napredno: dict = {"ai": True, "baterija_nacin": "auto", "rucna_snaga_w": 0.0, "rucno_do": 0.0}
+        self.napredno.update(st.get("napredno") or {})
+        self.ai_provjera: dict = {}
+        self.ai_aktivan = False
+        self._ai_zadnje_ucenje = st.get("ai_zadnje_ucenje", 0.0)
+        self.odluke: dict[str, dict] = {}
         self._prisutnost = 0.0
         self.rucno: dict[str, tuple[bool, float]] = {}  # ručne naredbe s aplikacije (trošilo -> (stanje, do))
         self.kod_uparivanja: str | None = None
@@ -176,6 +185,10 @@ class Jezgra:
         a["n"] += 1
         if d.get("soc") is not None:
             a["soc_kraj"] = d["soc"]
+        t = d.get("o", {}).get("okolina_temp_c")
+        if t is not None:
+            a["temp_zbroj"] = a.get("temp_zbroj", 0.0) + t
+            a["temp_n"] = a.get("temp_n", 0) + 1
         if d.get("potr") is not None:
             self.navike.dodaj(ts, d["potr"] - d.get("bojler", 0.0) - d.get("pumpa_w", 0.0), d["dt"])
 
@@ -187,12 +200,93 @@ class Jezgra:
         a["pastir_dostupnost"] = a["pastir_ok_s"] / a["pastir_s"] if a["pastir_s"] else None
         for k in ("pastir_ok_s", "pastir_s"):
             a.pop(k)
+        if a.get("temp_n"):
+            a["temp"] = round(a.pop("temp_zbroj") / a.pop("temp_n"), 2)
         if a["ts"] in self._zakljuceni:
             return  # već zapisano prije pada (ponavljanje)
         self._zakljuceni.add(a["ts"])
+        self._ai_uzorak(a)
         self.sati.append(a)
         del self.sati[:-24 * 400]
         self.arhiva.zapisi("sat", a, kriticno=True, ts=a["ts"] + 3600)
+
+    # ------------------------------------------------------------------ rubni AI
+    def primijeni_ai_profil(self, razlog: str = "provjera") -> dict:
+        """Prije uključivanja (i svakog sata) izmjeri zauzeće memorije/CPU-a na uređaju."""
+        self.ai_provjera = provjera_profila()
+        prije = self.ai_aktivan
+        self.ai_aktivan = bool(self.napredno.get("ai")) and self.ai_provjera["dopusteno"]
+        if prije != self.ai_aktivan or razlog != "periodicno":
+            if self.ai_aktivan:
+                poruka = f"AI profil aktivan (slobodno {self.ai_provjera['slobodno_mb']} MB)"
+            elif not self.napredno.get("ai"):
+                poruka = "AI profil ručno isključen"
+            else:
+                poruka = "AI profil nije primijenjen: " + "; ".join(self.ai_provjera["razlozi"])
+            self._dogadjaj("ai", {"poruka": poruka, "provjera": self.ai_provjera, "razlog": razlog})
+        return self.ai_provjera
+
+    def _potrosnja_sata(self, ts: float) -> float | None:
+        for s in reversed(self.sati[-200:]):
+            if s["ts"] == ts:
+                return (s["potrosnja_kwh"] - s.get("bojler_kwh", 0.0) - s.get("pumpa_kwh", 0.0)) * 1000
+        return None
+
+    def _ai_uzorak(self, a: dict) -> None:
+        stvarno = (a["potrosnja_kwh"] - a.get("bojler_kwh", 0.0) - a.get("pumpa_kwh", 0.0)) * 1000
+        profil = self.navike.prognoza(a["ts"] + 1, 1)[0]
+        x = ulazi(a["ts"], self._potrosnja_sata(a["ts"] - 3600), self._potrosnja_sata(a["ts"] - 86400),
+                  self._potrosnja_sata(a["ts"] - 7 * 86400), profil, a.get("temp"), self.ai.temp_ref)
+        self.ai.dodaj_uzorak(x, stvarno, profil)
+        self.ai.osvjezi_temp(a.get("temp"))
+
+    def _ai_prognoza(self, ts: float, profil: list[float], temp: list | None = None) -> tuple[list[float], dict]:
+        k = self.ai.kvaliteta()
+        if not (self.ai_aktivan and k["koristi_se"]):
+            razlog = ("AI isključen ili nije dopušten na ovom uređaju" if not self.ai_aktivan else
+                      f"AI još nije bolji od profila navika ({k['sati_provjere']} h provjere, "
+                      f"MAE {k['mae_ai_w']} W prema {k['mae_profil_w']} W)")
+            return profil, {"izvor": "profil navika", "razlog": razlog} | k
+        pocetak = ts - ts % 3600
+        poznato = {s["ts"]: (s["potrosnja_kwh"] - s.get("bojler_kwh", 0) - s.get("pumpa_kwh", 0)) * 1000
+                   for s in self.sati[-200:]}
+        out = []
+        for i, p in enumerate(profil):
+            t = pocetak + i * 3600
+            x = ulazi(t, poznato.get(t - 3600), poznato.get(t - 86400), poznato.get(t - 7 * 86400), p,
+                      temp[i] if temp and i < len(temp) else None, self.ai.temp_ref)
+            v = max(0.0, p + self.ai.zakljuci(x))
+            poznato[t] = v  # rekurzivno za dulji horizont
+            out.append(v)
+        return out, {"izvor": "rubni AI (int8)",
+                     "razlog": f"AI točniji od profila: MAE {k['mae_ai_w']} W prema {k['mae_profil_w']} W"} | k
+
+    def _odluka(self, kljuc: str, odluka: str, razlog: str, izvor: str, ts: float, **ulazi_) -> None:
+        """Transparentan zapis: što je odlučeno, zašto, na temelju čega. Promjena ide u arhivu."""
+        prije = self.odluke.get(kljuc)
+        self.odluke[kljuc] = {"odluka": odluka, "razlog": razlog, "izvor": izvor, "ts": ts, "ulazi": ulazi_}
+        if not prije or (prije["odluka"], prije["izvor"]) != (odluka, izvor):
+            self._dogadjaj("odluka", {"podsustav": kljuc, "odluka": odluka, "razlog": razlog, "izvor": izvor,
+                                      "poruka": f"{kljuc}: {odluka} – {razlog}"}, ts)
+
+    def postavi_napredno(self, promjene: dict) -> dict:
+        """Ručno premošćivanje iz naprednih postavki. Sigurnosne granice se ne mogu isključiti."""
+        dopusteni = {"auto", "vlastita", "bez_punjenja_iz_mreze", "rucno"}
+        if "ai" in promjene:
+            self.napredno["ai"] = bool(promjene["ai"])
+        if "baterija_nacin" in promjene:
+            if promjene["baterija_nacin"] not in dopusteni:
+                raise ValueError("nepoznat način baterije")
+            self.napredno["baterija_nacin"] = promjene["baterija_nacin"]
+            if promjene["baterija_nacin"] == "rucno":
+                b = self.cfg["baterija"]
+                w = float(promjene.get("rucna_snaga_w", 0))
+                self.napredno["rucna_snaga_w"] = max(-b["max_praznjenje_kw"] * 1000, min(b["max_punjenje_kw"] * 1000, w))
+                self.napredno["rucno_do"] = self.sat() + max(5, min(480, int(promjene.get("minuta", 60)))) * 60
+        self._dogadjaj("postavke", {"poruka": f"Napredne postavke: {self.napredno}", **self.napredno})
+        self.primijeni_ai_profil("promjena postavki")
+        self.plan_ts = 0.0  # novi plan odmah
+        return self.napredno
 
     # ------------------------------------------------------------------ plan
     def _planiraj(self, ts: float, soc: float) -> None:
@@ -202,7 +296,10 @@ class Jezgra:
         cijene = self.tarife.niz(ts, H)
         prog = self.prognoza.niz(ts, H)
         pv = [p["pv_w"] for p in prog]
-        potr = self.navike.prognoza(ts, H)
+        profil = self.navike.prognoza(ts, H)
+        potr, self.prognoza_info = self._ai_prognoza(ts, profil, [g.get("temp") for g in prog])
+        self._odluka("prognoza", self.prognoza_info["izvor"], self.prognoza_info["razlog"],
+                     "ai" if self.prognoza_info["izvor"].startswith("rubni") else "profil", ts)
         zadaci = []
         bojler = next((t for t in self.cfg["trosila"] if t["id"] == "bojler"), None)
         if bojler:
@@ -281,6 +378,13 @@ class Jezgra:
         visak = pv - potr
         self.nacin = resursi.odaberi_nacin(soc, rezerva, visak, opt["load1"], opt["jezgri"], opt.get("cpu_temp_c"))
         interval = resursi.INTERVALI[self.nacin]
+        if not self.ai_provjera or ts - self.ai_provjera.get("_ts", 0) >= 3600:
+            self.primijeni_ai_profil("periodicno" if self.ai_provjera else "pokretanje")
+            self.ai_provjera["_ts"] = ts
+        if (self.ai_aktivan and self.nacin in ("PRILIKA", "NORMALNO") and ts - self._ai_zadnje_ucenje >= 3600
+                and len(self.ai.uzorci) >= 72):
+            self.ai.treniraj(proracun_ms=30.0 if self.nacin == "NORMALNO" else 60.0)  # nikad ne blokira ciklus
+            self._ai_zadnje_ucenje = ts
         if soc is not None and (not self.plan or ts - self.plan_ts >= interval["plan"] or self._sat_plana(ts) >= len(self.plan)):
             self._planiraj(ts, soc)
         h_plan = self._sat_plana(ts)
@@ -342,6 +446,26 @@ class Jezgra:
                 self.releji[t] = stanje
         if self.kalibracija.get("faza") == "mjerenje_s":
             self.releji["bojler"] = True
+        if self.kalibracija.get("faza") == "mjerenje_s":
+            self._odluka("bojler", "uključen", "kalibracija brojila (poznato trošilo)", "kalibracija", ts)
+        elif self._zasticeno("bojler", ts):
+            self._odluka("bojler", "isključen", "zaštita aktivna", "zastita", ts)
+        elif "bojler" in self.rucno:
+            self._odluka("bojler", "uključen" if self.releji["bojler"] else "isključen", "ručna naredba", "rucno", ts)
+        elif self.releji["bojler"]:
+            self._odluka("bojler", "uključen", f"planirani sat najnižeg graničnog troška ({cijena['kupnja'] * 100:.1f} c/kWh,"
+                         f" sunce {pv:.0f} W)", "plan", ts)
+        else:
+            self._odluka("bojler", "isključen", "nitko nije prisutan ni očekivan" if "bojler" not in self.raspored
+                         else "čeka jeftiniji/sunčaniji sat iz plana", "plan", ts)
+        if vlage:
+            self._odluka("pumpa", "radi" if self.releji.get("pumpa") else "ne radi",
+                         self.navodnjavanje_izlaz.get("razlog", ""), "zastita" if self._zasticeno("pumpa", ts) else "pravilo",
+                         ts)
+        if self.pastir_izlaz:
+            self._odluka("pastir", self.pastir.nacin, (self.pastir.dogadjaji[-1]["poruka"] if self.pastir.nacin != "normalno"
+                         and self.pastir.dogadjaji else ("štedni impuls – ograda zdrava s rezervom napona"
+                         if self.pastir.snaga < 1 else "puna snaga impulsa")), "pravilo", ts)
         for t, uklj in self.releji.items():
             self._postavi(f"rele_{t}", 1.0 if uklj else 0.0, ts)
 
@@ -349,17 +473,38 @@ class Jezgra:
         if soc is not None:
             neto = potr - pv
             cmd = None  # None = izmjenjivač sam regulira vlastitu potrošnju (brže i točnije od jezgre)
-            if korak_plana and mreza_dostupna:
+            nacin_b = self.napredno.get("baterija_nacin", "auto")
+            if nacin_b == "rucno" and ts >= self.napredno.get("rucno_do", 0):
+                nacin_b = self.napredno["baterija_nacin"] = "auto"
+                self._dogadjaj("postavke", {"poruka": "Ručna snaga baterije istekla – vraćen automatski način"}, ts)
+            odl = ("vlastita potrošnja", "izmjenjivač pokriva razliku sunca i potrošnje", "plan")
+            if nacin_b == "rucno":
+                cmd = self.napredno["rucna_snaga_w"]
+                odl = (f"ručno {cmd:+.0f} W", "ručno premošćivanje iz naprednih postavki", "rucno")
+            elif nacin_b == "vlastita":
+                odl = ("vlastita potrošnja", "ručno odabrano: bez arbitraže s mrežom", "rucno")
+            elif korak_plana and mreza_dostupna:
                 if korak_plana["baterija_kw"] > 0.05 and korak_plana["mreza_kw"] > 0.05 \
+                        and nacin_b != "bez_punjenja_iz_mreze" \
                         and self._isplati_cuvati(h_plan, cijena, soc, punjenje=True):
                     cmd = korak_plana["baterija_kw"] * 1000  # planirano punjenje iz jeftine mreže
+                    odl = (f"puni iz mreže {cmd:.0f} W", f"jeftino sada ({cijena['kupnja'] * 100:.1f} c), a baterija "
+                           "neće dostajati do sljedećeg sunca", "plan")
                 elif neto > 0 and korak_plana["baterija_kw"] > -0.05 and self._isplati_cuvati(h_plan, cijena, soc):
                     cmd = 0.0  # čuvaj bateriju za skuplje sate
+                    odl = ("čuva energiju", f"mreža sada {cijena['kupnja'] * 100:.1f} c; energija treba za skuplje sate", "plan")
             if self.kalibracija.get("faza", "").startswith("mjerenje"):
                 cmd = 0.0
+                odl = ("miruje", "kalibracija brojila", "kalibracija")
             granica = ts < self.zabrana_punjenja_do or soc >= b["soc_max"] or soc <= b["soc_min"]
             if cmd is None and granica:
                 cmd = -neto  # na granicama jezgra preuzima i reže smjer koji nije dopušten
+            if granica:
+                razlog = ("zabrana punjenja (temperatura/napon)" if ts < self.zabrana_punjenja_do else
+                          f"gornja granica {b['soc_max']:.0%}" if soc >= b["soc_max"] else f"donja granica {b['soc_min']:.0%}")
+                odl = (odl[0], odl[1] + f"; sigurnosna granica: {razlog}", "zastita" if odl[2] != "rucno" else "rucno")
+            self._odluka("baterija", odl[0], odl[1], odl[2], ts, soc=round(soc, 3), cijena=cijena["kupnja"],
+                         plan_kw=korak_plana["baterija_kw"] if korak_plana else None)
             if cmd is None:
                 self._postavi("baterija_auto", 1.0, ts, osvjezi_s=60)
                 self._naredbe_zadnje.pop("baterija_snaga_w", None)
@@ -380,7 +525,8 @@ class Jezgra:
                   "presk": self.navodnjavanje.ustedjeno_min - presk_prije,
                   "pastir_ok": (min((x for x in self.pastir_izlaz.get("naponi", [None])[1:] if x is not None),
                                     default=0) >= self.cfg["pastir"]["min_kv"]) if self.pastir_izlaz else None,
-                  "o": {k: o[k] for k in ("baterija_temp_c", "baterija_napon_v", "tlo_z1_vlaga", "tlo_z2_vlaga")
+                  "o": {k: o[k] for k in ("baterija_temp_c", "baterija_napon_v", "tlo_z1_vlaga", "tlo_z2_vlaga",
+                                          "okolina_temp_c")
                         if k in o}}
         self.dnevnik.zapisi(TELEMETRIJA, uzorak, ts=ts)
         self._akumuliraj(uzorak, ts)
@@ -486,7 +632,8 @@ class Jezgra:
                 "brojilo": {"konstanta": self.brojilo.konstanta if self.brojilo.konstanta_izvor != "pretpostavka"
                             else None, "izvor": self.brojilo.konstanta_izvor},
                 "kalibracija": self.kalibracija, "zadnja_kopija": self.zadnja_kopija,
-                "izvjestaji": self.izvjestaji_izradjeni[-50:]}
+                "izvjestaji": self.izvjestaji_izradjeni[-50:], "ai": self.ai.stanje(), "napredno": self.napredno,
+                "ai_zadnje_ucenje": self._ai_zadnje_ucenje}
 
     def spremi_snimku(self, ts: float | None = None) -> None:
         self.dnevnik.sinkroniziraj()
@@ -577,4 +724,7 @@ class Jezgra:
             "prognoza": {"izvor": "prognoza" if self.prognoza.sati else "procjena", "greska": self.prognoza.greska},
             "kopije": list(self.kopije.zadnje.values()), "oporavak": self.oporavak,
             "izvjestaji": self.izvjestaji_izradjeni[-10:],
+            "odluke": self.odluke, "napredno": self.napredno,
+            "ai": {"aktivan": self.ai_aktivan, "provjera": self.ai_provjera, "kvaliteta": self.ai.kvaliteta(),
+                   "prognoza": getattr(self, "prognoza_info", {}).get("izvor")},
         }

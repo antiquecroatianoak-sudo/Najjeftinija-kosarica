@@ -88,6 +88,16 @@ def obradi(jezgra, metoda: str, put: str, upit: dict, tijelo: dict | None) -> tu
         j._dogadjaj("naredba", {"poruka": f"Ručno: {t} {'uključeno' if tijelo.get('ukljuci') else 'isključeno'} "
                                           f"{minuta} min", "trosilo": t})
         return 200, "application/json", b'{"ok":true}'
+    if put == "/api/postavke":
+        if metoda == "POST":
+            try:
+                j.postavi_napredno(tijelo or {})
+            except (ValueError, TypeError) as e:
+                return 400, "application/json", json.dumps({"greska": str(e)}).encode()
+        return 200, "application/json", json.dumps({"napredno": j.napredno, "ai_aktivan": j.ai_aktivan,
+                                                    "provjera": j.ai_provjera}).encode()
+    if metoda == "POST" and put == "/api/ai/provjera":
+        return 200, "application/json", json.dumps(j.primijeni_ai_profil("ručna provjera")).encode()
     if metoda == "POST" and put == "/api/kopija":
         r = j.napravi_kopiju()
         return 200, "application/json", json.dumps(r).encode()
