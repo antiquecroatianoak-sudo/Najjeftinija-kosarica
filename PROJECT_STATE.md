@@ -10,6 +10,8 @@
   - Testirano lokalno: `licence/` 72 Python testa OK; e2e u pregledniku 49 provjera, 8/8 uzastopnih prolaza nakon popravka krađe fokusa u obrascu; Docker slika izgrađena i pokrenuta (healthy, uid 10001, read-only, 401 bez prijave, trajnost nakon restarta, odbija pokretanje bez tajnog ključa). Provjere košarice nepromijenjene: Python OK, Node 23/23.
   - Nije provjereno: živi dohvat ECB tečajeva (mreža sesije blokira; testirano na ECB XML formatu), stvarna isporuka webhooka na javni URL (testirano lokalnim primateljem), stvarni izvodi hrvatskih banaka (testirano na camt.053 primjeru), živi PSD2 konektor (samo protokol, nije implementiran), CI ne pokreće testove `licence/`.
   - Analiza konkurencije bez provjere konkretnih proizvoda (nema pristupa webu u sesiji) – označeno u dokumentu.
+- **Izdvajanje u zaseban repozitorij (12.11.2026. 20:40 Europe/Zagreb):** nalog vlasnika „Prebaci projekat u zaseban repozitorijum i ažuriraj CI/CD”. Pripremljeno: `git subtree split` mape `licence/` (povijest sačuvana) + CI `licence/.github/workflows/ci.yml` (unit 3.11/3.13, e2e, docker) i `licence/tests/docker_smoke.sh`, commit `48f45f4`. Lokalno prošlo: Python 3.11 i 3.13 72/72, e2e, Docker smoke.
+  - Zapreka: novi GitHub repozitorij nije stvoren – sesija ga ne smije sama izraditi; vlasnik treba izraditi prazan repozitorij. Sljedeći korak: push izdvojene povijesti, provjera CI-ja na GitHubu, zatim uklanjanje `licence/` s ove grane uz poveznicu. Gotovo kad CI u novom repozitoriju prođe na sva četiri posla.
 
 ## AKTUALNO: nova aplikacija od nule (5.11.2026.)
 
