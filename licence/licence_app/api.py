@@ -3,7 +3,7 @@
 Routes
   GET    /api/health
   GET    /api/meta                 enums for forms
-  GET    /api/dashboard
+  GET    /api/dashboard?days=30     totals, inactive and expiring licenses
   GET    /api/licenses?status=&category=&q=
   POST   /api/licenses
   GET    /api/licenses/{id}
@@ -23,9 +23,20 @@ from typing import Any, Callable
 from urllib.parse import parse_qsl, urlsplit
 
 from .models import BillingCycle, LicenseStatus, ValidationError
-from .service import LicenseFilter, LicenseService, NotFound
+from .service import LicenseFilter, LicenseService, NotFound, parse_window
 
 MAX_BODY = 64 * 1024
+
+# Same-origin only: no inline scripts, no framing, no third-party requests.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+        "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    ),
+}
 _ID = r"(?P<id>[0-9a-f]{32})"
 
 
@@ -82,9 +93,10 @@ def build_router(service: LicenseService) -> Router:
     r.add("GET", "/api/meta", lambda req: (HTTPStatus.OK, {
         "billing_cycles": [c.value for c in BillingCycle],
         "statuses": [s.value for s in LicenseStatus],
-        "categories": sorted({l.category for l in service.list()}, key=str.lower),
+        "categories": service.categories(),
     }))
-    r.add("GET", "/api/dashboard", lambda req: (HTTPStatus.OK, service.dashboard()))
+    r.add("GET", "/api/dashboard",
+          lambda req: (HTTPStatus.OK, service.dashboard(parse_window(req.query.get("days")))))
     r.add("GET", "/api/licenses", lambda req: (HTTPStatus.OK, {
         "items": [l.to_dict() for l in service.list(LicenseFilter.from_params(req.query))]
     }))
@@ -163,8 +175,13 @@ def make_handler(service: LicenseService, static_dir: Path | None) -> type[BaseH
                 self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
+            self._security_headers()
             self.end_headers()
             self.wfile.write(data)
+
+        def _security_headers(self) -> None:
+            for key, value in SECURITY_HEADERS.items():
+                self.send_header(key, value)
 
         def _static(self, path: str) -> None:
             if root is None:
@@ -180,7 +197,8 @@ def make_handler(service: LicenseService, static_dir: Path | None) -> type[BaseH
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
-            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Cache-Control", "no-cache")  # revalidate: new deploys show at once
+            self._security_headers()
             self.end_headers()
             self.wfile.write(data)
 

@@ -2,106 +2,208 @@
 <html lang="hr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0a0c0f" media="(prefers-color-scheme: dark)">
   <title>Licence tima</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/app.css">
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
+  <a class="skip" href="#main">Preskoči na sadržaj</a>
+
   <header class="topbar">
-    <div class="wrap topbar__inner">
-      <h1 class="brand">Licence tima</h1>
-      <button type="button" class="btn btn--primary" id="btn-new">+ Nova licenca</button>
+    <div class="wrap topbar__row">
+      <a class="brand" href="#/pregled" aria-label="Licence tima – pregled">
+        <span class="brand__mark" aria-hidden="true"></span>Licence tima
+      </a>
+      <div class="topbar__actions">
+        <button type="button" class="icon-btn" id="btn-theme" aria-label="Promijeni temu" title="Tema">
+          <span class="theme-icon" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="btn btn--primary" id="btn-new" aria-keyshortcuts="n" aria-label="Nova licenca">
+          <span aria-hidden="true">+</span><span class="btn-new-text">Nova licenca</span>
+        </button>
+      </div>
     </div>
+    <nav class="wrap tabs" aria-label="Glavna navigacija">
+      <a class="tab" href="#/pregled" data-view="pregled">Pregled</a>
+      <a class="tab" href="#/licence" data-view="licence">Licence <span class="tab__count" id="tab-count">0</span></a>
+      <span class="tabs__ink" aria-hidden="true"></span>
+    </nav>
   </header>
 
-  <main class="wrap">
-    <p class="notice" id="notice" role="status" hidden></p>
+  <main id="main" class="wrap" tabindex="-1">
+    <!-- ============ PREGLED ============ -->
+    <section class="view" id="view-pregled" data-view="pregled" aria-labelledby="h-overview">
+      <div class="view__head">
+        <h1 id="h-overview">Pregled</h1>
+        <p class="muted" id="as-of"></p>
+      </div>
 
-    <section aria-labelledby="h-overview">
-      <h2 id="h-overview" class="section-title">Pregled <span class="muted" id="as-of"></span></h2>
-      <div class="kpis" id="kpis"></div>
+      <div class="kpis" id="kpis" aria-live="polite">
+        <div class="kpi skeleton"></div><div class="kpi skeleton"></div>
+        <div class="kpi skeleton"></div><div class="kpi skeleton"></div>
+      </div>
+
       <div class="grid2">
         <article class="panel" aria-labelledby="h-inactive">
-          <h3 id="h-inactive">Neaktivne pretplate <span class="pill pill--warn" id="inactive-count">0</span></h3>
-          <p class="muted small">Plaćaju se, a tim ih ne koristi. Otkazivanjem štedite iznos prikazan uz svaku.</p>
-          <ul class="list" id="inactive-list"></ul>
+          <header class="panel__head">
+            <h2 id="h-inactive">Neaktivne pretplate</h2>
+            <span class="badge badge--warn" id="inactive-count">0</span>
+          </header>
+          <p class="panel__hint">Plaćaju se, a tim ih ne koristi. Otkažite ih ili ih ponovno aktivirajte.</p>
+          <ul class="list" id="inactive-list"><li class="skeleton skeleton--row"></li></ul>
         </article>
-        <article class="panel" aria-labelledby="h-renewals">
-          <h3 id="h-renewals">Obnove u sljedećih 30 dana</h3>
-          <ul class="list" id="renewal-list"></ul>
+
+        <article class="panel" aria-labelledby="h-expiring">
+          <header class="panel__head">
+            <h2 id="h-expiring">Ističe uskoro</h2>
+            <div class="seg seg--sm" role="radiogroup" aria-label="Razdoblje" id="window-seg">
+              <button type="button" role="radio" data-days="7">7 d</button>
+              <button type="button" role="radio" data-days="30">30 d</button>
+              <button type="button" role="radio" data-days="90">90 d</button>
+            </div>
+          </header>
+          <p class="panel__hint">Plaćeno razdoblje završava i slijedi nova naplata.</p>
+          <ul class="list" id="expiring-list"><li class="skeleton skeleton--row"></li></ul>
         </article>
       </div>
+
       <article class="panel" aria-labelledby="h-categories">
-        <h3 id="h-categories">Mjesečni trošak po kategoriji</h3>
+        <header class="panel__head"><h2 id="h-categories">Mjesečni trošak po kategoriji</h2></header>
         <ul class="bars" id="category-bars"></ul>
       </article>
     </section>
 
-    <section aria-labelledby="h-licenses">
-      <h2 id="h-licenses" class="section-title">Sve licence</h2>
-      <form class="filters" id="filters" role="search">
-        <label class="field field--grow"><span class="sr-only">Pretraži</span>
-          <input type="search" name="q" placeholder="Pretraži naziv ili kategoriju" autocomplete="off"></label>
-        <label class="field"><span class="sr-only">Status</span>
-          <select name="status">
-            <option value="">Svi statusi</option>
-            <option value="active">Aktivne</option>
-            <option value="inactive">Neaktivne</option>
-            <option value="cancelled">Otkazane</option>
-          </select></label>
-        <label class="field"><span class="sr-only">Kategorija</span>
-          <select name="category"><option value="">Sve kategorije</option></select></label>
+    <!-- ============ LICENCE ============ -->
+    <section class="view" id="view-licence" data-view="licence" aria-labelledby="h-licenses" hidden>
+      <div class="view__head">
+        <h1 id="h-licenses">Licence</h1>
+        <p class="muted" id="result-count"></p>
+      </div>
+
+      <form class="toolbar" id="filters" role="search">
+        <label class="search">
+          <span class="sr-only">Pretraži</span>
+          <span class="search__icon" aria-hidden="true"></span>
+          <input type="search" name="q" placeholder="Pretraži naziv ili kategoriju" autocomplete="off" aria-keyshortcuts="/">
+          <kbd class="search__kbd" aria-hidden="true">/</kbd>
+        </label>
+        <div class="seg" role="radiogroup" aria-label="Status" id="status-seg">
+          <button type="button" role="radio" data-status="">Sve</button>
+          <button type="button" role="radio" data-status="active">Aktivne</button>
+          <button type="button" role="radio" data-status="inactive">Neaktivne</button>
+          <button type="button" role="radio" data-status="cancelled">Otkazane</button>
+        </div>
+        <input type="hidden" name="status" value="">
+        <label class="select">
+          <span class="sr-only">Kategorija</span>
+          <select name="category"><option value="">Sve kategorije</option></select>
+        </label>
       </form>
-      <div class="table-wrap">
+
+      <div class="table-card">
         <table class="table" id="license-table">
           <thead><tr>
-            <th>Naziv</th><th>Kategorija</th><th class="num">Trošak</th><th>Ciklus</th>
-            <th class="num">Mjesečno</th><th>Početak</th><th>Status</th><th><span class="sr-only">Radnje</span></th>
+            <th scope="col"><button type="button" class="sort" data-sort="name">Naziv</button></th>
+            <th scope="col"><button type="button" class="sort" data-sort="category">Kategorija</button></th>
+            <th scope="col" class="num"><button type="button" class="sort" data-sort="cost">Trošak</button></th>
+            <th scope="col" class="num"><button type="button" class="sort" data-sort="monthly">Mjesečno</button></th>
+            <th scope="col"><button type="button" class="sort" data-sort="start">Početak</button></th>
+            <th scope="col"><button type="button" class="sort" data-sort="status">Status</button></th>
+            <th scope="col"><span class="sr-only">Radnje</span></th>
           </tr></thead>
-          <tbody></tbody>
+          <tbody>
+            <tr class="skeleton-tr"><td colspan="7"><div class="skeleton skeleton--row"></div></td></tr>
+            <tr class="skeleton-tr"><td colspan="7"><div class="skeleton skeleton--row"></div></td></tr>
+          </tbody>
         </table>
-        <p class="empty" id="license-empty" hidden>Nema licenci za prikaz.</p>
+        <div class="empty" id="license-empty" hidden>
+          <p class="empty__title" id="empty-title">Još nema licenci</p>
+          <p class="muted" id="empty-text">Dodajte prvu pretplatu da biste pratili troškove.</p>
+          <button type="button" class="btn btn--primary" data-action="new">+ Nova licenca</button>
+        </div>
       </div>
     </section>
   </main>
 
+  <!-- ============ OBRAZAC ============ -->
   <dialog class="dialog" id="license-dialog" aria-labelledby="dlg-title">
     <form method="dialog" id="license-form" novalidate>
-      <h2 id="dlg-title">Nova licenca</h2>
+      <header class="dialog__head">
+        <h2 id="dlg-title">Nova licenca</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Zatvori">✕</button>
+      </header>
       <p class="form-error" id="form-error" role="alert" hidden></p>
+
       <div class="form-grid">
-        <label class="field field--full">Naziv
-          <input name="name" required maxlength="120" autocomplete="off"><small class="err" data-for="name"></small></label>
-        <label class="field field--full">Kategorija
-          <input name="category" required maxlength="60" list="category-options" autocomplete="off">
-          <datalist id="category-options"></datalist><small class="err" data-for="category"></small></label>
-        <label class="field">Trošak po ciklusu
-          <input name="cost" required inputmode="decimal" placeholder="0.00"><small class="err" data-for="cost"></small></label>
-        <label class="field">Valuta
-          <input name="currency" required maxlength="3" value="EUR" autocapitalize="characters" list="currency-options">
+        <label class="field field--full"><span class="field__label">Naziv</span>
+          <input name="name" required maxlength="120" autocomplete="off" placeholder="npr. Figma Professional">
+          <small class="err" data-for="name"></small></label>
+
+        <label class="field field--full"><span class="field__label">Kategorija</span>
+          <input name="category" required maxlength="60" list="category-options" autocomplete="off" placeholder="npr. Dizajn">
+          <datalist id="category-options"></datalist>
+          <small class="err" data-for="category"></small></label>
+
+        <label class="field"><span class="field__label">Trošak po ciklusu</span>
+          <input name="cost" required inputmode="decimal" placeholder="0,00" autocomplete="off">
+          <small class="err" data-for="cost"></small></label>
+
+        <label class="field"><span class="field__label">Valuta</span>
+          <input name="currency" required maxlength="3" value="EUR" autocapitalize="characters" list="currency-options" autocomplete="off">
           <datalist id="currency-options"><option value="EUR"><option value="USD"><option value="GBP"><option value="CHF"></datalist>
           <small class="err" data-for="currency"></small></label>
-        <label class="field">Ciklus naplate
-          <select name="billing_cycle">
-            <option value="monthly">Mjesečno</option>
-            <option value="quarterly">Tromjesečno</option>
-            <option value="yearly">Godišnje</option>
-          </select><small class="err" data-for="billing_cycle"></small></label>
-        <label class="field">Datum početka
-          <input type="date" name="start_date" required><small class="err" data-for="start_date"></small></label>
-        <label class="field field--full">Status
-          <select name="status">
-            <option value="active">Aktivna – koristi se</option>
-            <option value="inactive">Neaktivna – plaća se, ne koristi se</option>
-            <option value="cancelled">Otkazana – ne plaća se</option>
-          </select><small class="err" data-for="status"></small></label>
+
+        <fieldset class="field field--full">
+          <legend class="field__label">Ciklus naplate</legend>
+          <div class="seg seg--block">
+            <label><input type="radio" name="billing_cycle" value="monthly" checked><span>Mjesečno</span></label>
+            <label><input type="radio" name="billing_cycle" value="quarterly"><span>Tromjesečno</span></label>
+            <label><input type="radio" name="billing_cycle" value="yearly"><span>Godišnje</span></label>
+          </div>
+          <small class="hint" id="monthly-preview" aria-live="polite"></small>
+          <small class="err" data-for="billing_cycle"></small>
+        </fieldset>
+
+        <label class="field field--full"><span class="field__label">Datum početka</span>
+          <input type="date" name="start_date" required>
+          <small class="err" data-for="start_date"></small></label>
+
+        <fieldset class="field field--full">
+          <legend class="field__label">Status</legend>
+          <div class="seg seg--block seg--status">
+            <label><input type="radio" name="status" value="active" checked><span><i class="dot dot--ok"></i>Aktivna</span></label>
+            <label><input type="radio" name="status" value="inactive"><span><i class="dot dot--warn"></i>Neaktivna</span></label>
+            <label><input type="radio" name="status" value="cancelled"><span><i class="dot dot--off"></i>Otkazana</span></label>
+          </div>
+          <small class="hint" id="status-hint"></small>
+          <small class="err" data-for="status"></small>
+        </fieldset>
       </div>
-      <div class="dialog__actions">
-        <button type="button" class="btn" value="cancel" id="btn-cancel">Odustani</button>
-        <button type="submit" class="btn btn--primary" id="btn-save">Spremi</button>
-      </div>
+
+      <footer class="dialog__actions">
+        <button type="button" class="btn" data-close>Odustani</button>
+        <button type="submit" class="btn btn--primary" id="btn-save"><span class="btn__label">Spremi</span></button>
+      </footer>
     </form>
   </dialog>
+
+  <!-- ============ POTVRDA ============ -->
+  <dialog class="dialog dialog--sm" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+    <form method="dialog">
+      <h2 id="confirm-title">Obrisati licencu?</h2>
+      <p id="confirm-text" class="muted"></p>
+      <footer class="dialog__actions">
+        <button type="submit" class="btn" value="cancel" autofocus>Odustani</button>
+        <button type="submit" class="btn btn--danger" value="ok">Obriši</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 </body>
 </html>

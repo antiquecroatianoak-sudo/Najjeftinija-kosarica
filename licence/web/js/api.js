@@ -18,7 +18,7 @@ async function request(method, path, body) {
   try {
     res = await fetch(path, init);
   } catch {
-    throw new ApiError(0, 'Poslužitelj nije dostupan.');
+    throw new ApiError(0, 'Poslužitelj nije dostupan. Provjerite vezu i pokušajte ponovno.');
   }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
@@ -29,16 +29,24 @@ async function request(method, path, body) {
   return data;
 }
 
+const qs = (params) => {
+  const s = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v != null)).toString();
+  return s ? `?${s}` : '';
+};
+
 export const api = {
-  dashboard: () => request('GET', '/api/dashboard'),
+  dashboard: (days) => request('GET', `/api/dashboard${qs({ days })}`),
   meta: () => request('GET', '/api/meta'),
-  list: (filters = {}) => {
-    const qs = new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString();
-    return request('GET', `/api/licenses${qs ? `?${qs}` : ''}`).then((d) => d.items);
-  },
+  list: (filters = {}) => request('GET', `/api/licenses${qs(filters)}`).then((d) => d.items),
   get: (id) => request('GET', `/api/licenses/${id}`),
   create: (data) => request('POST', '/api/licenses', data),
   update: (id, data) => request('PUT', `/api/licenses/${id}`, data),
   patch: (id, data) => request('PATCH', `/api/licenses/${id}`, data),
   remove: (id) => request('DELETE', `/api/licenses/${id}`),
 };
+
+/** Fields the API accepts on create/update (drops derived ones like monthly_cost). */
+export function editable(license) {
+  const { name, category, cost, currency, billing_cycle, start_date, status } = license;
+  return { name, category, cost, currency, billing_cycle, start_date, status };
+}

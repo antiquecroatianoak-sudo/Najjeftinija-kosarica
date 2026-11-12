@@ -1,7 +1,15 @@
-"""Business logic: CRUD use-cases and the dashboard summary.
+"""Business logic: CRUD use-cases, cost totals and automatic detection.
 
-Costs are never converted between currencies (no exchange rate is known),
-so every total is reported per currency.
+Rules
+- A license costs money when its status is billed (active or inactive) and it
+  has already started. Cancelled licenses never count.
+- Amounts are never converted between currencies (no exchange rate is known),
+  so every total is per currency.
+- "Expiring soon": the currently paid period of a billed license ends (and the
+  next charge happens) within `days`. For an inactive license that is the last
+  chance to cancel before paying again.
+- "Inactive": billed, already started, status inactive -> money spent on a
+  license nobody uses.
 """
 from __future__ import annotations
 
@@ -12,17 +20,75 @@ from decimal import Decimal
 from typing import Any, Callable, Mapping
 
 from .models import License, LicenseStatus, ValidationError, money_str
-from .repository import LicenseRepository
+from .repository import LicenseQuery, LicenseRepository
 
-RENEWAL_WINDOW_DAYS = 30
+DEFAULT_EXPIRY_WINDOW = 30
+MAX_EXPIRY_WINDOW = 366
+BILLED = (LicenseStatus.ACTIVE, LicenseStatus.INACTIVE)
 
 
 class NotFound(LookupError):
     pass
 
 
+# --- result types ------------------------------------------------------------
+
+@dataclass(frozen=True)
+class CurrencyTotal:
+    currency: str
+    monthly: Decimal
+    count: int
+
+    @property
+    def yearly(self) -> Decimal:
+        return self.monthly * 12
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"currency": self.currency, "monthly": money_str(self.monthly),
+                "yearly": money_str(self.yearly), "count": self.count}
+
+
+@dataclass(frozen=True)
+class ExpiringLicense:
+    license: License
+    renews_on: date
+    days_left: int
+
+    def to_dict(self) -> dict[str, Any]:
+        lic = self.license
+        return {"id": lic.id, "name": lic.name, "date": self.renews_on.isoformat(),
+                "days": self.days_left, "cost": money_str(lic.cost), "currency": lic.currency,
+                "status": lic.status.value}
+
+
+def total_by_currency(licenses: list[License]) -> list[CurrencyTotal]:
+    """Monthly sums per currency, largest first (pure function)."""
+    monthly: dict[str, Decimal] = defaultdict(Decimal)
+    count: dict[str, int] = defaultdict(int)
+    for lic in licenses:
+        monthly[lic.currency] += lic.monthly_cost
+        count[lic.currency] += 1
+    return [CurrencyTotal(cur, m, count[cur])
+            for cur, m in sorted(monthly.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+def parse_window(value: str | int | None) -> int:
+    if value in (None, ""):
+        return DEFAULT_EXPIRY_WINDOW
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        days = -1
+    if not 0 <= days <= MAX_EXPIRY_WINDOW:
+        raise ValidationError({"days": f"Broj dana mora biti od 0 do {MAX_EXPIRY_WINDOW}."})
+    return days
+
+
+# --- service -----------------------------------------------------------------
+
 @dataclass(frozen=True)
 class LicenseFilter:
+    """Filter as received from the UI/API (?status=&category=&q=)."""
     status: LicenseStatus | None = None
     category: str | None = None
     query: str | None = None
@@ -35,20 +101,13 @@ class LicenseFilter:
                 status = LicenseStatus(status)
             except ValueError:
                 raise ValidationError({"status": "Nepoznat status."}) from None
-        return cls(
-            status=status,
-            category=(params.get("category") or "").strip() or None,
-            query=(params.get("q") or "").strip().lower() or None,
-        )
+        return cls(status=status,
+                   category=(params.get("category") or "").strip() or None,
+                   query=(params.get("q") or "").strip() or None)
 
-    def matches(self, lic: License) -> bool:
-        if self.status and lic.status is not self.status:
-            return False
-        if self.category and lic.category.lower() != self.category.lower():
-            return False
-        if self.query and self.query not in f"{lic.name} {lic.category}".lower():
-            return False
-        return True
+    def to_query(self) -> LicenseQuery:
+        return LicenseQuery(statuses=(self.status,) if self.status else (),
+                            category=self.category, text=self.query)
 
 
 class LicenseService:
@@ -58,8 +117,10 @@ class LicenseService:
 
     # --- CRUD -------------------------------------------------------------
     def list(self, flt: LicenseFilter = LicenseFilter()) -> list[License]:
-        items = [lic for lic in self._repo.list() if flt.matches(lic)]
-        return sorted(items, key=lambda l: (l.name.lower(), l.id))
+        return self._repo.find(flt.to_query())
+
+    def categories(self) -> list[str]:
+        return self._repo.categories()
 
     def get(self, license_id: str) -> License:
         lic = self._repo.get(license_id)
@@ -69,89 +130,84 @@ class LicenseService:
 
     def create(self, data: Mapping[str, Any]) -> License:
         lic = License.create(data)
-        self._repo.add(lic)
+        self._repo.save(lic)
         return lic
 
     def replace(self, license_id: str, data: Mapping[str, Any]) -> License:
         """Full update (PUT): all required fields must be supplied."""
         self.get(license_id)
-        lic = License.create(data, id=license_id)
-        self._save(lic)
-        return lic
+        return self._update(License.create(data, id=license_id))
 
     def patch(self, license_id: str, data: Mapping[str, Any]) -> License:
-        lic = self.get(license_id).updated(data)
-        self._save(lic)
-        return lic
+        return self._update(self.get(license_id).updated(data))
 
     def delete(self, license_id: str) -> None:
         if not self._repo.delete(license_id):
             raise NotFound(license_id)
 
-    def _save(self, lic: License) -> None:
+    def _update(self, lic: License) -> License:
         if not self._repo.update(lic):
             raise NotFound(lic.id)
+        return lic
+
+    # --- calculations and detection --------------------------------------
+    def billed_licenses(self) -> list[License]:
+        return self._repo.find(LicenseQuery(statuses=BILLED, started_on_or_before=self._today()))
+
+    def monthly_totals(self) -> list[CurrencyTotal]:
+        """Total monthly cost of everything currently billed, per currency."""
+        return total_by_currency(self.billed_licenses())
+
+    def detect_inactive(self) -> list[License]:
+        """Billed but unused licenses, most expensive (per month) first."""
+        items = [l for l in self.billed_licenses() if l.status is LicenseStatus.INACTIVE]
+        return sorted(items, key=lambda l: (-l.monthly_cost, l.name.casefold()))
+
+    def detect_expiring(self, days: int = DEFAULT_EXPIRY_WINDOW) -> list[ExpiringLicense]:
+        """Billed licenses whose paid period ends within `days` (soonest first).
+        Includes not-yet-started ones whose first charge falls in the window."""
+        today = self._today()
+        out = []
+        for lic in self._repo.find(LicenseQuery(statuses=BILLED)):
+            renews = lic.next_renewal(today)
+            if renews is not None and (renews - today).days <= days:
+                out.append(ExpiringLicense(lic, renews, (renews - today).days))
+        return sorted(out, key=lambda e: (e.days_left, e.license.name.casefold()))
 
     # --- dashboard --------------------------------------------------------
-    def dashboard(self) -> dict[str, Any]:
+    def dashboard(self, days: int = DEFAULT_EXPIRY_WINDOW) -> dict[str, Any]:
         today = self._today()
-        items = self._repo.list()
-        billed = [l for l in items if l.is_billed_on(today)]
-        inactive = sorted(
-            (l for l in billed if l.status is LicenseStatus.INACTIVE),
-            key=lambda l: l.monthly_cost, reverse=True,
-        )
+        everything = self._repo.find()
+        billed = [l for l in everything if l.status in BILLED and l.start_date <= today]
+        inactive = sorted((l for l in billed if l.status is LicenseStatus.INACTIVE),
+                          key=lambda l: (-l.monthly_cost, l.name.casefold()))
 
         counts = {s.value: 0 for s in LicenseStatus}
-        for lic in items:
+        for lic in everything:
             counts[lic.status.value] += 1
 
         by_category: dict[tuple[str, str], Decimal] = defaultdict(Decimal)
+        names: dict[str, str] = {}
         for lic in billed:
-            by_category[(lic.category, lic.currency)] += lic.monthly_cost
-
-        renewals = []
-        for lic in items:
-            nxt = lic.next_renewal(today)
-            if nxt is not None and (nxt - today).days <= RENEWAL_WINDOW_DAYS:
-                renewals.append({
-                    "id": lic.id, "name": lic.name, "date": nxt.isoformat(),
-                    "days": (nxt - today).days, "cost": money_str(lic.cost),
-                    "currency": lic.currency, "status": lic.status.value,
-                })
-        renewals.sort(key=lambda r: (r["days"], r["name"].lower()))
+            key = lic.category.casefold()
+            names.setdefault(key, lic.category)
+            by_category[(key, lic.currency)] += lic.monthly_cost
 
         return {
             "as_of": today.isoformat(),
-            "counts": {"total": len(items), **counts},
-            "totals": _totals(billed),
+            "window_days": days,
+            "counts": {"total": len(everything), **counts},
+            "totals": [t.to_dict() for t in total_by_currency(billed)],
             "inactive": {
-                "items": [
-                    {
-                        "id": l.id, "name": l.name, "category": l.category,
-                        "currency": l.currency, "monthly_cost": money_str(l.monthly_cost),
-                        "since": l.start_date.isoformat(),
-                    }
-                    for l in inactive
-                ],
-                "waste": _totals(inactive),
+                "items": [{"id": l.id, "name": l.name, "category": l.category,
+                           "currency": l.currency, "monthly_cost": money_str(l.monthly_cost),
+                           "since": l.start_date.isoformat()} for l in inactive],
+                "waste": [t.to_dict() for t in total_by_currency(inactive)],
             },
             "by_category": [
-                {"category": cat, "currency": cur, "monthly": money_str(amount)}
-                for (cat, cur), amount in sorted(by_category.items(), key=lambda kv: (kv[0][1], -kv[1], kv[0][0].lower()))
+                {"category": names[key], "currency": cur, "monthly": money_str(amount)}
+                for (key, cur), amount in sorted(by_category.items(),
+                                                 key=lambda kv: (kv[0][1], -kv[1], kv[0][0]))
             ],
-            "renewals": renewals,
+            "expiring": [e.to_dict() for e in self.detect_expiring(days)],
         }
-
-
-def _totals(items: list[License]) -> list[dict[str, Any]]:
-    """Monthly / yearly sums per currency, largest first."""
-    monthly: dict[str, Decimal] = defaultdict(Decimal)
-    count: dict[str, int] = defaultdict(int)
-    for lic in items:
-        monthly[lic.currency] += lic.monthly_cost
-        count[lic.currency] += 1
-    return [
-        {"currency": cur, "monthly": money_str(m), "yearly": money_str(m * 12), "count": count[cur]}
-        for cur, m in sorted(monthly.items(), key=lambda kv: -kv[1])
-    ]
