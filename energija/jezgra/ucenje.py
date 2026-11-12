@@ -32,12 +32,13 @@ class Navike:
         self.osnova_w = s.get("osnova_w", 60.0)
         self.noci = s.get("noci", [])  # kWh potrošnje 20–7 h zadnjih noći
         self.uzoraka = s.get("uzoraka", 0)
+        self.n_sati = s.get("n_sati") or [[0] * SATI for _ in range(DANI)]
         self._sat: dict | None = None
         self._noc_kwh = 0.0
 
     def stanje(self) -> dict:
         return {"potrosnja": self.potrosnja, "prisutnost": self.prisutnost, "osnova_w": self.osnova_w,
-                "noci": self.noci, "uzoraka": self.uzoraka}
+                "noci": self.noci, "uzoraka": self.uzoraka, "n_sati": self.n_sati}
 
     def dodaj(self, ts: float, potrosnja_w: float, dt_s: float) -> None:
         """Dodaj uzorak; satni prosjek se upisuje u model kad sat završi."""
@@ -62,10 +63,12 @@ class Navike:
         self.uzoraka += 1
 
     def _zakljuci_sat(self, d: int, h: int, prosjek_w: float) -> None:
+        self.n_sati[d][h] += 1
+        a = max(self.alfa, 1.0 / self.n_sati[d][h])  # prva opažanja vrijede punom težinom
         staro = self.potrosnja[d][h]
-        self.potrosnja[d][h] = prosjek_w if staro is None else staro + self.alfa * (prosjek_w - staro)
+        self.potrosnja[d][h] = prosjek_w if staro is None else staro + a * (prosjek_w - staro)
         prisutan = 1.0 if prosjek_w > max(150.0, 2.5 * self.osnova_w) else 0.0
-        self.prisutnost[d][h] += self.alfa * (prisutan - self.prisutnost[d][h])
+        self.prisutnost[d][h] += a * (prisutan - self.prisutnost[d][h])
 
     # ------------------------------------------------------------------ izvedeni parametri
     def prognoza(self, od_ts: float, sati: int = 48) -> list[float]:

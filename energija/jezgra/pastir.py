@@ -41,15 +41,18 @@ class Pastir:
         self._potvrda: dict[str, int] = {}
         self._lo = self._hi = self._m = 0
         self._prethodni_nacin = None
-        self.snaga = 1.0
-        self.sklopke = [True] * (n_dionica + 1)  # indeks 1..n; [0] se ne koristi
-        self.r_zatvoren = False
+        self.snaga = s.get("snaga", 1.0)
+        self.sklopke = s.get("sklopke") or [True] * (n_dionica + 1)  # indeks 1..n; [0] se ne koristi
+        self.r_zatvoren = s.get("r_zatvoren", False)
+        if self.nacin == "trazenje" or len(self.sklopke) != n_dionica + 1:  # prekinuto traženje: kreni ispočetka
+            self.nacin, self.sklopke, self.r_zatvoren = "normalno", [True] * (n_dionica + 1), False
         self.stanje_dionica = ["?"] * (n_dionica + 1)
 
     def stanje(self) -> dict:
         return {"nacin": self.nacin if self.nacin != "trazenje" else "normalno",
                 "kvar_dionica": self.kvar_dionica, "izolirano_od": self.izolirano_od,
-                "dogadjaji": self.dogadjaji[-100:], "ispravno_s": self.ispravno_s, "ukupno_s": self.ukupno_s}
+                "dogadjaji": self.dogadjaji[-100:], "ispravno_s": self.ispravno_s, "ukupno_s": self.ukupno_s,
+                "snaga": self.snaga, "sklopke": self.sklopke, "r_zatvoren": self.r_zatvoren}
 
     def _potvrdi(self, kljuc: str, uvjet: bool, puta: int = 2) -> bool:
         self._potvrda[kljuc] = self._potvrda.get(kljuc, 0) + 1 if uvjet else 0

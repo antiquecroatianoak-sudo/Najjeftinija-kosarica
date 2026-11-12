@@ -32,8 +32,14 @@ def smjesti_fleksibilna(potrosnja_w: list[float], pv_w: list[float], cijene: lis
     ukupno = list(potrosnja_w)
     raspored: dict[str, list[int]] = {}
 
+    # energija koja ostane u bateriji kasnije zamjenjuje kupnju: vrednuje se prosječnom kupovnom cijenom
+    vrijednost_kwh = 0.9 * sum(c["kupnja"] for c in cijene) / max(1, len(cijene))
+
     def trosak(p: list[float]) -> float:
-        return osnovni_scenarij(p, pv_w, cijene, soc0, cfg)["trosak_eur"] if cfg else 0.0
+        if not cfg:
+            return 0.0
+        r = osnovni_scenarij(p, pv_w, cijene, soc0, cfg)
+        return r["trosak_eur"] - r["soc_kraj"] * cfg["baterija"]["kapacitet_kwh"] * vrijednost_kwh
 
     for z in sorted(zadaci, key=lambda z: z["do_h"] - z["od_h"]):  # najuži prozor prvi
         sati_potrebno = max(0, round(z["energija_kwh"] * 1000 / max(1.0, z["snaga_w"])))

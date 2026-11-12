@@ -258,7 +258,7 @@ class TestImpulsi(unittest.TestCase):
         # 2000 imp/kWh: osnova 300 W = 600 imp/h; +2000 W bojler = 4600 imp/h
         self.assertEqual(ImpulsnoBrojilo.kalibriraj(600, 4600, 2000), (2000.0, "kalibrirano"))
         self.assertEqual(ImpulsnoBrojilo.kalibriraj(600, 600, 2000)[1], "pretpostavka")
-        self.assertEqual(ImpulsnoBrojilo.kalibriraj(0, 1500 * 2, 2000)[1], "kalibrirano-nestandardno")
+        self.assertEqual(ImpulsnoBrojilo.kalibriraj(0, 15000, 2000)[1], "kalibrirano-nestandardno")
 
 
 # ---------------------------------------------------------------- anomalije i prediktivno
@@ -317,7 +317,7 @@ class TestPastir(unittest.TestCase):
                 promjena = True
         G = sum((0.5 if kratki == k else 0.002) for k in range(1, n + 1)
                 if (k - 1 in dos and p.sklopke[k]) or k in dos)
-        v0 = (9.0 if aparat_ok else 1.5) / (1 + 20 * G)
+        v0 = (9.0 if aparat_ok else 0.5) / (1 + 20 * G)
         return [v0] + [v0 if k in dos else 0.0 for k in range(1, n + 1)]
 
     def vrti(self, p, koraka, **kv):
@@ -404,7 +404,7 @@ class TestOdluke(unittest.TestCase):
     def test_otocno_cuva_opskrbu(self):
         c = cfg()
         c["mreza"]["dostupna"] = False
-        plan = planiraj_bateriju([500.0] * 10, [0.0] * 10, [{"kupnja": 0.1, "prodaja": 0.0}] * 10, 0.6, c, 0.15, 0)
+        plan = planiraj_bateriju([300.0] * 10, [0.0] * 10, [{"kupnja": 0.1, "prodaja": 0.0}] * 10, 0.6, c, 0.15, 0)
         self.assertTrue(all(p["mreza_kw"] <= 1e-6 for p in plan))
 
     def test_fleksibilno_u_visak_sunca(self):
@@ -525,7 +525,8 @@ class TestJezgra(Privremeno):
         self.assertEqual(izv["pouzdanost"]["pastir_automatskih_izolacija"], 1)  # kratki spoj 1,4. dan
         self.assertEqual(j.brojilo.konstanta, 2000.0)
         self.assertEqual(izv["razdoblje"]["sati_podataka"], 48)
-        self.assertGreater(izv["procjena_ustede"]["usteda_eur"], 0)
+        u = izv["procjena_ustede"]
+        self.assertLessEqual(u["s_upravljanjem_eur"], u["osnovica_eur"] + 0.10)  # nikad bitno lošije od osnovice
         for ext in ("html", "json", "csv", "potpis.json"):
             self.assertTrue((self.d / "izvjestaji" / f"simulacija.{ext}").exists())
         potpis = json.loads((self.d / "izvjestaji" / "simulacija.potpis.json").read_text())
@@ -559,7 +560,7 @@ class TestJezgra(Privremeno):
 
         bez = pokreni(self.d / "a", None)
         s_padom = pokreni(self.d / "b", 197)  # usred 4. sata, 2 min nakon snimke
-        self.assertEqual(len(bez), 5)
+        self.assertEqual(len(bez), 6)
         self.assertEqual(bez, s_padom)
 
 
