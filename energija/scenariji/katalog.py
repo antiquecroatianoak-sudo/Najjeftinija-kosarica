@@ -19,6 +19,7 @@ class Scenarij:
     dani: float = 7.0
     korak_s: float = 120.0
     tarifa: str = "vtnt"                    # vtnt | dinamicka (preko mokanog HTTP-a)
+    cijene_profil: str | None = None        # dinamička: skokovi | negativne | volatilne
     mreza: bool = True                      # priključak na elektroenergetsku mrežu
     kvarovi: list = field(default_factory=list)
     ispadi_uredaja: list = field(default_factory=list)
@@ -71,6 +72,35 @@ KATALOG: list[Scenarij] = [
     Scenarij("starenje_baterije", "Baterija ubrzano stari: prediktivno održavanje mora upozoriti",
              (2026, 4, 6), dani=9, korak_s=180, starenje=0.004,
              ocekivanja={"odrzavanje_pokazatelj": "baterija_otpor_mohm"}),
+]
+
+# Ekstremni vremenski i cjenovni uvjeti (oznaka "ekstremno"); očekivanja su sigurnosna – ušteda se
+# uspoređuje s referentnim strategijama u scenariji/usporedba.py.
+SIGURNO = {"pastir_dostupnost_min": 0.93}
+KATALOG += [
+    Scenarij("toplinski_val", "Toplinski val (+9 °C), suho tlo, večernji cjenovni skokovi", (2026, 7, 20), dani=5,
+             temp_pomak=9.0, vlaga0=25.0, tarifa="dinamicka", cijene_profil="skokovi",
+             kvarovi=[("vegetacija", 0.006, 0.0, 99)], ocekivanja=dict(SIGURNO), oznake=("ekstremno",)),
+    Scenarij("hladni_val", "Hladni val (−12 °C), električno grijanje, cjenovni skokovi", (2026, 1, 19), dani=5,
+             temp_pomak=-12.0, tarifa="dinamicka", cijene_profil="skokovi", ocekivanja=dict(SIGURNO),
+             oznake=("ekstremno",)),
+    Scenarij("tjedan_bez_sunca", "Tjedan guste naoblake (najavljeno), VT/NT", (2026, 11, 16),
+             kvarovi=[("oblacno", 0.95, 0.0, 7.0)], ocekivanja=dict(SIGURNO), oznake=("ekstremno",)),
+    Scenarij("nenajavljena_naoblaka", "Prognoza kaže sunčano, a oblačno je (pogreška prognoze), dinamička tarifa",
+             (2026, 4, 20), dani=5, tarifa="dinamicka", kvarovi=[("nenajavljeno_oblacno", 0.9, 1.0, 4.0)],
+             ocekivanja=dict(SIGURNO), oznake=("ekstremno",)),
+    Scenarij("oluja_ispad_mreze", "Oluja: ispad mreže 12 h noću, grana na ogradi, kiša", (2026, 6, 8), dani=4,
+             kvarovi=[("mreza_ispad", None, 1.75, 2.25), ("kratki", 2, 1.8, 2.0), ("oblacno", 0.9, 1.5, 2.5)],
+             ocekivanja={"pastir_dostupnost_min": 0.93, "neisporuceno_max_kwh": 0.0}, oznake=("ekstremno",)),
+    Scenarij("negativne_cijene", "Sunčani svibanj s negativnim podnevnim cijenama", (2026, 5, 11), dani=5,
+             tarifa="dinamicka", cijene_profil="negativne", ocekivanja=dict(SIGURNO), oznake=("ekstremno",)),
+    Scenarij("volatilne_cijene", "Vrlo nestabilne satne cijene (0,3–2,5× i povremeno negativne)", (2026, 3, 2),
+             dani=5, tarifa="dinamicka", cijene_profil="volatilne", ocekivanja=dict(SIGURNO), oznake=("ekstremno",)),
+    Scenarij("sve_odjednom", "Hladni val + ispad mreže + pogrešna prognoza + pad Open-Meteo + ispad izmjenjivača",
+             (2026, 2, 2), dani=4, temp_pomak=-10.0, tarifa="dinamicka", cijene_profil="skokovi",
+             kvarovi=[("mreza_ispad", None, 1.8, 2.1), ("nenajavljeno_oblacno", 0.9, 0.5, 3.0), ("kratki", 4, 2.5, 2.6)],
+             ispadi_uredaja=[("sim-izmjenjivac", 3.0, 3.1)], mreza_kvarovi=[("prognoza", "pad", 1.0, 2.5)],
+             ocekivanja={"pastir_dostupnost_min": 0.93, "uredaj_oporavak": True}, oznake=("ekstremno",)),
 ]
 
 # Skup za provjeru učenja politike: drugi tjedni (drugo vrijeme), isti tipovi lokacija.

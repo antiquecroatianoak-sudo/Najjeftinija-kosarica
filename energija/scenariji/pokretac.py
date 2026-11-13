@@ -63,11 +63,28 @@ class IspadUredaja(Uredaj):
         return self.u.postavi(kanal, v)
 
 
+def cijena_profila(profil: str, ts: float, osnovna: float) -> tuple[float, float]:
+    """Ekstremni cjenovni profili (deterministični po satu). Vraća (kupnja, izvoz) €/kWh."""
+    import random
+    lt = time.localtime(ts)
+    r = random.Random(int(ts // 3600) * 31 + 7)
+    if profil == "skokovi" and 18 <= lt.tm_hour <= 21 and lt.tm_yday % 2 == 1:
+        k = r.uniform(0.9, 1.2)
+        return round(k, 4), round(k * 0.4, 4)
+    if profil == "negativne" and 11 <= lt.tm_hour <= 15:
+        k = -r.uniform(0.05, 0.25)
+        return round(k, 4), round(k - 0.02, 4)
+    if profil == "volatilne":
+        k = osnovna * r.uniform(0.3, 2.5) if r.random() > 0.08 else -r.uniform(0.02, 0.1)
+        return round(k, 4), round(k * 0.55 - 0.02, 4)
+    return osnovna, round(max(0.0, osnovna * 0.55 - 0.02), 4)
+
+
 class MokMreze:
     """Zamjena za urllib.request.urlopen: odgovori simulatora + raspored mrežnih kvarova."""
 
-    def __init__(self, lok: Lokacija, kvarovi: list):
-        self.lok, self.kvarovi = lok, kvarovi
+    def __init__(self, lok: Lokacija, kvarovi: list, profil: str | None = None):
+        self.lok, self.kvarovi, self.profil = lok, kvarovi, profil
         self.zapis: list[dict] = []
 
     def _kvar(self, servis: str) -> str | None:
@@ -87,7 +104,13 @@ class MokMreze:
             raise urllib.error.HTTPError(url, 503, "Service Unavailable", {}, io.BytesIO(b""))
         if kvar == "neispravan":
             return io.BytesIO(b"<html>502 Bad Gateway</html>")
-        tijelo = self.lok.tarife_api(self.lok.t) if servis == "tarife" else self.lok.prognoza_api(self.lok.t)
+        if servis == "tarife":
+            tijelo = self.lok.tarife_api(self.lok.t)
+            if self.profil:
+                for c in tijelo["cijene"]:
+                    c["eur_kwh"], c["izvoz_eur_kwh"] = cijena_profila(self.profil, c["od"], c["eur_kwh"])
+        else:
+            tijelo = self.lok.prognoza_api(self.lok.t)
         return io.BytesIO(json.dumps(tijelo).encode())
 
 
@@ -101,6 +124,7 @@ class Cuvar:
         self.suho_max = 0
         self._bez_napona: dict[int, int] = {}
         self.bez_napona_max_min = 0.0
+        self._pokrivenost: list[float] = []  # udio dionica ograde pod naponom ≥ min_kv (mjereno u simulatoru)
 
     def _krsenje(self, lok, vrsta: str, poruka: str) -> None:
         if len(self.krsenja) < 50:
@@ -121,6 +145,7 @@ class Cuvar:
         # dionice bez kvara ne smiju dugo ostati bez napona (dok je kvar drugdje izoliran)
         kratki, prekid = lok._kvarovi_pastira(lok.t)
         v = lok.pastir_naponi()
+        self._pokrivenost.append(sum(1 for x in v[1:] if x >= self.cfg["pastir"]["min_kv"]) / (len(v) - 1))
         for k in range(1, len(v)):
             if k in (kratki, prekid) or kratki is not None and not lok.pastir_povrat:
                 continue  # bez prstena kratki spoj legitimno gasi dionice iza kvara
@@ -149,7 +174,7 @@ def pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = N
     for u in izravni_uredaji(lok):
         prozori = [(od, do) for uid, od, do in sc.ispadi_uredaja if uid == u.id]
         uredaji.append(IspadUredaja(u, lok, prozori) if prozori else u)
-    mok = MokMreze(lok, sc.mreza_kvarovi)
+    mok = MokMreze(lok, sc.mreza_kvarovi, sc.cijene_profil)
     sat = SimSat(pocetak)
     cuvar = Cuvar(cfg, sc.korak_s)
     tmp = None
@@ -177,11 +202,15 @@ def pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = N
                 prognoza_izvori.append(j.plan[0].get("izvor_prognoze", "?"))
                 tarifa_izvori.add(j.tarife.cijena(sat.t)["izvor"])
         izv = j.izvjestaj(pocetak, sat.t, izvezi=False)
+        sati = [x for x in j.sati if pocetak <= x["ts"] < sat.t]
         dog = list(j.arhiva.citaj(0))
         odrzavanje = j.detektor.predvidi(90)
         j.zatvori()
     trajanje = time.time() - t0
     kpi = _kpi(izv, dog, lok, cuvar, mok, prognoza_izvori, tarifa_izvori, odrzavanje)
+    kpi.update(usporedivi_trosak(sati, cfg, sc.soc0))
+    kpi.update({"bez_tople_vode_min": round(lok.bez_tople_vode_min), "stres_biljaka_h": round(lok.stres_biljaka_h, 1),
+                "voda_min": round(lok.voda_min)})
     kpi["iznimke"] = len(iznimke)
     rez = {"scenarij": sc.ime, "opis": sc.opis, "kpi": kpi, "krsenja": cuvar.krsenja, "iznimke": iznimke[:2],
            "trajanje_s": round(trajanje, 1), "koraka": int(sc.dani * 86400 / sc.korak_s)}
@@ -193,6 +222,32 @@ def pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = N
         print(f"{'✓' if rez['prosao'] else '✗'} {sc.ime} ({trajanje:.0f} s): " +
               ("; ".join(rez["neuspjesi"]) if rez["neuspjesi"] else _sazetak(kpi)), flush=True)
     return rez
+
+
+def usporedivi_trosak(sati: list[dict], cfg: dict, soc0: float) -> dict:
+    """Trošak na istoj osnovi za sve strategije: satni neto obračun mreže + trošenje baterije
+    − vrijednost promjene napunjenosti na kraju (prosječna izvozna cijena, ista za sve)."""
+    if not sati:
+        return {"trosak_eur": None, "granica_eur": None}
+    trosenje = cfg["baterija"]["trosak_ciklusa_eur_kwh"]
+    kap = cfg["baterija"]["kapacitet_kwh"]
+    prodaja = sum(s["cijena_prodaja"] for s in sati) / len(sati)
+    t = 0.0
+    for s in sati:
+        n = s["uvoz_kwh"] - s["izvoz_kwh"]
+        t += n * (s["cijena_kupnja"] if n > 0 else s["cijena_prodaja"]) + abs(s.get("bat_neto_kwh", 0.0)) * trosenje
+    soc_kraj = next((s["soc_kraj"] for s in reversed(sati) if s.get("soc_kraj") is not None), soc0)
+    t -= (soc_kraj - soc0) * kap * max(0.0, prodaja)
+    # procjena granice: ista satna potrošnja i sunce, optimalna baterija uz savršeno znanje budućnosti
+    granica = None
+    if cfg["mreza"]["dostupna"]:
+        from jezgra.optimizator import planiraj_bateriju
+        plan = planiraj_bateriju([s["potrosnja_kwh"] * 1000 for s in sati], [s["pv_kwh"] * 1000 for s in sati],
+                                 [{"kupnja": s["cijena_kupnja"], "prodaja": s["cijena_prodaja"]} for s in sati],
+                                 soc0, cfg, cfg["baterija"]["soc_min"], sati[0]["ts"])
+        g = sum(p["trosak_eur"] for p in plan) - (plan[-1]["soc_cilj"] - soc0) * kap * max(0.0, prodaja)
+        granica = round(g, 3)
+    return {"trosak_eur": round(t, 3), "granica_eur": granica}
 
 
 def _kpi(izv, dog, lok, cuvar, mok, prognoza_izvori, tarifa_izvori, odrzavanje) -> dict:
@@ -209,6 +264,7 @@ def _kpi(izv, dog, lok, cuvar, mok, prognoza_izvori, tarifa_izvori, odrzavanje) 
         "neisporuceno_kwh": round(lok.neisporuceno_wh / 1000, 3),
         "baterija_ciklusa": m["baterija_ekv_ciklusa"],
         "pastir_dostupnost": p["pastir_dostupnost"], "pastir_izolacija": p["pastir_automatskih_izolacija"],
+        "pastir_pokrivenost": round(sum(cuvar._pokrivenost) / len(cuvar._pokrivenost), 4) if cuvar._pokrivenost else None,
         "izolacija_min": [round(x, 1) for x in izolacije_min],
         "bez_napona_neopravdano_max_min": round(cuvar.bez_napona_max_min, 1),
         "suho_koraka_max": cuvar.suho_max,

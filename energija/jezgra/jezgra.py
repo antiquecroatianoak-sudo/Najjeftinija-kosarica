@@ -102,6 +102,8 @@ class Jezgra:
         self._ai_zadnje_ucenje = st.get("ai_zadnje_ucenje", 0.0)
         self.odluke: dict[str, dict] = {}
         self._prisutnost = 0.0
+        self._mreza_bila = True
+        self.mreza_dostupna = self.cfg["mreza"]["dostupna"]
         self.rucno: dict[str, tuple[bool, float]] = {}  # ručne naredbe s aplikacije (trošilo -> (stanje, do))
         self.kod_uparivanja: str | None = None
 
@@ -303,14 +305,19 @@ class Jezgra:
         zadaci = []
         bojler = next((t for t in self.cfg["trosila"] if t["id"] == "bojler"), None)
         if bojler:
-            # topla voda samo kad netko jest ili se (prema naučenim navikama) uskoro očekuje
+            # Topla voda: s osjetnikom temperature spremnika puni se točno koliko nedostaje; dok sustav ne
+            # nauči navike (prva 2 tjedna) voda se drži toplom kao kod NT tajmera, ali u najjeftinijim satima.
             dolazak = self.parametri.get("bojler_spreman_do_h")
-            ostalo = max(0.0, bojler["energija_kwh_dan"] - self.dnevno.get("bojler_kwh", 0.0))
-            if self.prisutni:
-                zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": ostalo,
-                               "od_h": 0, "do_h": 12})
+            t_bojler = self.zadnje_ocitanje.get("bojler_temp_c")
+            if t_bojler is not None:
+                nedostaje = max(0.0, (58.0 - t_bojler) / 45.0 * bojler["energija_kwh_dan"])
+            else:
+                nedostaje = max(0.0, 2 * bojler["energija_kwh_dan"] - self.dnevno.get("bojler_kwh", 0.0))
+            if self.prisutni or not self.navike_naucene:
+                zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": nedostaje,
+                               "od_h": 0, "do_h": 6 if self.prisutni else 12})
             elif dolazak is not None and dolazak <= 30:
-                zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": bojler["energija_kwh_dan"],
+                zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": nedostaje,
                                "od_h": max(0, dolazak - 24), "do_h": max(1, dolazak)})
         pumpa_kwh = self.navodnjavanje.potrebna_energija_kwh(24)
         if pumpa_kwh > 0:
@@ -322,7 +329,8 @@ class Jezgra:
                                                     trosak_ciklusa_eur_kwh=self.cfg["politika"]["trosak_ciklusa_plan"]))
         ukupno, self.raspored = smjesti_fleksibilna(potr, pv, cijene, zadaci, soc, cfg_plan)
         self.plan = planiraj_bateriju(ukupno, pv, cijene, soc, cfg_plan,
-                                      self.parametri.get("rezerva_soc", self.cfg["baterija"]["soc_min"]), ts)
+                                      self.parametri.get("rezerva_soc", self.cfg["baterija"]["soc_min"]), ts,
+                                      mreza=self.mreza_dostupna)
         for p, c, g in zip(self.plan, cijene, prog):
             p.update({"cijena": c["kupnja"], "izvor_cijene": c["izvor"], "pv_w": round(g["pv_w"]),
                       "izvor_prognoze": g["izvor"]})
@@ -341,7 +349,14 @@ class Jezgra:
         o = self._ocitaj()
         self.zadnje_ocitanje = o
         b = self.cfg["baterija"]
-        mreza_dostupna = self.cfg["mreza"]["dostupna"]
+        mreza_dostupna = self.cfg["mreza"]["dostupna"] and o.get("mreza_prisutna", 1.0) >= 0.5
+        if self.cfg["mreza"]["dostupna"] and mreza_dostupna != self._mreza_bila:
+            self._dogadjaj("mreza", {"poruka": "Mreža ponovno dostupna" if mreza_dostupna else
+                                     "Ispad mreže – otočni rad, prioritet zaštiti i pastiru",
+                                     "ozbiljnost": "info" if mreza_dostupna else "upozorenje"}, ts)
+            self._mreza_bila = mreza_dostupna
+            self.plan_ts = 0.0  # novi plan odmah, s drugim ograničenjima
+        self.mreza_dostupna = mreza_dostupna
         soc = o.get("baterija_soc")
         pv = o.get("pv_snaga_w", 0.0)
         potr = o.get("potrosnja_w", 0.0)
@@ -357,7 +372,10 @@ class Jezgra:
             kljuc = f"{n.kanal}:{n.vrsta}"
             if n.ozbiljnost != "info" and kljuc not in prije:
                 self._dogadjaj("anomalija", n.kao_dict() | {"ozbiljnost": n.ozbiljnost}, ts)
-            for t in n.trosila:
+            trosila = n.trosila
+            if not self.cfg["politika"].get("zastita_pumpe", True) and n.vrsta in ("rad_na_suho", "blokada"):
+                trosila = []  # referentni sustav bez nadzora struje pumpe
+            for t in trosila:
                 if not self._zasticeno(t, ts):
                     self._dogadjaj("zastita", {"trosilo": t, "uzrok": n.vrsta,
                                                "poruka": f"Preventivno isključeno: {t} ({n.poruka})"}, ts)
@@ -407,7 +425,11 @@ class Jezgra:
         # 4) električni pastir
         n = self.pastir.n
         v = [o.get(f"pastir_v{k}_kv") for k in range(n + 1)]
-        if any(x is not None for x in v):
+        if any(x is not None for x in v) and not self.cfg["politika"].get("nadzor_pastira", True):
+            # referentni sustav: aparat trajno priključen i radi punom snagom, ali nitko ne traži ni izolira kvar
+            self.pastir_izlaz = {"naponi": v}
+            self._postavi("rele_pastir_punjenje", 1.0, ts)
+        elif any(x is not None for x in v):
             nacin_prije = self.pastir.nacin
             br_dog = len(self.pastir.dogadjaji)
             p = self.pastir.korak(ts, dt, v, o.get("pastir_baterija_soc"), soc if soc is not None else 1.0,
@@ -433,11 +455,30 @@ class Jezgra:
             for z in vlage:
                 self.ventili[z] = r["ventil"] == z
             self.releji["pumpa"] = r["pumpa"]
+        strategija = self.cfg["politika"].get("strategija", "pametna")
+        lt = time.localtime(ts)
+        if strategija != "pametna" and vlage:
+            # tipičan tajmer: svaka zona 15 min od 7:00, svaki dan, bez obzira na kišu i vlagu
+            minuta = lt.tm_hour * 60 + lt.tm_min
+            zone = sorted(vlage)
+            aktivna = next((zid for i, zid in enumerate(zone) if 420 + 15 * i <= minuta < 435 + 15 * i), None)
+            self.ventili = {zid: zid == aktivna for zid in zone}
+            self.releji["pumpa"] = aktivna is not None and not self._zasticeno("pumpa", ts)
+            self.navodnjavanje_izlaz = {"razlog": "tajmer 7:00 (referentna strategija)", "pumpa": self.releji["pumpa"]}
         for z, otv in self.ventili.items():
             self._postavi(f"ventil_{z}", 1.0 if otv else 0.0, ts)
 
         # 6) bojler i ostala trošila
         bojler_plan = "bojler" in self.raspored and h_plan in self.raspored["bojler"]
+        if strategija in ("vlastita", "tou"):
+            bojler_plan = cijena["izvor"] == "NT" or cijena["kupnja"] <= self.cfg["tarifa"]["nt_eur_kwh"]  # NT tajmer
+        elif strategija == "cjenovni_prag":
+            buduce = sorted(p["cijena"] for p in self.plan[h_plan:h_plan + 24]) if self.plan else []
+            bojler_plan = bool(buduce) and cijena["kupnja"] <= buduce[min(2, len(buduce) - 1)]  # 3 najjeftinija sata
+        elif cijena["kupnja"] <= 0 and mreza_dostupna:
+            bojler_plan = True  # negativna cijena: grijanje vode se plaća nama
+        elif self._treba_topla_voda():
+            bojler_plan = True  # udobnost: voda ispod 42 °C, a stanari su tu
         self.releji["bojler"] = bojler_plan and not self._zasticeno("bojler", ts)
         for t in ("uticnice", "hladnjak"):
             self.releji[t] = not self._zasticeno(t, ts)
@@ -487,6 +528,23 @@ class Jezgra:
                 odl = (f"ručno {cmd:+.0f} W", "ručno premošćivanje iz naprednih postavki", "rucno")
             elif nacin_b == "vlastita":
                 odl = ("vlastita potrošnja", "ručno odabrano: bez arbitraže s mrežom", "rucno")
+            elif strategija == "vlastita":
+                odl = ("vlastita potrošnja", "referentna strategija", "plan")
+            elif strategija == "tou":
+                if mreza_dostupna and cijena["izvor"] == "NT" and soc < 0.9:
+                    cmd = b["max_punjenje_kw"] * 1000
+                    odl = ("puni u NT", "referentna strategija: prisilno punjenje u jeftinoj tarifi", "plan")
+            elif strategija == "cjenovni_prag":
+                buduce = sorted(p["cijena"] for p in self.plan[h_plan:h_plan + 24]) if self.plan else []
+                if buduce and mreza_dostupna:
+                    if cijena["kupnja"] <= buduce[len(buduce) // 4]:
+                        cmd = b["max_punjenje_kw"] * 1000
+                    elif cijena["kupnja"] <= buduce[len(buduce) // 2] and neto > 0:
+                        cmd = 0.0
+                    odl = ("cjenovni prag", "referentna strategija: puni ispod 25. percentila, čuva ispod medijana", "plan")
+            elif mreza_dostupna and cijena["kupnja"] <= 0 and nacin_b != "bez_punjenja_iz_mreze":
+                cmd = b["max_punjenje_kw"] * 1000
+                odl = ("puni iz mreže", f"negativna cijena ({cijena['kupnja'] * 100:.1f} c/kWh) – mreža plaća potrošnju", "plan")
             elif korak_plana and mreza_dostupna:
                 if korak_plana["baterija_kw"] > 0.05 and korak_plana["mreza_kw"] > 0.05 \
                         and nacin_b != "bez_punjenja_iz_mreze" \
@@ -494,9 +552,15 @@ class Jezgra:
                     cmd = korak_plana["baterija_kw"] * 1000  # planirano punjenje iz jeftine mreže
                     odl = (f"puni iz mreže {cmd:.0f} W", f"jeftino sada ({cijena['kupnja'] * 100:.1f} c), a baterija "
                            "neće dostajati do sljedećeg sunca", "plan")
-                elif neto > 0 and korak_plana["baterija_kw"] > -0.05 and self._isplati_cuvati(h_plan, cijena, soc):
+                elif (korak_plana["baterija_kw"] < -0.05 and korak_plana["mreza_kw"] < -0.05
+                      and soc > rezerva + 0.05 and self._isplati_izvoz(h_plan, cijena, soc)):
+                    cmd = korak_plana["baterija_kw"] * 1000  # planirano pražnjenje u mrežu (skupi izvoz)
+                    odl = (f"prodaje iz baterije {-cmd:.0f} W", f"izvozna cijena {cijena['prodaja'] * 100:.1f} c "
+                           "veća je od vrijednosti te energije kasnije", "plan")
+                elif neto > 0 and self._isplati_cuvati(h_plan, cijena, soc):
                     cmd = 0.0  # čuvaj bateriju za skuplje sate
-                    odl = ("čuva energiju", f"mreža sada {cijena['kupnja'] * 100:.1f} c; energija treba za skuplje sate", "plan")
+                    odl = ("čuva energiju", f"mreža sada {cijena['kupnja'] * 100:.1f} c jeftinija je od energije u bateriji "
+                           "(skuplji sati ili trošak ponovnog punjenja i trošenja)", "plan")
             if self.kalibracija.get("faza", "").startswith("mjerenje"):
                 cmd = 0.0
                 odl = ("miruje", "kalibracija brojila", "kalibracija")
@@ -534,6 +598,9 @@ class Jezgra:
                 self._naredbe_zadnje.pop("baterija_auto", None)
                 self._naredbe_zadnje.pop("baterija_ogranicenje", None)
 
+        if mreza_dostupna and strategija == "pametna":
+            self._postavi("izvoz_zabranjen", 1.0 if cijena["prodaja"] < 0 else 0.0, ts)
+
         # 8) zapis i satni zbroj
         uzorak = {"dt": dt, "pv": pv, "potr": potr, "mreza": mreza_w, "bat": bat_w or 0.0, "soc": soc,
                   "ck": cijena["kupnja"], "cp": cijena["prodaja"], "bojler": o.get("bojler_snaga_w", 0.0),
@@ -555,26 +622,71 @@ class Jezgra:
             self.napravi_kopiju(ts)
         return {"ts": ts, "nacin": self.nacin, "pastir": self.pastir.nacin}
 
-    def _isplati_cuvati(self, h: int, cijena: dict, soc: float, punjenje: bool = False) -> bool:
-        """Kupnja iz mreže sada (umjesto baterije) isplati se samo ako baterija NEĆE dostajati do
-        sljedećeg punjenja suncem, a sati u kojima bi nestalo energije skuplji su od sadašnjeg
-        za gubitke i trošenje baterije. Inače bi sačuvanu energiju sunce ionako "pregazilo"."""
+    def _vrijednost_kwh(self, h: int, soc: float, sigurnost: float = 1.0) -> tuple[float | None, bool]:
+        """Koliko vrijedi kWh u bateriji sada? Vraća (vrijednost €/kWh, oskudno).
+
+        - oskudno (baterija ne dostaje do sljedećeg viška sunca): koliko najskuplji sat u kojem bi
+          energije nedostajalo,
+        - nije oskudno: sunce će je napuniti energijom koja bi se inače izvezla, pa kWh stoji
+          izvozna cijena / učinkovitost + trošenje (pražnjenje sada i ponovno punjenje = dva prolaza).
+        """
         b = self.cfg["baterija"]
         rezerva = self.parametri.get("rezerva_soc", b["soc_min"])
         dostupno = max(0.0, soc - rezerva) * b["kapacitet_kwh"] * 0.95
-        potrebno, cijene_manjka = 0.0, []
+        potrebno, cijene_manjka, izvoz_punjenja = 0.0, [], []
         for p in self.plan[h:h + 36]:
-            visak = (p.get("pv_w", 0) - p.get("potr_w", 0)) / 1000
+            visak = (p.get("pv_w", 0) - p.get("potr_w", 0) * sigurnost) / 1000
             if visak > 0.5 and p is not self.plan[h]:
-                break  # sunce opet puni bateriju
+                izvoz_punjenja.append(self.tarife.cijena(p["ts"] + 1800)["prodaja"])
+                if len(izvoz_punjenja) >= 3:
+                    break  # sunce opet puni bateriju
+                continue
             potrebno += max(0.0, -visak)
             if potrebno > dostupno:
                 cijene_manjka.append(p["cijena"])
-        if not cijene_manjka:
+        if cijene_manjka:
+            return max(cijene_manjka), True
+        if not izvoz_punjenja:
+            return None, False
+        return max(0.0, sum(izvoz_punjenja) / len(izvoz_punjenja)) / 0.9025 + 2 * b["trosak_ciklusa_eur_kwh"], False
+
+    def _isplati_cuvati(self, h: int, cijena: dict, soc: float, punjenje: bool = False) -> bool:
+        """Je li kupnja iz mreže sada jeftinija od korištenja (ili punjenja) baterije?"""
+        vrijednost, oskudno = self._vrijednost_kwh(h, soc)
+        if vrijednost is None:
             return False
-        trosenje = (2 if punjenje else 1) * b["trosak_ciklusa_eur_kwh"]
         faktor = self.cfg["politika"]["cuvanje_faktor"]
-        return max(cijene_manjka) * (0.9 if punjenje else 1.0) * faktor - trosenje > cijena["kupnja"]
+        trosenje = self.cfg["baterija"]["trosak_ciklusa_eur_kwh"]
+        if punjenje:  # punjenje iz mreže samo kad će energija sigurno trebati u skupljim satima
+            return oskudno and vrijednost * 0.9 * faktor - 2 * trosenje > cijena["kupnja"]
+        return cijena["kupnja"] < vrijednost * faktor - (trosenje if oskudno else 0.0)
+
+    def _isplati_izvoz(self, h: int, cijena: dict, soc: float) -> bool:
+        """Prodati energiju iz baterije u mrežu sada? Samo ako izvozna cijena (uz gubitke i trošenje)
+        nadmašuje vrijednost te energije kasnije, i ako to pravila priključka dopuštaju."""
+        if not self.cfg["politika"].get("izvoz_iz_baterije", True):
+            return False
+        # prognoza potrošnje može podcijeniti (npr. hladni val): prodaje se samo ono što preostaje i uz
+        # 50 % veću potrošnju od prognozirane – prodaja nikad ne smije ugroziti vlastitu opskrbu
+        t_bat = self.zadnje_ocitanje.get("baterija_temp_c")
+        if t_bat is not None and t_bat < self.cfg["baterija"]["temp_punjenje_min_c"] + 2.0:
+            return False  # na hladnom se prodana energija ne može ponovno napuniti
+        vrijednost, _ = self._vrijednost_kwh(h, soc, sigurnost=1.5 if self.navike_naucene else 2.0)
+        if vrijednost is None:
+            vrijednost = max((p["cijena"] for p in self.plan[h + 1:h + 25]), default=cijena["kupnja"])
+        return cijena["prodaja"] * 0.95 - self.cfg["baterija"]["trosak_ciklusa_eur_kwh"] > vrijednost
+
+    @property
+    def navike_naucene(self) -> bool:
+        return len(self.sati) >= 14 * 24
+
+    def _treba_topla_voda(self) -> bool:
+        """Udobnost ispred cijene: ispod 42 °C dok su stanari tu ili upravo stižu."""
+        t = self.zadnje_ocitanje.get("bojler_temp_c")
+        if t is None or t >= 42.0:
+            return False
+        dolazak = self.parametri.get("sljedeci_dolazak_h")
+        return self.prisutni or (dolazak is not None and dolazak <= 2)
 
     @property
     def prisutni(self) -> bool:

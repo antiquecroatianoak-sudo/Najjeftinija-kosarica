@@ -71,6 +71,12 @@ class Lokacija:
         self.suho = False
         self.ogranicenje = 0
         self.r_int_rast = 0.00025  # Ω/dan; scenarij "starenje" ubrzava
+        self.izvoz_zabranjen = False
+        self.mreza_prisutna = True
+        # mjerila udobnosti (da se ušteda ne postiže na račun stanara ili biljaka)
+        self.bez_tople_vode_min = 0.0   # minute prisutnosti s praznim bojlerom
+        self.stres_biljaka_h = 0.0      # sati zone ispod 22 % vlage
+        self.voda_min = 0.0             # minute rada pumpe s vodom
 
     # ------------------------------------------------------------------ vrijeme / okolina
     def _dan(self, ts: float) -> dict:
@@ -89,6 +95,13 @@ class Lokacija:
         h = time.localtime(ts).tm_hour + time.localtime(ts).tm_min / 60
         return d["temp"] - 6 + 7 * math.sin((h - 9) / 24 * 2 * math.pi) + self.temp_pomak
 
+    def naoblaka(self, ts: float, stvarna: bool = True) -> float:
+        """Naoblaka dana; scenarij: "oblacno" (najavljeno) ili "nenajavljeno_oblacno" (samo stvarno)."""
+        n = self.aktivni("oblacno", ts)
+        if n is None and stvarna:
+            n = self.aktivni("nenajavljeno_oblacno", ts)
+        return n if n is not None else self._dan(ts)["naoblaka"]
+
     def prisutni(self, ts: float) -> bool:
         lt = time.localtime(ts)
         wd, h = lt.tm_wday, lt.tm_hour
@@ -103,10 +116,10 @@ class Lokacija:
         g, t, p, c = [], [], [], []
         for s in sati:
             d = self._dan(s)
-            g.append(zracenje_vedro(s + 1800, lok["sirina"], lok["duzina"]) * (1 - 0.75 * d["naoblaka"]))
+            g.append(zracenje_vedro(s + 1800, lok["sirina"], lok["duzina"]) * (1 - 0.75 * self.naoblaka(s, stvarna=False)))
             t.append(self.okolina_temp(s))
             p.append(d["kisa_mm"] / 3 if abs(time.localtime(s).tm_hour - d["kisa_sat"]) <= 1 else 0.0)
-            c.append(d["naoblaka"] * 100)
+            c.append(self.naoblaka(s, stvarna=False) * 100)
         return {"hourly": {"time": sati, "shortwave_radiation": g, "temperature_2m": t, "precipitation": p,
                            "cloud_cover": c}}
 
@@ -180,7 +193,7 @@ class Lokacija:
         ts = self.t
         d = self._dan(ts)
         lok = self.cfg["lokacija"]
-        g = zracenje_vedro(ts, lok["sirina"], lok["duzina"]) * (1 - 0.75 * d["naoblaka"]) * self.rng.uniform(0.9, 1.05)
+        g = zracenje_vedro(ts, lok["sirina"], lok["duzina"]) * (1 - 0.75 * self.naoblaka(ts)) * self.rng.uniform(0.9, 1.05)
         f = self.cfg["fotonapon"]
         pv_moguce = f["kwp"] * 1000 * g / 1000 * f["faktor_ucinka"] * (1 - 0.004 * (self.okolina_temp(ts) + g * 0.03 - 25))
         pv_moguce *= 1 - min(0.25, (ts - self.pocetak_sim) / 86400 * 0.004)  # prašina na panelima
@@ -197,6 +210,8 @@ class Lokacija:
             if t_vani < 10:  # električno grijanje: ovisi o vremenu, ne o rasporedu
                 p += min(2000.0, 160.0 * (10 - t_vani))
             self.bojler_kwh = max(0.0, self.bojler_kwh - 0.25 * dt / 3600)
+            if self.bojler_kwh < 0.3:
+                self.bez_tople_vode_min += dt / 60
         if not self.releji["uticnice"]:
             p = min(p, 100.0)
         bojler_w = 0.0
@@ -233,11 +248,15 @@ class Lokacija:
             zeljeno = 0.0
         if zeljeno < 0 and self.soc <= 0.05:
             zeljeno = 0.0
-        mreza = self.cfg["mreza"]["dostupna"]
+        mreza = self.cfg["mreza"]["dostupna"] and not self.aktivni("mreza_ispad", ts)
+        self.mreza_prisutna = mreza
         if not mreza:  # otočno: baterija mora pokriti ono što sunce ne može
             zeljeno = min(zeljeno, pv_moguce - potreba) if zeljeno > 0 else max(zeljeno, -max(0.0, neto))
         pv = pv_moguce
         m = neto + zeljeno
+        if mreza and m < 0 and self.izvoz_zabranjen:  # negativna izvozna cijena: panel se ograničava
+            pv += m
+            m = 0.0
         if not mreza:
             if m < 0:
                 pv += m  # ograničavanje panela
@@ -265,7 +284,10 @@ class Lokacija:
             dodatak = kisa * 1.2
             if self.releji["pumpa"] and self.ventili[z] and not suho:
                 dodatak += 33.0  # %/h dok ventil i pumpa rade
+                self.voda_min += dt / 60
             self.vlaga[z] = min(48.0, max(5.0, self.vlaga[z] + (dodatak - et * (1.3 if z == "z2" else 1.0)) * dt / 3600))
+            if self.vlaga[z] < 22.0:
+                self.stres_biljaka_h += dt / 3600
 
         stopa, od = 0.0, 0.0
         for v, par, od_d, _ in self.dogadjaji:
@@ -281,11 +303,13 @@ class Lokacija:
             "baterija_soc": round(self.soc, 4), "baterija_napon_v": round(self.bat_napon, 3),
             "baterija_struja_a": round(self.bat_struja, 2), "baterija_temp_c": round(self.bat_temp, 2),
             "baterija_snaga_w": round(self.bat_snaga_w, 1),
+            "mreza_prisutna": 1.0 if self.mreza_prisutna else 0.0,
             "okolina_temp_c": round(self.okolina_temp(self.t), 1),
             "brojilo_impulsi": int(self.impulsi),
             "tlo_z1_vlaga": round(self.vlaga["z1"] + self.rng.gauss(0, 0.15), 2),
             "tlo_z2_vlaga": round(self.vlaga["z2"] + self.rng.gauss(0, 0.15), 2),
             "pumpa_struja_a": round(self.pumpa_struja, 2), "bojler_snaga_w": self.bojler_w,
+            "bojler_temp_c": round(15.0 + self.bojler_kwh / 3.0 * 45.0, 1),  # osjetnik na spremniku
             "pastir_baterija_soc": round(self.pastir_bat, 3),
         }
         for k, x in enumerate(v):
@@ -295,6 +319,8 @@ class Lokacija:
     def postavi(self, kanal: str, v: float) -> bool:
         if kanal == "baterija_snaga_w":
             self.naredba_bat = v
+        elif kanal == "izvoz_zabranjen":
+            self.izvoz_zabranjen = v >= 0.5
         elif kanal == "baterija_auto":
             self.naredba_bat = None
             self.ogranicenje = 0
@@ -338,10 +364,10 @@ def izravni_uredaji(lok: Lokacija) -> list[Uredaj]:
     return [
         SimUredaj(lok, "sim-izmjenjivac", "izmjenjivac",
                   ["pv_snaga_w", "potrosnja_w", "baterija_soc", "baterija_napon_v", "baterija_struja_a",
-                   "baterija_temp_c", "baterija_snaga_w", "okolina_temp_c"]),
+                   "baterija_temp_c", "baterija_snaga_w", "okolina_temp_c", "mreza_prisutna"]),
         SimUredaj(lok, "sim-impulsi", "impulsno_brojilo", ["brojilo_impulsi"]),
         SimUredaj(lok, "sim-tlo", "senzor_tla", ["tlo_z1_vlaga", "tlo_z2_vlaga"]),
-        SimUredaj(lok, "sim-pumpa", "pumpa", ["pumpa_struja_a", "bojler_snaga_w"]),
+        SimUredaj(lok, "sim-pumpa", "pumpa", ["pumpa_struja_a", "bojler_snaga_w", "bojler_temp_c"]),
         SimUredaj(lok, "sim-pastir", "pastir", ["pastir_*"]),
     ]
 

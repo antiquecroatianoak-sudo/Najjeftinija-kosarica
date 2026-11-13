@@ -50,7 +50,12 @@ ZADANO: dict = {
     "mqtt": {"port": 1883},
     # podesivi parametri politike (zadane vrijednosti; scenariji/ucenje_politike.py ih može predložiti)
     # (trosak_ciklusa_plan: trošenje baterije koje vidi samo planer; None = stvarna procjena iz "baterija")
-    "politika": {"rezerva_dodatak": 0.0, "cuvanje_faktor": 1.0, "trosak_ciklusa_plan": None},
+    # strategija: "pametna" (ova jezgra) ili referentne za usporedbu: "vlastita", "tou", "cjenovni_prag";
+    # nadzor_pastira / zastita_pumpe = False glume sustave bez tih funkcija.
+    "politika": {"rezerva_dodatak": 0.0, "cuvanje_faktor": 1.0, "trosak_ciklusa_plan": None,
+                 "strategija": "pametna", "nadzor_pastira": True, "zastita_pumpe": True,
+                 # prodaja energije iz baterije u mrežu pri visokoj izvoznoj cijeni (isključiti ako priključak to ne dopušta)
+                 "izvoz_iz_baterije": True},
     "prognoza": {"url": "https://api.open-meteo.com/v1/forecast"},
     "otkrivanje": {"multicast": "239.255.70.70", "port": 47070, "modbus_hostovi": [], "modbus_jedinice": [1, 2, 3]},
     "trosila": [
