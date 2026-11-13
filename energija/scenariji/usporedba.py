@@ -152,12 +152,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scenarij", action="append")
     ap.add_argument("--postavke", type=Path, help="naučena politika za pametnu strategiju")
     ap.add_argument("--izlaz", type=Path)
+    ap.add_argument("--ravnopravno", action="store_true",
+                    help="konkurenti dobivaju isto jamstvo tople vode (usporedba samo upravljanja energijom)")
     a = ap.parse_args(argv)
     from .katalog import EVALUACIJA, EVALUACIJA_2, RAZVOJ_DINAMICKA
     skup = {"evaluacija": EVALUACIJA, "evaluacija2": EVALUACIJA_2, "razvoj_dinamicka": RAZVOJ_DINAMICKA}.get(a.skup, KATALOG)
     imena = a.scenarij or [s.ime for s in skup if not a.oznaka or a.oznaka in s.oznake]
     politika = json.loads(a.postavke.read_text())["postavke"]["politika"] if a.postavke else None
     t0 = time.time()
+    if a.ravnopravno:
+        for k in ("vlastita", "tou", "cjenovni_prag"):
+            STRATEGIJE[k] = dict(STRATEGIJE[k], bojler_pravilo="udobnost")
     r = usporedi(imena, politika)
     md = u_markdown(r)
     print(md)

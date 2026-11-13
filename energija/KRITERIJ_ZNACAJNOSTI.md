@@ -39,3 +39,18 @@ Dodatno, u scenarijima s kvarom ograde pokrivenost mora biti bolja od svih konku
 - **Neuspješna:** nije ispunjen nijedan.
 
 Ishod se upisuje bez obzira na to je li povoljan.
+
+## Dopuna 13.11.2026. – nakon 1. ocjene, PRIJE 2. ocjene (skup 2028.)
+
+**Nalaz na razvojnim tjednima (2026.), ne na skupovima za ocjenu:** pokus isključivanja pokazao je da cijelu prednost
+konkurenta u trošku kod obične dinamičke tarife daje lošija usluga. Pravilo „3 najjeftinija sata” za bojler ostavlja
+stanare oko 17 h tjedno bez tople vode. Uz jednako pravilo za bojler naše upravljanje je 8 % jeftinije.
+K1 je, dakle, uspoređivao trošak uz nejednaku uslugu.
+
+- **Presuda 1. ocjene (2027.) ostaje: DJELOMIČNO.** Ne mijenja se.
+- Za **2. ocjenu (2028.)** računaju se oba:
+  - **K1:** nepromijenjen. Konkurenti kakvi jesu.
+  - **K1‑R:** isti test i pragovi, ali konkurenti dobivaju isto jamstvo tople vode kao naša jezgra
+    (`--ravnopravno`), pa se uspoređuje samo upravljanje energijom.
+- **Odluka za 2. ocjenu:** optimizacija upravljanja energijom je **USPJEŠNA** ako vrijede K1‑R i K2. Ishod K1 navodi se
+  uz nju, bez obzira na to kakav je.
