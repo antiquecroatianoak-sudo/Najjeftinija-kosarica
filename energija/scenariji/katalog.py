@@ -112,7 +112,7 @@ PROVJERA_UCENJA: list[Scenarij] = [
 
 
 def po_imenu(ime: str) -> Scenarij:
-    for s in KATALOG + PROVJERA_UCENJA + EVALUACIJA:
+    for s in KATALOG + PROVJERA_UCENJA + EVALUACIJA + EVALUACIJA_2 + RAZVOJ_DINAMICKA:
         if s.ime == ime:
             return s
     raise KeyError(ime)
@@ -122,15 +122,25 @@ def po_imenu(ime: str) -> Scenarij:
 # NEOVISNI SKUP ZA OCJENU (zadan 13.11.2026. prije poboljšanja algoritma; na njemu se ne razvija).
 # 26 tjedana kroz 2027. (svaki drugi ponedjeljak), naizmjence VT/NT i dinamička tarifa, bez kvarova.
 # Pokreće se jednom, na kraju: python -m scenariji.usporedba --skup evaluacija
-def _evaluacija() -> list[Scenarij]:
+def _evaluacija(godina: int = 2027, prvi_ponedjeljak: tuple = (1, 4), prefiks: str = "eval") -> list[Scenarij]:
     import datetime as _dt
-    out, d = [], _dt.date(2027, 1, 4)  # 2027.: nijedan dan se ne poklapa s razvojnim scenarijima (2026.)
+    out, d = [], _dt.date(godina, *prvi_ponedjeljak)  # bez preklapanja s razvojnim scenarijima (2026.)
     for i in range(26):
         tarifa = "dinamicka" if i % 2 else "vtnt"
-        out.append(Scenarij(f"eval_{d.isoformat()}_{tarifa}", f"Ocjena: tjedan od {d.isoformat()}, {tarifa}",
+        out.append(Scenarij(f"{prefiks}_{d.isoformat()}_{tarifa}", f"Ocjena: tjedan od {d.isoformat()}, {tarifa}",
                             (d.year, d.month, d.day), tarifa=tarifa, oznake=("evaluacija",)))
         d += _dt.timedelta(days=14)
     return out
 
 
-EVALUACIJA: list[Scenarij] = _evaluacija()
+EVALUACIJA: list[Scenarij] = _evaluacija()  # 1. ocjena – ISKORIŠTENA 13.11.2026. (rezultati/evaluacija/)
+
+# 2. neovisni skup (zadan 13.11.2026., odmah nakon 1. ocjene i PRIJE poboljšanja): 2028., isti raspored.
+EVALUACIJA_2: list[Scenarij] = _evaluacija(2028, (1, 3), "eval2")
+
+# Razvojni tjedni s običnom dinamičkom tarifom (2026.) – na njima se smije razvijati.
+RAZVOJ_DINAMICKA: list[Scenarij] = [
+    Scenarij(f"dev_dinamicka_{m:02d}", f"Razvoj: obična dinamička tarifa, 2026-{m:02d}", p, tarifa="dinamicka",
+             oznake=("razvoj_dinamicka",))
+    for m, p in ((1, (2026, 1, 26)), (3, (2026, 3, 9)), (5, (2026, 5, 25)), (7, (2026, 7, 13)),
+                 (8, (2026, 8, 24)), (10, (2026, 10, 26)), (11, (2026, 11, 30)))]

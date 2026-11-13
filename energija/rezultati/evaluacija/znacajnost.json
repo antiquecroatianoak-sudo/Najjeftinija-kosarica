@@ -1,0 +1,260 @@
+{
+ "redovi": [
+  {
+   "scenarij": "eval_2027-01-04_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 14.315,
+   "konkurent_eur": 14.294,
+   "razlika_eur": -0.021
+  },
+  {
+   "scenarij": "eval_2027-01-18_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 11.927,
+   "konkurent_eur": 12.162,
+   "razlika_eur": 0.235,
+   "U_pametna": 0.341,
+   "U_konkurent": 0.27,
+   "delta": 0.071
+  },
+  {
+   "scenarij": "eval_2027-02-01_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 10.529,
+   "konkurent_eur": 10.515,
+   "razlika_eur": -0.014
+  },
+  {
+   "scenarij": "eval_2027-02-15_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 10.143,
+   "konkurent_eur": 10.262,
+   "razlika_eur": 0.119,
+   "U_pametna": 0.459,
+   "U_konkurent": 0.425,
+   "delta": 0.034
+  },
+  {
+   "scenarij": "eval_2027-03-01_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 9.365,
+   "konkurent_eur": 9.211,
+   "razlika_eur": -0.154
+  },
+  {
+   "scenarij": "eval_2027-03-15_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 6.977,
+   "konkurent_eur": 6.832,
+   "razlika_eur": -0.145,
+   "U_pametna": 0.314,
+   "U_konkurent": 0.358,
+   "delta": -0.044
+  },
+  {
+   "scenarij": "eval_2027-03-29_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 3.934,
+   "konkurent_eur": 3.97,
+   "razlika_eur": 0.036
+  },
+  {
+   "scenarij": "eval_2027-04-12_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 1.222,
+   "konkurent_eur": 0.999,
+   "razlika_eur": -0.223,
+   "U_pametna": 0.102,
+   "U_konkurent": 0.189,
+   "delta": -0.087
+  },
+  {
+   "scenarij": "eval_2027-04-26_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": -0.278,
+   "konkurent_eur": 0.252,
+   "razlika_eur": 0.53,
+   "U_pametna": 0.743,
+   "U_konkurent": 0.0,
+   "delta": 0.743
+  },
+  {
+   "scenarij": "eval_2027-05-10_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -0.019,
+   "konkurent_eur": -0.337,
+   "razlika_eur": -0.318,
+   "U_pametna": 0.134,
+   "U_konkurent": 0.258,
+   "delta": -0.124
+  },
+  {
+   "scenarij": "eval_2027-05-24_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -2.589,
+   "konkurent_eur": -2.096,
+   "razlika_eur": 0.493,
+   "U_pametna": 0.733,
+   "U_konkurent": 0.272,
+   "delta": 0.461
+  },
+  {
+   "scenarij": "eval_2027-06-07_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -2.279,
+   "konkurent_eur": -2.354,
+   "razlika_eur": -0.075,
+   "U_pametna": 0.292,
+   "U_konkurent": 0.314,
+   "delta": -0.022
+  },
+  {
+   "scenarij": "eval_2027-06-21_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -3.448,
+   "konkurent_eur": -2.979,
+   "razlika_eur": 0.469,
+   "U_pametna": 0.717,
+   "U_konkurent": 0.258,
+   "delta": 0.459
+  },
+  {
+   "scenarij": "eval_2027-07-05_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -1.914,
+   "konkurent_eur": -2.499,
+   "razlika_eur": -0.585,
+   "U_pametna": 0.211,
+   "U_konkurent": 0.386,
+   "delta": -0.174
+  },
+  {
+   "scenarij": "eval_2027-07-19_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -3.621,
+   "konkurent_eur": -3.172,
+   "razlika_eur": 0.449,
+   "U_pametna": 0.761,
+   "U_konkurent": 0.302,
+   "delta": 0.459
+  },
+  {
+   "scenarij": "eval_2027-08-02_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -1.689,
+   "konkurent_eur": -2.331,
+   "razlika_eur": -0.642,
+   "U_pametna": 0.221,
+   "U_konkurent": 0.404,
+   "delta": -0.183
+  },
+  {
+   "scenarij": "eval_2027-08-16_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -3.683,
+   "konkurent_eur": -3.219,
+   "razlika_eur": 0.464,
+   "U_pametna": 0.78,
+   "U_konkurent": 0.325,
+   "delta": 0.454
+  },
+  {
+   "scenarij": "eval_2027-08-30_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -0.84,
+   "konkurent_eur": -1.429,
+   "razlika_eur": -0.589,
+   "U_pametna": 0.252,
+   "U_konkurent": 0.436,
+   "delta": -0.184
+  },
+  {
+   "scenarij": "eval_2027-09-13_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -0.094,
+   "konkurent_eur": 0.429,
+   "razlika_eur": 0.523,
+   "U_pametna": 0.764,
+   "U_konkurent": 0.221,
+   "delta": 0.543
+  },
+  {
+   "scenarij": "eval_2027-09-27_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 1.88,
+   "konkurent_eur": 1.521,
+   "razlika_eur": -0.359,
+   "U_pametna": 0.032,
+   "U_konkurent": 0.206,
+   "delta": -0.173
+  },
+  {
+   "scenarij": "eval_2027-10-11_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 1.565,
+   "konkurent_eur": 2.296,
+   "razlika_eur": 0.731,
+   "U_pametna": 1.003,
+   "U_konkurent": 0.0,
+   "delta": 1.003
+  },
+  {
+   "scenarij": "eval_2027-10-25_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 3.904,
+   "konkurent_eur": 3.026,
+   "razlika_eur": -0.878,
+   "U_pametna": 0.03,
+   "U_konkurent": 0.412,
+   "delta": -0.381
+  },
+  {
+   "scenarij": "eval_2027-11-08_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 11.764,
+   "konkurent_eur": 11.813,
+   "razlika_eur": 0.049
+  },
+  {
+   "scenarij": "eval_2027-11-22_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 7.986,
+   "konkurent_eur": 7.201,
+   "razlika_eur": -0.785,
+   "U_pametna": 0.305,
+   "U_konkurent": 0.592,
+   "delta": -0.287
+  },
+  {
+   "scenarij": "eval_2027-12-06_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 11.594,
+   "konkurent_eur": 11.649,
+   "razlika_eur": 0.055
+  },
+  {
+   "scenarij": "eval_2027-12-20_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 9.293,
+   "konkurent_eur": 9.04,
+   "razlika_eur": -0.253,
+   "U_pametna": 0.281,
+   "U_konkurent": 0.379,
+   "delta": -0.099
+  }
+ ],
+ "K1": {
+  "scenarija": 20,
+  "medijan_delta": -0.033,
+  "bolje": 9,
+  "losije": 11,
+  "izjednaceno": 0,
+  "p_vrijednost": 0.7483,
+  "ispunjen": false
+ },
+ "K2": {
+  "krsenja": [],
+  "ispunjen": true
+ },
+ "odluka": "DJELOMIČNA"
+}
