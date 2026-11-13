@@ -120,11 +120,11 @@ def po_imenu(ime: str) -> Scenarij:
 
 # ---------------------------------------------------------------------------------------------
 # NEOVISNI SKUP ZA OCJENU (zadan 13.11.2026. prije poboljšanja algoritma; na njemu se ne razvija).
-# 26 tjedana kroz 2026. (svaki drugi ponedjeljak), naizmjence VT/NT i dinamička tarifa, bez kvarova.
+# 26 tjedana kroz 2027. (svaki drugi ponedjeljak), naizmjence VT/NT i dinamička tarifa, bez kvarova.
 # Pokreće se jednom, na kraju: python -m scenariji.usporedba --skup evaluacija
 def _evaluacija() -> list[Scenarij]:
     import datetime as _dt
-    out, d = [], _dt.date(2026, 1, 5)
+    out, d = [], _dt.date(2027, 1, 4)  # 2027.: nijedan dan se ne poklapa s razvojnim scenarijima (2026.)
     for i in range(26):
         tarifa = "dinamicka" if i % 2 else "vtnt"
         out.append(Scenarij(f"eval_{d.isoformat()}_{tarifa}", f"Ocjena: tjedan od {d.isoformat()}, {tarifa}",
