@@ -490,11 +490,11 @@ class Jezgra:
 
         # 6) bojler i ostala trošila
         bojler_plan = "bojler" in self.raspored and h_plan in self.raspored["bojler"]
-        if strategija != "pametna" and self.cfg["politika"].get("bojler_pravilo") == "udobnost":
-            pass  # ravnopravna usporedba: konkurent dobiva isto jamstvo tople vode kao naša jezgra (vidi niže)
-        elif strategija in ("vlastita", "tou"):
+        # ravnopravna usporedba (bojler_pravilo = "udobnost"): konkurent koristi NAŠU logiku bojlera u cijelosti
+        ref_bojler = strategija != "pametna" and self.cfg["politika"].get("bojler_pravilo") != "udobnost"
+        if ref_bojler and strategija in ("vlastita", "tou"):
             bojler_plan = cijena["izvor"] == "NT" or cijena["kupnja"] <= self.cfg["tarifa"]["nt_eur_kwh"]  # NT tajmer
-        elif (strategija == "cjenovni_prag" and self.cfg["politika"].get("bojler_pravilo") != "udobnost") \
+        elif (ref_bojler and strategija == "cjenovni_prag") \
                 or self.cfg["politika"].get("bojler_pravilo") == "najjeftiniji_sati":
             # (drugi uvjet samo za pokus isključivanja: naša jezgra s konkurentovim pravilom za bojler)
             buduce = sorted(p["cijena"] for p in self.plan[h_plan:h_plan + 24]) if self.plan else []
