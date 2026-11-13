@@ -90,6 +90,12 @@ def ucitaj(mapa: Path) -> dict:
             _spoji(cfg, json.loads(p.read_text("utf-8")))
         except (OSError, ValueError) as e:  # nastavi sa zadanim – greška se bilježi
             cfg["_greska_postavki"] = str(e)
+    # ENERGIJA_POSTAVKE (JSON u varijabli okoline) – za kontejnere bez montiranja datoteka (npr. CI s Docker-in-Docker)
+    if os.environ.get("ENERGIJA_POSTAVKE"):
+        try:
+            _spoji(cfg, json.loads(os.environ["ENERGIJA_POSTAVKE"]))
+        except ValueError as e:
+            cfg["_greska_postavki"] = f"ENERGIJA_POSTAVKE: {e}"
     return cfg
 
 

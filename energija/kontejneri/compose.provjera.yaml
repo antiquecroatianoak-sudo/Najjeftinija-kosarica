@@ -33,9 +33,12 @@ services:
     networks: [izolirano]
     environment:
       ENERGIJA_KOD: "482915"          # samo za provjeru: jednokratni kod za uparivanje
+      # postavke kroz varijablu okoline (bez montiranja datoteka – radi i u CI-ju s Docker-in-Docker)
+      ENERGIJA_POSTAVKE: >-
+        {"otkrivanje": {"modbus_hostovi": [["simulator", 5020]], "modbus_jedinice": [1, 2]},
+         "prognoza": {"url": "http://mock-openmeteo:8080/v1/forecast"}, "mqtt": {"port": 1883}, "api": {"port": 8443}}
     volumes:
       - podaci:/podaci
-      - ../provjera/postavke.compose.json:/podaci/postavke.json:ro
     read_only: true
     tmpfs: [/tmp]
     mem_limit: 160m                   # isto ograničenje kao na uređaju (compose.yaml)

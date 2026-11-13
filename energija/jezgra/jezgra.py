@@ -502,7 +502,9 @@ class Jezgra:
         # ravnopravna usporedba (bojler_pravilo = "udobnost"): konkurent koristi NAŠU logiku bojlera u cijelosti
         ref_bojler = strategija != "pametna" and self.cfg["politika"].get("bojler_pravilo") != "udobnost"
         if ref_bojler and strategija in ("vlastita", "tou"):
-            bojler_plan = cijena["izvor"] == "NT" or cijena["kupnja"] <= self.cfg["tarifa"]["nt_eur_kwh"]  # NT tajmer
+            # NT tajmer: fiksni noćni termin (zimi 21–7, ljeti 22–8), neovisno o vrsti tarife – kao stvarni sat/HDO
+            from .tarife import vt_nt
+            bojler_plan = vt_nt(ts, self.cfg["tarifa"])[1] == "NT"
         elif (ref_bojler and strategija == "cjenovni_prag") \
                 or self.cfg["politika"].get("bojler_pravilo") == "najjeftiniji_sati":
             # (drugi uvjet samo za pokus isključivanja: naša jezgra s konkurentovim pravilom za bojler)

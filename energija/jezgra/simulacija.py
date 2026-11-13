@@ -109,6 +109,15 @@ class Lokacija:
             return True
         return wd == 2 and 16 <= h < 21  # srijedom navrati poslije posla
 
+    # --- vrijeme kao metode: povijesni podaci (stres/povijest.py) ih zamjenjuju stvarnim mjerenjima
+    def zracenje(self, ts: float, stvarno: bool = True) -> float:
+        lok = self.cfg["lokacija"]
+        return zracenje_vedro(ts, lok["sirina"], lok["duzina"]) * (1 - 0.75 * self.naoblaka(ts, stvarna=stvarno))
+
+    def kisa_mm_h(self, ts: float) -> float:
+        d = self._dan(ts)
+        return d["kisa_mm"] / 3 if abs(time.localtime(ts).tm_hour - d["kisa_sat"]) <= 1 else 0.0
+
     def prognoza_api(self, od_ts: float) -> dict:
         """Ono što bi vratio Open-Meteo za ovu lokaciju (za offline demonstraciju/testove)."""
         sati = [od_ts - od_ts % 3600 + i * 3600 for i in range(48)]
@@ -116,9 +125,9 @@ class Lokacija:
         g, t, p, c = [], [], [], []
         for s in sati:
             d = self._dan(s)
-            g.append(zracenje_vedro(s + 1800, lok["sirina"], lok["duzina"]) * (1 - 0.75 * self.naoblaka(s, stvarna=False)))
+            g.append(self.zracenje(s + 1800, stvarno=False))
             t.append(self.okolina_temp(s))
-            p.append(d["kisa_mm"] / 3 if abs(time.localtime(s).tm_hour - d["kisa_sat"]) <= 1 else 0.0)
+            p.append(self.kisa_mm_h(s))
             c.append(self.naoblaka(s, stvarna=False) * 100)
         return {"hourly": {"time": sati, "shortwave_radiation": g, "temperature_2m": t, "precipitation": p,
                            "cloud_cover": c}}
@@ -193,7 +202,7 @@ class Lokacija:
         ts = self.t
         d = self._dan(ts)
         lok = self.cfg["lokacija"]
-        g = zracenje_vedro(ts, lok["sirina"], lok["duzina"]) * (1 - 0.75 * self.naoblaka(ts)) * self.rng.uniform(0.9, 1.05)
+        g = self.zracenje(ts) * self.rng.uniform(0.9, 1.05)
         f = self.cfg["fotonapon"]
         pv_moguce = f["kwp"] * 1000 * g / 1000 * f["faktor_ucinka"] * (1 - 0.004 * (self.okolina_temp(ts) + g * 0.03 - 25))
         pv_moguce *= 1 - min(0.25, (ts - self.pocetak_sim) / 86400 * 0.004)  # prašina na panelima
@@ -284,7 +293,7 @@ class Lokacija:
         # tlo
         for z in self.vlaga:
             et = (0.15 + 0.25 * max(0.0, g) / 800) * (1 + max(0, okolina - 20) / 20)
-            kisa = d["kisa_mm"] / 3 if abs(h - d["kisa_sat"]) <= 1 else 0.0
+            kisa = self.kisa_mm_h(ts)
             dodatak = kisa * 1.2
             if self.releji["pumpa"] and self.ventili[z] and not suho:
                 dodatak += 33.0  # %/h dok ventil i pumpa rade

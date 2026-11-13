@@ -164,7 +164,11 @@ def pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = N
     if sc.tarifa == "dinamicka":
         cfg["tarifa"]["izvor_url"] = URL_TARIFA
     pocetak = time.mktime((*sc.pocetak, 0, 0, 0, 0, 0, -1))
-    lok = Lokacija(cfg, pocetak, kvarovi=sc.kvarovi or False)
+    if sc.povijest:
+        from stres.povijest import PovijesnaLokacija, ucitaj
+        lok = PovijesnaLokacija(cfg, pocetak, ucitaj(sc.povijest), kvarovi=sc.kvarovi or False)
+    else:
+        lok = Lokacija(cfg, pocetak, kvarovi=sc.kvarovi or False)
     lok.soc, lok.temp_pomak = sc.soc0, sc.temp_pomak
     if sc.vlaga0 is not None:
         lok.vlaga = {z: sc.vlaga0 for z in lok.vlaga}

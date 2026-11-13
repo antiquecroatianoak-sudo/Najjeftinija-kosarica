@@ -28,6 +28,7 @@ class Scenarij:
     starenje: float | None = None           # Ω/dan rast unutarnjeg otpora baterije
     soc0: float = 0.55
     vlaga0: float | None = None             # početna vlaga tla (%) u svim zonama
+    povijest: str | None = None             # put do povijesnih podataka (stres/povijest.py): stvarno vrijeme i cijene
     ocekivanja: dict = field(default_factory=dict)
     oznake: tuple = ()
 
@@ -112,6 +113,12 @@ PROVJERA_UCENJA: list[Scenarij] = [
 
 
 def po_imenu(ime: str) -> Scenarij:
+    import os
+    if ime.startswith("stres_") and os.environ.get("ENERGIJA_POVIJEST"):
+        from stres.povijest import scenariji as stres_scenariji
+        for s in stres_scenariji(os.environ["ENERGIJA_POVIJEST"]):
+            if s.ime == ime:
+                return s
     for s in KATALOG + PROVJERA_UCENJA + EVALUACIJA + EVALUACIJA_2 + RAZVOJ_DINAMICKA:
         if s.ime == ime:
             return s
