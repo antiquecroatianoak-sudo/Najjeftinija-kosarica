@@ -1,0 +1,128 @@
+{
+ "postavke": {
+  "politika": {
+   "cuvanje_faktor": 1.0,
+   "rezerva_dodatak": 0.0,
+   "trosak_ciklusa_plan": 0.03
+  }
+ },
+ "prihvaceno": false,
+ "razlog": "nije bolja od zadane na odvojenim tjednima (ili ima kršenja) – zadržana zadana politika",
+ "ucenje": {
+  "scenariji": [
+   "proljece_osnovno",
+   "zima_dinamicka",
+   "jesen_vtnt"
+  ],
+  "korak_s": 600.0,
+  "najbolja": {
+   "cuvanje_faktor": 1.0,
+   "rezerva_dodatak": 0.0,
+   "trosak_ciklusa_plan": 0.03
+  },
+  "ocjena": 0.1717,
+  "povijest": [
+   {
+    "politika": {
+     "cuvanje_faktor": 1.0,
+     "rezerva_dodatak": 0.0,
+     "trosak_ciklusa_plan": 0.03
+    },
+    "ocjena": 0.1717
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 0.0,
+     "rezerva_dodatak": 0.0,
+     "trosak_ciklusa_plan": 0.03
+    },
+    "ocjena": 0.094
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 0.8,
+     "rezerva_dodatak": 0.0,
+     "trosak_ciklusa_plan": 0.03
+    },
+    "ocjena": 0.172
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 0.9,
+     "rezerva_dodatak": 0.0,
+     "trosak_ciklusa_plan": 0.03
+    },
+    "ocjena": 0.173
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 1.1,
+     "rezerva_dodatak": 0.0,
+     "trosak_ciklusa_plan": 0.03
+    },
+    "ocjena": 0.1623
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 1.0,
+     "rezerva_dodatak": 0.05,
+     "trosak_ciklusa_plan": 0.03
+    },
+    "ocjena": 0.1673
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 1.0,
+     "rezerva_dodatak": 0.1,
+     "trosak_ciklusa_plan": 0.03
+    },
+    "ocjena": 0.1723
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 1.0,
+     "rezerva_dodatak": 0.0,
+     "trosak_ciklusa_plan": 0.01
+    },
+    "ocjena": 0.167
+   },
+   {
+    "politika": {
+     "cuvanje_faktor": 1.0,
+     "rezerva_dodatak": 0.0,
+     "trosak_ciklusa_plan": 0.06
+    },
+    "ocjena": 0.1613
+   }
+  ]
+ },
+ "provjera": {
+  "scenariji": [
+   "val_zima_dinamicka",
+   "val_proljece",
+   "val_jesen"
+  ],
+  "zadano": {
+   "prosjecna_usteda_udio": 0.1307,
+   "kazna": 0.0,
+   "po_scenariju": {
+    "val_zima_dinamicka": 0.266,
+    "val_proljece": null,
+    "val_jesen": 0.126
+   }
+  },
+  "naucena": {
+   "prosjecna_usteda_udio": 0.1307,
+   "kazna": 0.0,
+   "po_scenariju": {
+    "val_zima_dinamicka": 0.266,
+    "val_proljece": null,
+    "val_jesen": 0.126
+   }
+  },
+  "krsenja_naucene": 0
+ },
+ "napomena": "Optimalno u simulatoru; na stvarnoj lokaciji potvrditi izvještajem uštede prema osnovici.",
+ "izradjeno": "2026-11-13 08:17",
+ "trajanje_s": 504
+}

@@ -1,0 +1,1250 @@
+{
+ "proljece_osnovno": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 6.754,
+    "granica_eur": 6.674,
+    "pastir": 0.9898,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 114,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 6.914,
+    "granica_eur": 6.667,
+    "pastir": 0.9569,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   },
+   "tou": {
+    "trosak_eur": 7.743,
+    "granica_eur": 6.667,
+    "pastir": 0.9569,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 7.818,
+    "granica_eur": 6.667,
+    "pastir": 0.9569,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": 0.667,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "bunar_presusio": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -1.176,
+    "granica_eur": -1.285,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 69.5,
+    "voda_min": 55,
+    "suho_koraka": 1,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -1.055,
+    "granica_eur": -1.228,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 69.5,
+    "voda_min": 0,
+    "suho_koraka": 30,
+    "prosao": false,
+    "neuspjesi": [
+     "pumpa na suho 30 koraka (očekivano 1–2)",
+     "pumpa nije zaštićeno isključena"
+    ]
+   },
+   "tou": {
+    "trosak_eur": -0.986,
+    "granica_eur": -1.228,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 69.5,
+    "voda_min": 0,
+    "suho_koraka": 30,
+    "prosao": false,
+    "neuspjesi": [
+     "pumpa na suho 30 koraka (očekivano 1–2)",
+     "pumpa nije zaštićeno isključena"
+    ]
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -0.999,
+    "granica_eur": -1.228,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 69.5,
+    "voda_min": 0,
+    "suho_koraka": 30,
+    "prosao": false,
+    "neuspjesi": [
+     "pumpa na suho 30 koraka (očekivano 1–2)",
+     "pumpa nije zaštićeno isključena"
+    ]
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": 0.526,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "zima_dinamicka": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 12.08,
+    "granica_eur": 9.361,
+    "pastir": 0.9898,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 42,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 122,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 13.21,
+    "granica_eur": 9.423,
+    "pastir": 0.9569,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   },
+   "tou": {
+    "trosak_eur": 13.21,
+    "granica_eur": 9.423,
+    "pastir": 0.9569,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 11.841,
+    "granica_eur": 8.945,
+    "pastir": 0.9569,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 1112,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.294,
+  "ishod": "nenadmasena",
+  "kompromisi": [
+   "vlastita bolja u: bez_tople_vode_min; lošija u: trosak_eur, ograda_bez_napona",
+   "tou bolja u: bez_tople_vode_min; lošija u: trosak_eur, ograda_bez_napona",
+   "cjenovni_prag bolja u: trosak_eur; lošija u: bez_tople_vode_min, ograda_bez_napona"
+  ],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "jesen_vtnt": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 2.397,
+    "granica_eur": 2.105,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 156,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 2.723,
+    "granica_eur": 2.162,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 3.11,
+    "granica_eur": 2.162,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 2.968,
+    "granica_eur": 2.162,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": 0.528,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "ljeto_otocno": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 1.065,
+    "granica_eur": null,
+    "pastir": 0.9898,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 408,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 112,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 1.515,
+    "granica_eur": null,
+    "pastir": 0.957,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 746,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 176,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   },
+   "tou": {
+    "trosak_eur": 1.515,
+    "granica_eur": null,
+    "pastir": 0.957,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 746,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 176,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 1.515,
+    "granica_eur": null,
+    "pastir": 0.957,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 746,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 176,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9488 < 0.95"
+    ]
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": null,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "zima_otocno_hladno": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 0.251,
+    "granica_eur": null,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 4.871,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 2728,
+    "stres_biljaka_h": 97.2,
+    "voda_min": 24,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 0.256,
+    "granica_eur": null,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 5.6,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 2792,
+    "stres_biljaka_h": 182.2,
+    "voda_min": 0,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 0.256,
+    "granica_eur": null,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 5.6,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 2792,
+    "stres_biljaka_h": 182.2,
+    "voda_min": 0,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 0.256,
+    "granica_eur": null,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 5.6,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 2792,
+    "stres_biljaka_h": 182.2,
+    "voda_min": 0,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": null,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "ispad_izmjenjivaca": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -0.485,
+    "granica_eur": -0.472,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 70,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -0.346,
+    "granica_eur": -0.42,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 90,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 0.146,
+    "granica_eur": -0.42,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 90,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 0.235,
+    "granica_eur": -0.42,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 90,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": 1.103,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "openmeteo_ispadi": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -3.129,
+    "granica_eur": -3.273,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 112,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -2.83,
+    "granica_eur": -3.134,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": -2.631,
+    "granica_eur": -3.134,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -2.677,
+    "granica_eur": -3.134,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": 0.675,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "visestruki_kvarovi_ograde": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -2.634,
+    "granica_eur": -2.818,
+    "pastir": 0.9789,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 48,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -2.419,
+    "granica_eur": -2.713,
+    "pastir": 0.925,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9 < 0.93",
+     "samo 0 izolacija (očekivano ≥2)"
+    ]
+   },
+   "tou": {
+    "trosak_eur": -2.321,
+    "granica_eur": -2.713,
+    "pastir": 0.925,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9 < 0.93",
+     "samo 0 izolacija (očekivano ≥2)"
+    ]
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -2.36,
+    "granica_eur": -2.713,
+    "pastir": 0.925,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "ispravna dionica ograde bez napona 288.0 min",
+     "dostupnost pastira 0.9 < 0.93",
+     "samo 0 izolacija (očekivano ≥2)"
+    ]
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": 0.539,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "starenje_baterije": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -2.371,
+    "granica_eur": -2.558,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 197,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -1.299,
+    "granica_eur": -2.334,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 212,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 330,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": -1.425,
+    "granica_eur": -2.334,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 212,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 330,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -1.648,
+    "granica_eur": -2.334,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 212,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 330,
+    "suho_koraka": 0,
+    "prosao": false,
+    "neuspjesi": [
+     "prediktivno održavanje nije upozorilo na baterija_otpor_mohm"
+    ]
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.851,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "toplinski_val": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -7.619,
+    "granica_eur": -10.259,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 180,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -2.468,
+    "granica_eur": -10.267,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 90.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": -2.468,
+    "granica_eur": -10.267,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 90.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -2.791,
+    "granica_eur": -10.376,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 90.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.661,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "hladni_val": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 16.934,
+    "granica_eur": 2.608,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 26,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 18.698,
+    "granica_eur": 1.68,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 18.698,
+    "granica_eur": 1.68,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 18.479,
+    "granica_eur": 1.596,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.11,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "tjedan_bez_sunca": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 11.13,
+    "granica_eur": 10.926,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 114,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 11.024,
+    "granica_eur": 10.739,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 11.588,
+    "granica_eur": 10.739,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 11.648,
+    "granica_eur": 10.739,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 202,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 210,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": -1.082,
+  "ishod": "nenadmasena",
+  "kompromisi": [
+   "vlastita bolja u: trosak_eur; lošija u: bez_tople_vode_min"
+  ],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "nenajavljena_naoblaka": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -0.771,
+    "granica_eur": -2.455,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 66,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -0.518,
+    "granica_eur": -2.364,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": -0.518,
+    "granica_eur": -2.364,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -0.807,
+    "granica_eur": -2.475,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.131,
+  "ishod": "nadmasena",
+  "kompromisi": [],
+  "nalazi": [
+   "nadmašuje je: cjenovni_prag"
+  ],
+  "pametna_najbolja": false
+ },
+ "oluja_ispad_mreze": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -3.524,
+    "granica_eur": -3.714,
+    "pastir": 0.9824,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 112,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": -3.36,
+    "granica_eur": -3.62,
+    "pastir": 0.95,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": -3.289,
+    "granica_eur": -3.619,
+    "pastir": 0.95,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -3.326,
+    "granica_eur": -3.62,
+    "pastir": 0.95,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "vlastita",
+  "udio_ostvarivog": 0.463,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "negativne_cijene": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -2.639,
+    "granica_eur": -13.494,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 5.587,
+    "granica_eur": -6.167,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 5.587,
+    "granica_eur": -6.167,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 4.818,
+    "granica_eur": -6.839,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.431,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "volatilne_cijene": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": -2.11,
+    "granica_eur": -7.349,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 46,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 0.821,
+    "granica_eur": -7.016,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 0.821,
+    "granica_eur": -7.016,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": -0.709,
+    "granica_eur": -7.132,
+    "pastir": 1.0,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 150,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.359,
+  "ishod": "dominira",
+  "kompromisi": [],
+  "nalazi": [],
+  "pametna_najbolja": true
+ },
+ "sve_odjednom": {
+  "strategije": {
+   "pametna": {
+    "trosak_eur": 5.744,
+    "granica_eur": -1.666,
+    "pastir": 0.9911,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 68,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "vlastita": {
+    "trosak_eur": 7.985,
+    "granica_eur": -1.68,
+    "pastir": 0.975,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "tou": {
+    "trosak_eur": 7.985,
+    "granica_eur": -1.68,
+    "pastir": 0.975,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   },
+   "cjenovni_prag": {
+    "trosak_eur": 5.717,
+    "granica_eur": -1.693,
+    "pastir": 0.975,
+    "neisporuceno_kwh": 0.0,
+    "krsenja": 0,
+    "iznimke": 0,
+    "bez_tople_vode_min": 0,
+    "stres_biljaka_h": 0.0,
+    "voda_min": 120,
+    "suho_koraka": 0,
+    "prosao": true,
+    "neuspjesi": []
+   }
+  },
+  "najbolja_referentna": "cjenovni_prag",
+  "udio_ostvarivog": 0.232,
+  "ishod": "nenadmasena",
+  "kompromisi": [
+   "cjenovni_prag bolja u: trosak_eur; lošija u: ograda_bez_napona"
+  ],
+  "nalazi": [],
+  "pametna_najbolja": true
+ }
+}

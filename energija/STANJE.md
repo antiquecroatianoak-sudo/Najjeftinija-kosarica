@@ -1,5 +1,35 @@
 # Energija – zapis stanja
 
+## 13.11.2026. 09:35 CET (Europe/Zagreb) – usporedba s tržišnim pristupima, ekstremni scenariji, optimizacija
+
+### Dogovoreno (vlasnik, 12.–13.11.2026.)
+- Automatizirani scenariji na simulatorima (Modbus, mrežni pozivi) uz ekstremne vremenske i cjenovne uvjete.
+- Usporedba s vodećim pristupima na tržištu i optimizacija dok sustav ne bude vrhunski.
+
+### Važno ograničenje usporedbe
+Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupni. Zato se uspoređuje s **referentnim strategijama** (tipično ponašanje tržišnih sustava) i s **procjenom teorijske granice**, a ne s imenovanim proizvodima. Metodologija je opisana u `USPOREDBA.md`.
+
+### Rezultat (commit `b37f749`, `rezultati/usporedba.md`)
+- Višekriterijska ocjena (trošak, topla voda, stres biljaka, ograda, neisporučeno): **nenadmašena u 17 od 18 scenarija, od toga dominira u 14**.
+- Jedini scenarij gdje je nadmašena, `nenajavljena_naoblaka`: pravilo cjenovnog praga je 0,04 € jeftinije. Razlika dolazi iz vrednovanja energije koja ostane u bateriji na kraju razdoblja; tijekom tjedna smo bolji noću, a pravilo praga danju. Popravak kratkoročnom korekcijom prognoze isproban je i odbačen jer je pogoršao rezultate.
+- Kompromisi:
+  - zima s dinamičkom tarifom: 0,24 € skuplje od pravila praga, ali s više tople vode i pouzdanijom ogradom; još 42 min bez tople vode prema 0 kod NT tajmera;
+  - tjedan bez sunca: 0,11 € skuplje od vlastite potrošnje, ali 0 prema 202 min bez tople vode.
+- Ograda pod naponom (s izolacijom kvara) prema referentnim strategijama: 97,9–99,1 % prema 92,5–97,5 % u scenarijima s kvarovima.
+- Toplinski val: 0 sati stresa biljaka prema 90 h kod tajmera.
+- Katalog: **18/18 scenarija prošlo**, 0 sigurnosnih kršenja (`rezultati/rezultati.md`).
+- Učenje politike (`rezultati/ucenje_politike.json`): nijedna promjena parametara nije bolja od zadane iznad praga šuma, pa ostaje zadana. Na odvojenim tjednima ušteda je u prosjeku 13,1 %.
+
+### CI
+- `b37f749`: radni tok „Energija – izolirana provjera” **uspješan**: jedinični testovi, brzi scenariji, lokalna cjelovita provjera i Docker Compose.
+- `e5168e4`: **pao**. CI je uhvatio regresiju (neisporučena energija u otočnom ljetu), popravljenu u `b37f749`.
+
+### Otvoreno
+- Granica je satni model i ne poznaje mraz ni vršnu snagu, pa je u hladnom valu napuhana (11 % ostvarenog).
+- Prodaja iz baterije ovisi o uvjetima priključka (`politika.izvoz_iz_baterije`).
+- Teren: vidi `SPREMNOST.md`, dio B.
+
+
 ## 12.11.2026. 20:48 CET (Europe/Zagreb) – pymodbus, mokovi Open-Meteo, izolirana provjera
 
 ### Dogovoreno (vlasnik, 12.11.2026.)

@@ -49,7 +49,7 @@ Isprobano, ali odbačeno jer nije pomoglo: kratkoročna korekcija prognoze iz st
 
 ## Rezultati
 
-Vidi `rezultati/usporedba.md` iz zadnjeg pokretanja. Sažetak je u `STANJE.md`, uz commit i datum.
+Tablica: `rezultati/usporedba.md` (commit `b37f749`): nenadmašena u 17/18 scenarija, dominira u 14. Sažetak i kompromisi su u `STANJE.md`.
 
 ## Ograničenja
 
