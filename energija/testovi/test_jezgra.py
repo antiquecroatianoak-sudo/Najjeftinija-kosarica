@@ -616,7 +616,9 @@ class TestRubniAI(Privremeno):
     def test_jezgra_odluke_ai_i_rucno(self):
         from jezgra.__main__ import brza_simulacija
         from jezgra.jezgra import Jezgra
-        j, _ = brza_simulacija(self.d, 5.0, korak_s=120.0, ispis=False, sezona="zima", kvarovi=False)
+        from unittest import mock
+        with mock.patch("jezgra.rubni_ai.os.getloadavg", return_value=(0.2, 0.2, 0.2)):  # neovisno o opterećenju stroja
+            j, _ = brza_simulacija(self.d, 5.0, korak_s=120.0, ispis=False, sezona="zima", kvarovi=False)
         k = j.ai.kvaliteta()
         self.assertGreaterEqual(k["sati_provjere"], 48)
         self.assertTrue(j.ai_provjera["dopusteno"], j.ai_provjera)

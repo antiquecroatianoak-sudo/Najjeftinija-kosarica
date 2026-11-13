@@ -142,6 +142,38 @@ class Dnevnik:
                     if vrste is None or z["v"] in vrste:
                         yield z
 
+    def citaj_od_vremena(self, od_ts: float, vrste: set[str] | None = None) -> Iterator[dict]:
+        """Zapisi novije od od_ts; čita samo zadnje segmente (ne cijeli dnevnik) – brzo i pri velikoj povijesti."""
+        with self._lock:
+            self._f.flush()
+            segmenti = self.segmenti()
+        odabrani: list[Path] = []
+        for p in reversed(segmenti):
+            odabrani.insert(0, p)
+            prvi = next(self._citaj_segment(p, 0, None), None)
+            if prvi is not None and prvi["t"] <= od_ts:
+                break
+        for p in odabrani:
+            for z in self._citaj_segment(p, 0, vrste):
+                if z["t"] >= od_ts:
+                    yield z
+
+    def _citaj_segment(self, p: Path, od_slijeda: int, vrste: set[str] | None) -> Iterator[dict]:
+        with open(p, "rb") as f:
+            while True:
+                zg = f.read(ZAGLAVLJE.size)
+                if len(zg) < ZAGLAVLJE.size:
+                    return
+                slijed, duljina, crc = ZAGLAVLJE.unpack(zg)
+                tijelo = f.read(duljina)
+                if len(tijelo) < duljina or zlib.crc32(tijelo) != crc:
+                    return
+                if slijed <= od_slijeda:
+                    continue
+                z = json.loads(otpakiraj(self.kljuc, tijelo, struct.pack(">Q", slijed)))
+                if vrste is None or z["v"] in vrste:
+                    yield z
+
     def zatvori(self) -> None:
         with self._lock:
             self._sinkroniziraj()

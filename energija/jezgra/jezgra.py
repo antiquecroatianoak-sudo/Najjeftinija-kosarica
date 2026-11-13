@@ -25,6 +25,7 @@ from .navodnjavanje import Navodnjavanje
 from .optimizator import planiraj_bateriju, smjesti_fleksibilna
 from .pastir import Pastir
 from .pohrana import Dnevnik, Snimka
+from .povijest import Povijest
 from .prognoza import Prognoza
 from .rubni_ai import RubniModel, provjera_profila, ulazi
 from .sifra import Trezor
@@ -103,6 +104,9 @@ class Jezgra:
         self.odluke: dict[str, dict] = {}
         self._prisutnost = 0.0
         self._mreza_bila = True
+        self.povijest = Povijest()
+        self.zahtjevi_mreze: list[dict] = st.get("zahtjevi_mreze", [])  # zahtjevi operatora za fleksibilnost
+        self._usteda_dani: dict[str, dict] = {}
         self.mreza_dostupna = self.cfg["mreza"]["dostupna"]
         self.rucno: dict[str, tuple[bool, float]] = {}  # ručne naredbe s aplikacije (trošilo -> (stanje, do))
         self.kod_uparivanja: str | None = None
@@ -117,6 +121,11 @@ class Jezgra:
             self.zadnji_ts = z["t"]
             ponovljeno += 1
         self._ponavljanje = False
+        try:
+            for z in self.dnevnik.citaj_od_vremena(self.sat() - 48 * 3600, {TELEMETRIJA}):
+                self.povijest.dodaj(z["t"], self._za_povijest(z["d"]))
+        except Exception as e:  # povijest za grafikone nikad ne smije spriječiti pokretanje
+            self._dogadjaj("povijest", {"poruka": f"Povijest grafikona nije učitana: {e}"})
         self.oporavak = {"snimka": izvor, "ponovljeno_zapisa": ponovljeno,
                          "odrezano_bajtova": self.dnevnik.oporavak["odrezano_bajtova"] +
                          self.arhiva.oporavak["odrezano_bajtova"]}
@@ -506,6 +515,13 @@ class Jezgra:
         # otočno: bojler samo uz rezervu snage i za tipičan kućni vrh (štednjak, kuhalo) dok su stanari tu –
         # kratki nestanak struje je kvar, a malo hladnija voda samo neudobnost
         rezerva_vrha = self._rezerva_vrha(ts) if self.prisutni else 200.0
+        for zm in self._aktivni_zahtjevi(ts):
+            if zm["vrsta"] == "ogranici_uvoz":
+                bojler_plan = False
+                if self.releji.get("pumpa"):
+                    self.zastita_do["pumpa"] = max(self.zastita_do.get("pumpa", 0), ts + 600)
+            elif zm["vrsta"] == "povecaj_potrosnju" and (self.zadnje_ocitanje.get("bojler_temp_c") or 0) < 57:
+                bojler_plan = True
         if bojler_plan and not mreza_dostupna and slobodno_w + (2000 if self.releji.get("bojler") else 0) \
                 < 2000 + rezerva_vrha:
             bojler_plan = False
@@ -594,6 +610,18 @@ class Jezgra:
             if self.kalibracija.get("faza", "").startswith("mjerenje"):
                 cmd = 0.0
                 odl = ("miruje", "kalibracija brojila", "kalibracija")
+            # zahtjevi operatora mreže (fleksibilnost) – iznad optimizacije, ispod sigurnosnih granica
+            for zm in self._aktivni_zahtjevi(ts):
+                if zm["vrsta"] == "ogranici_uvoz" and mreza_dostupna and neto > zm["snaga_w"]:
+                    cmd = min(cmd if cmd is not None else -neto, -(neto - zm["snaga_w"]))
+                    odl = (f"ograničava uvoz na {zm['snaga_w']:.0f} W", f"zahtjev mreže ({zm['izvor']}) do "
+                           f"{time.strftime('%H:%M', time.localtime(zm['do']))}", "mreza")
+                elif zm["vrsta"] == "ogranici_izvoz" and mreza_dostupna and -neto > zm["snaga_w"]:
+                    cmd = max(cmd if cmd is not None else -neto, -neto - zm["snaga_w"])
+                    odl = (f"ograničava izvoz na {zm['snaga_w']:.0f} W", f"zahtjev mreže ({zm['izvor']})", "mreza")
+                elif zm["vrsta"] == "povecaj_potrosnju" and mreza_dostupna:
+                    cmd = max(cmd or 0.0, zm["snaga_w"])
+                    odl = (f"povećava potrošnju {zm['snaga_w']:.0f} W", f"zahtjev mreže ({zm['izvor']})", "mreza")
             # proaktivna zabrana punjenja na hladnom (LiFePO4 ispod 0 °C), ne tek kad struja već teče
             t_bat = o.get("baterija_temp_c")
             hladno = t_bat is not None and t_bat < b["temp_punjenje_min_c"] + 0.5
@@ -631,7 +659,9 @@ class Jezgra:
                 self._naredbe_zadnje.pop("baterija_ogranicenje", None)
 
         if mreza_dostupna and strategija == "pametna":
-            self._postavi("izvoz_zabranjen", 1.0 if cijena["prodaja"] < 0 else 0.0, ts)
+            bez_izvoza = cijena["prodaja"] < 0 or any(zm["vrsta"] == "ogranici_izvoz" and zm["snaga_w"] <= 0
+                                                       for zm in self._aktivni_zahtjevi(ts))
+            self._postavi("izvoz_zabranjen", 1.0 if bez_izvoza else 0.0, ts)
 
         # 8) zapis i satni zbroj
         uzorak = {"dt": dt, "pv": pv, "potr": potr, "mreza": mreza_w, "bat": bat_w or 0.0, "soc": soc,
@@ -641,10 +671,12 @@ class Jezgra:
                   "presk": self.navodnjavanje.ustedjeno_min - presk_prije,
                   "pastir_ok": (min((x for x in self.pastir_izlaz.get("naponi", [None])[1:] if x is not None),
                                     default=0) >= self.cfg["pastir"]["min_kv"]) if self.pastir_izlaz else None,
-                  "o": {k: o[k] for k in ("baterija_temp_c", "baterija_napon_v", "tlo_z1_vlaga", "tlo_z2_vlaga",
-                                          "okolina_temp_c")
-                        if k in o}}
+                  "pvp": korak_plana.get("pv_w") if korak_plana else None,
+                  "o": {k: v for k, v in o.items()
+                        if k in ("baterija_temp_c", "baterija_napon_v", "okolina_temp_c", "bojler_temp_c",
+                                 "pumpa_struja_a") or k.startswith(("tlo_", "pastir_v"))}}
         self.dnevnik.zapisi(TELEMETRIJA, uzorak, ts=ts)
+        self.povijest.dodaj(ts, self._za_povijest(uzorak))
         self._akumuliraj(uzorak, ts)
         self._dnevno(ts, dt, o, pv)
 
@@ -716,6 +748,95 @@ class Jezgra:
             profil = self.navike.prognoza(ts, 1)[0]
             return min(2000.0, max(200.0, 1.5 * (profil - self.navike.osnova_w)))
         return 1700.0 if h in (7, 8, 9, 12, 13, 14, 18, 19, 20) else 200.0
+
+    # ------------------------------------------------------------------ pametna mreža (fleksibilnost)
+    VRSTE_ZAHTJEVA = ("ogranici_uvoz", "ogranici_izvoz", "povecaj_potrosnju")
+
+    def _aktivni_zahtjevi(self, ts: float) -> list[dict]:
+        return [z for z in self.zahtjevi_mreze if z["od"] <= ts < z["do"] and not z.get("opozvan")]
+
+    def dodaj_zahtjev_mreze(self, z: dict) -> dict:
+        """Zahtjev operatora/agregatora (npr. OpenADR posrednik). Provjerava se i ograničava; vraća upisani zahtjev."""
+        ts = self.sat()
+        vrsta = z.get("vrsta")
+        if vrsta not in self.VRSTE_ZAHTJEVA:
+            raise ValueError(f"vrsta mora biti jedna od {self.VRSTE_ZAHTJEVA}")
+        snaga = float(z.get("snaga_w", 0))
+        od = float(z.get("od", ts))
+        do = float(z.get("do", od + 3600))
+        if not 0 <= snaga <= 50_000 or not od < do or do - od > 24 * 3600 or do < ts:
+            raise ValueError("snaga 0–50000 W, od < do, najviše 24 h, ne u prošlosti")
+        zapis = {"id": f"zm-{int(ts * 1000) % 10**10}-{len(self.zahtjevi_mreze)}", "vrsta": vrsta, "snaga_w": snaga,
+                 "od": od, "do": do, "izvor": str(z.get("izvor", "operator"))[:40], "primljen": ts}
+        self.zahtjevi_mreze = [x for x in self.zahtjevi_mreze if x["do"] > ts][-49:] + [zapis]
+        self._dogadjaj("zahtjev_mreze", {"poruka": f"Zahtjev mreže: {vrsta} {snaga:.0f} W "
+                                                   f"{time.strftime('%d.%m. %H:%M', time.localtime(od))}–"
+                                                   f"{time.strftime('%H:%M', time.localtime(do))} ({zapis['izvor']})",
+                                         **zapis}, ts)
+        return zapis
+
+    def opozovi_zahtjev_mreze(self, zid: str) -> bool:
+        for x in self.zahtjevi_mreze:
+            if x["id"] == zid and not x.get("opozvan"):
+                x["opozvan"] = self.sat()
+                self._dogadjaj("zahtjev_mreze", {"poruka": f"Zahtjev {zid} opozvan", "id": zid})
+                return True
+        return False
+
+    def fleksibilnost(self) -> dict:
+        """Koliko snage sustav sada može ponuditi mreži i koliko dugo (procjena za agregatore)."""
+        o, b = self.zadnje_ocitanje, self.cfg["baterija"]
+        soc = o.get("baterija_soc") or 0.0
+        kap_wh = b["kapacitet_kwh"] * 1000
+        rezerva = self.parametri.get("rezerva_soc", b["soc_min"])
+        dolje_bat = min(b["max_praznjenje_kw"] * 1000, max(0.0, (soc - rezerva) * kap_wh))
+        gore_bat = min(b["max_punjenje_kw"] * 1000, max(0.0, (b["soc_max"] - soc) * kap_wh))
+        t_b = o.get("bojler_temp_c")
+        bojler_moze = t_b is not None and t_b < 55
+        trenutna_fleks = (o.get("bojler_snaga_w") or 0.0) + (750.0 if self.releji.get("pumpa") else 0.0)
+        return {
+            "smanjenje_uvoza_w": round(dolje_bat + trenutna_fleks),
+            "smanjenje_uvoza_h": round(max(0.0, (soc - rezerva) * kap_wh) / max(1.0, dolje_bat), 2) if dolje_bat else 0.0,
+            "povecanje_potrosnje_w": round(gore_bat + (2000.0 if bojler_moze else 0.0)),
+            "povecanje_potrosnje_h": round(max(0.0, (b["soc_max"] - soc) * kap_wh) / max(1.0, gore_bat), 2) if gore_bat else 0.0,
+            "izvori": {"baterija_dolje_w": round(dolje_bat), "baterija_gore_w": round(gore_bat),
+                       "bojler_w": 2000 if bojler_moze else 0, "trenutna_fleksibilna_trosila_w": round(trenutna_fleks)},
+            "mreza_dostupna": self.mreza_dostupna, "aktivni_zahtjevi": self._aktivni_zahtjevi(self.sat()),
+        }
+
+    @staticmethod
+    def _za_povijest(d: dict) -> dict:
+        """Zapis telemetrije -> imena serija javnog API-ja (povijest.SERIJE)."""
+        o = d.get("o", {})
+        v = {"pv_w": d.get("pv"), "potrosnja_w": d.get("potr"), "mreza_w": d.get("mreza"), "baterija_w": d.get("bat"),
+             "baterija_soc": None if d.get("soc") is None else d["soc"] * 100, "cijena_eur_kwh": d.get("ck"),
+             "bojler_w": d.get("bojler"), "pumpa_w": d.get("pumpa_w"), "pv_prognoza_w": d.get("pvp"),
+             "bojler_temp_c": o.get("bojler_temp_c"), "okolina_temp_c": o.get("okolina_temp_c")}
+        v.update({k: x for k, x in o.items() if k.startswith(("tlo_", "pastir_v"))})
+        return v
+
+    def usteda_po_danima(self, dana: int = 30) -> list[dict]:
+        """Ušteda po danu (procjena prema osnovici), zadnjih `dana` dana; prošli dani se pamte."""
+        po_danu: dict[str, list[dict]] = {}
+        for s in self.sati:
+            po_danu.setdefault(time.strftime("%Y-%m-%d", time.localtime(s["ts"])), []).append(s)
+        danas = time.strftime("%Y-%m-%d", time.localtime(self.sat()))
+        out = []
+        for dan in sorted(po_danu)[-dana:]:
+            if dan in self._usteda_dani and dan != danas:
+                out.append(self._usteda_dani[dan])
+                continue
+            sati = po_danu[dan]
+            izv = izvjestaji.sazetak(sati, [], self.cfg, sati[0]["ts"], sati[-1]["ts"] + 3600, {})
+            r = {"dan": dan, "usteda_eur": izv["procjena_ustede"]["usteda_eur"],
+                 "trosak_eur": izv["procjena_ustede"]["s_upravljanjem_eur"],
+                 "osnovica_eur": izv["procjena_ustede"]["osnovica_eur"],
+                 "pv_kwh": izv["izmjereno"]["proizvodnja_pv_kwh"], "potrosnja_kwh": izv["izmjereno"]["potrosnja_kwh"],
+                 "samoopskrba": izv["izmjereno"]["samoopskrba"], "sati": len(sati)}
+            if dan != danas:
+                self._usteda_dani[dan] = r
+            out.append(r)
+        return out
 
     @property
     def navike_naucene(self) -> bool:
@@ -804,7 +925,8 @@ class Jezgra:
                             else None, "izvor": self.brojilo.konstanta_izvor},
                 "kalibracija": self.kalibracija, "zadnja_kopija": self.zadnja_kopija,
                 "izvjestaji": self.izvjestaji_izradjeni[-50:], "ai": self.ai.stanje(), "napredno": self.napredno,
-                "ai_zadnje_ucenje": self._ai_zadnje_ucenje}
+                "ai_zadnje_ucenje": self._ai_zadnje_ucenje,
+                "zahtjevi_mreze": [z for z in self.zahtjevi_mreze if z["do"] > (self.zadnji_ts or 0)]}
 
     def spremi_snimku(self, ts: float | None = None) -> None:
         self.dnevnik.sinkroniziraj()

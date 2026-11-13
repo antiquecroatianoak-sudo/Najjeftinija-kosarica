@@ -47,7 +47,8 @@ ZADANO: dict = {
     "tunel": {"relej": "", "dopusteno": False},
     "kopije": {"odredista": [], "period_s": 3600, "generacija": 5},
     "izvjestaji": {"co2_kg_kwh": 0.18, "tjedno": True, "mjesecno": True},  # pretpostavka faktora mreže
-    "api": {"port": 8443, "tls": True},
+    # cors_izvori: web izvori kojima je dopušteno ugraditi komponente (npr. ["https://portal.example"]); zadano nijedan
+    "api": {"port": 8443, "tls": True, "cors_izvori": []},
     "mqtt": {"port": 1883},
     # podesivi parametri politike (zadane vrijednosti; scenariji/ucenje_politike.py ih može predložiti)
     # (trosak_ciklusa_plan: trošenje baterije koje vidi samo planer; None = stvarna procjena iz "baterija")
