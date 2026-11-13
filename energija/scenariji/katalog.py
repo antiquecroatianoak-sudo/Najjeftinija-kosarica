@@ -112,7 +112,25 @@ PROVJERA_UCENJA: list[Scenarij] = [
 
 
 def po_imenu(ime: str) -> Scenarij:
-    for s in KATALOG + PROVJERA_UCENJA:
+    for s in KATALOG + PROVJERA_UCENJA + EVALUACIJA:
         if s.ime == ime:
             return s
     raise KeyError(ime)
+
+
+# ---------------------------------------------------------------------------------------------
+# NEOVISNI SKUP ZA OCJENU (zadan 13.11.2026. prije poboljšanja algoritma; na njemu se ne razvija).
+# 26 tjedana kroz 2026. (svaki drugi ponedjeljak), naizmjence VT/NT i dinamička tarifa, bez kvarova.
+# Pokreće se jednom, na kraju: python -m scenariji.usporedba --skup evaluacija
+def _evaluacija() -> list[Scenarij]:
+    import datetime as _dt
+    out, d = [], _dt.date(2026, 1, 5)
+    for i in range(26):
+        tarifa = "dinamicka" if i % 2 else "vtnt"
+        out.append(Scenarij(f"eval_{d.isoformat()}_{tarifa}", f"Ocjena: tjedan od {d.isoformat()}, {tarifa}",
+                            (d.year, d.month, d.day), tarifa=tarifa, oznake=("evaluacija",)))
+        d += _dt.timedelta(days=14)
+    return out
+
+
+EVALUACIJA: list[Scenarij] = _evaluacija()

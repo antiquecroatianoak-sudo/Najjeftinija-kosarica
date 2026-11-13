@@ -147,11 +147,15 @@ def u_markdown(r: dict) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Usporedba s referentnim strategijama")
     ap.add_argument("--oznaka", default=None)
+    ap.add_argument("--skup", choices=["katalog", "evaluacija"], default="katalog",
+                    help="evaluacija = neovisni skup od 26 tjedana (pokreće se jednom, na kraju)")
     ap.add_argument("--scenarij", action="append")
     ap.add_argument("--postavke", type=Path, help="naučena politika za pametnu strategiju")
     ap.add_argument("--izlaz", type=Path)
     a = ap.parse_args(argv)
-    imena = a.scenarij or [s.ime for s in KATALOG if not a.oznaka or a.oznaka in s.oznake]
+    from .katalog import EVALUACIJA
+    skup = EVALUACIJA if a.skup == "evaluacija" else KATALOG
+    imena = a.scenarij or [s.ime for s in skup if not a.oznaka or a.oznaka in s.oznake]
     politika = json.loads(a.postavke.read_text())["postavke"]["politika"] if a.postavke else None
     t0 = time.time()
     r = usporedi(imena, politika)
