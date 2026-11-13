@@ -1,6 +1,6 @@
 # Energija – zapis stanja
 
-## 13.11.2026. 09:35 CET (Europe/Zagreb) – usporedba s tržišnim pristupima, ekstremni scenariji, optimizacija
+## 13.11.2026. 09:27 CET (Europe/Zagreb) – usporedba s tržišnim pristupima, ekstremni scenariji, optimizacija
 
 ### Dogovoreno (vlasnik, 12.–13.11.2026.)
 - Automatizirani scenariji na simulatorima (Modbus, mrežni pozivi) uz ekstremne vremenske i cjenovne uvjete.
