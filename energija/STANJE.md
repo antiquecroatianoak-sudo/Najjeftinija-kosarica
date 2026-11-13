@@ -1,5 +1,21 @@
 # Energija – zapis stanja
 
+## 13.11.2026. (Europe/Zagreb) – značajnost prema konkurenciji: unaprijed zadani kriterij i dvije neovisne ocjene
+
+- **Kriterij:** zadan prije analize (`KRITERIJ_ZNACAJNOSTI.md`, commit `c049e77`) i dopunjen K1‑R prije 2. ocjene (`9dee073`).
+- **Razvojni katalog:** DJELOMIČNO. K2 ispunjen; K1 medijan +17 p.b., ali p = 0,0625 (samo 9 scenarija).
+- **1. neovisna ocjena (2027., 26 tjedana, `e5ae978`):** DJELOMIČNO.
+  - K1 nije ispunjen: medijan −3,3 p.b., p = 0,75. VT/NT tjedni: velika prednost (+45 do +100 p.b.); obična dinamička tarifa: pravilo cjenovnog praga bolje u 11 od 13 tjedana.
+  - K2 ispunjen.
+- **Pokus isključivanja (razvojni tjedni 2026.):** konkurentova prednost u trošku dolazi od lošije usluge tople vode (oko 17 h tjedno bez nje). Uz jednako pravilo za bojler naše upravljanje je 8 % jeftinije.
+- **2. neovisna ocjena (2028., 26 tjedana, `rezultati/evaluacija2/`):** DJELOMIČNO.
+  - K1 (konkurenti kakvi jesu): nije ispunjen, medijan −12,6 p.b., p = 0,87.
+  - K1‑R (jednaka usluga tople vode): trošak značajno bolji, medijan +16,5 p.b., 19 bolje / 4 lošije, p = 0,0013.
+  - K2 u K1‑R načinu nije ispunjen: 154 i 284 min bez tople vode u dva dinamička tjedna (svibanj, lipanj), dok konkurenti s našim pravilom za bojler imaju 0.
+- **Zaključak:** optimizacija **nije** proglašena uspješnom ni nakon druge ocjene. Upravljanje energijom uz jednaku uslugu značajno nadmašuje referentne strategije, ali je otkriven propust u udobnosti tople vode. Skup 2028. je sada iskorišten; za iduću ocjenu treba novi neovisni skup, zadan prije popravka.
+- **Otvoreno:** zašto naše upravljanje baterijom ili izvozom ometa toplu vodu u dijelu dinamičkih tjedana. Istražuje se samo na razvojnim tjednima.
+
+
 ## 13.11.2026. 09:27 CET (Europe/Zagreb) – usporedba s tržišnim pristupima, ekstremni scenariji, optimizacija
 
 ### Dogovoreno (vlasnik, 12.–13.11.2026.)

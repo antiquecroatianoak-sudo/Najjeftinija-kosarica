@@ -1,0 +1,263 @@
+{
+ "redovi": [
+  {
+   "scenarij": "eval2_2028-01-03_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 13.472,
+   "konkurent_eur": 13.571,
+   "razlika_eur": 0.099
+  },
+  {
+   "scenarij": "eval2_2028-01-17_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 13.958,
+   "konkurent_eur": 12.739,
+   "razlika_eur": -1.219,
+   "U_pametna": 0.252,
+   "U_konkurent": 0.536,
+   "delta": -0.284
+  },
+  {
+   "scenarij": "eval2_2028-01-31_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 13.33,
+   "konkurent_eur": 13.318,
+   "razlika_eur": -0.012
+  },
+  {
+   "scenarij": "eval2_2028-02-14_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 11.974,
+   "konkurent_eur": 10.76,
+   "razlika_eur": -1.214,
+   "U_pametna": 0.379,
+   "U_konkurent": 0.63,
+   "delta": -0.252
+  },
+  {
+   "scenarij": "eval2_2028-02-28_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 6.386,
+   "konkurent_eur": 6.37,
+   "razlika_eur": -0.016
+  },
+  {
+   "scenarij": "eval2_2028-03-13_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 6.148,
+   "konkurent_eur": 5.095,
+   "razlika_eur": -1.053,
+   "U_pametna": 0.217,
+   "U_konkurent": 0.52,
+   "delta": -0.303
+  },
+  {
+   "scenarij": "eval2_2028-03-27_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 3.138,
+   "konkurent_eur": 3.613,
+   "razlika_eur": 0.475,
+   "U_pametna": 0.676,
+   "U_konkurent": 0.0,
+   "delta": 0.676
+  },
+  {
+   "scenarij": "eval2_2028-04-10_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 1.111,
+   "konkurent_eur": 0.816,
+   "razlika_eur": -0.295,
+   "U_pametna": 0.279,
+   "U_konkurent": 0.374,
+   "delta": -0.095
+  },
+  {
+   "scenarij": "eval2_2028-04-24_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -1.977,
+   "konkurent_eur": -1.31,
+   "razlika_eur": 0.667,
+   "U_pametna": 0.763,
+   "U_konkurent": 0.111,
+   "delta": 0.651
+  },
+  {
+   "scenarij": "eval2_2028-05-08_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -0.545,
+   "konkurent_eur": -0.908,
+   "razlika_eur": -0.363,
+   "U_pametna": 0.189,
+   "U_konkurent": 0.315,
+   "delta": -0.126
+  },
+  {
+   "scenarij": "eval2_2028-05-22_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -4.093,
+   "konkurent_eur": -3.757,
+   "razlika_eur": 0.336,
+   "U_pametna": 0.709,
+   "U_konkurent": 0.366,
+   "delta": 0.343
+  },
+  {
+   "scenarij": "eval2_2028-06-05_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -3.349,
+   "konkurent_eur": -3.325,
+   "razlika_eur": 0.024,
+   "U_pametna": 0.336,
+   "U_konkurent": 0.329,
+   "delta": 0.007
+  },
+  {
+   "scenarij": "eval2_2028-06-19_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -4.514,
+   "konkurent_eur": -4.058,
+   "razlika_eur": 0.456,
+   "U_pametna": 0.723,
+   "U_konkurent": 0.271,
+   "delta": 0.452
+  },
+  {
+   "scenarij": "eval2_2028-07-03_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -2.71,
+   "konkurent_eur": -3.199,
+   "razlika_eur": -0.489,
+   "U_pametna": 0.167,
+   "U_konkurent": 0.312,
+   "delta": -0.145
+  },
+  {
+   "scenarij": "eval2_2028-07-17_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -3.706,
+   "konkurent_eur": -3.141,
+   "razlika_eur": 0.565,
+   "U_pametna": 0.755,
+   "U_konkurent": 0.213,
+   "delta": 0.542
+  },
+  {
+   "scenarij": "eval2_2028-07-31_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -2.691,
+   "konkurent_eur": -3.224,
+   "razlika_eur": -0.533,
+   "U_pametna": 0.199,
+   "U_konkurent": 0.356,
+   "delta": -0.157
+  },
+  {
+   "scenarij": "eval2_2028-08-14_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -2.963,
+   "konkurent_eur": -2.542,
+   "razlika_eur": 0.421,
+   "U_pametna": 0.758,
+   "U_konkurent": 0.289,
+   "delta": 0.468
+  },
+  {
+   "scenarij": "eval2_2028-08-28_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -1.191,
+   "konkurent_eur": -1.909,
+   "razlika_eur": -0.718,
+   "U_pametna": 0.159,
+   "U_konkurent": 0.383,
+   "delta": -0.224
+  },
+  {
+   "scenarij": "eval2_2028-09-11_vtnt",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": -1.122,
+   "konkurent_eur": -0.496,
+   "razlika_eur": 0.626,
+   "U_pametna": 0.803,
+   "U_konkurent": 0.229,
+   "delta": 0.574
+  },
+  {
+   "scenarij": "eval2_2028-09-25_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 0.448,
+   "konkurent_eur": -0.087,
+   "razlika_eur": -0.535,
+   "U_pametna": 0.232,
+   "U_konkurent": 0.441,
+   "delta": -0.21
+  },
+  {
+   "scenarij": "eval2_2028-10-09_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 2.518,
+   "konkurent_eur": 3.166,
+   "razlika_eur": 0.648,
+   "U_pametna": 0.861,
+   "U_konkurent": 0.0,
+   "delta": 0.861
+  },
+  {
+   "scenarij": "eval2_2028-10-23_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 4.27,
+   "konkurent_eur": 3.577,
+   "razlika_eur": -0.693,
+   "U_pametna": -0.021,
+   "U_konkurent": 0.391,
+   "delta": -0.412
+  },
+  {
+   "scenarij": "eval2_2028-11-06_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 6.203,
+   "konkurent_eur": 6.3,
+   "razlika_eur": 0.097
+  },
+  {
+   "scenarij": "eval2_2028-11-20_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 8.713,
+   "konkurent_eur": 8.338,
+   "razlika_eur": -0.375,
+   "U_pametna": 0.341,
+   "U_konkurent": 0.474,
+   "delta": -0.133
+  },
+  {
+   "scenarij": "eval2_2028-12-04_vtnt",
+   "najbolji_konkurent": "vlastita",
+   "pametna_eur": 9.982,
+   "konkurent_eur": 10.003,
+   "razlika_eur": 0.021
+  },
+  {
+   "scenarij": "eval2_2028-12-18_dinamicka",
+   "najbolji_konkurent": "cjenovni_prag",
+   "pametna_eur": 12.75,
+   "konkurent_eur": 11.708,
+   "razlika_eur": -1.042,
+   "U_pametna": 0.334,
+   "U_konkurent": 0.607,
+   "delta": -0.272
+  }
+ ],
+ "K1": {
+  "scenarija": 21,
+  "medijan_delta": -0.126,
+  "bolje": 8,
+  "losije": 12,
+  "izjednaceno": 1,
+  "p_vrijednost": 0.8684,
+  "ispunjen": false
+ },
+ "K2": {
+  "krsenja": [],
+  "ispunjen": true
+ },
+ "odluka": "DJELOMIČNA"
+}
