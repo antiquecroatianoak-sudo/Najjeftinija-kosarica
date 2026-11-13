@@ -309,6 +309,8 @@ def _ocijeni(sc: Scenarij, rez: dict) -> list[str]:
         n.append(f"prognoza se nije oporavila (na kraju: {k['prognoza_na_kraju']})")
     if "tarifa_izvor" in o and o["tarifa_izvor"] not in k["tarifa_izvori"]:
         n.append(f"tarifa nije iz izvora {o['tarifa_izvor']} ({k['tarifa_izvori']})")
+    if sc.starenje is None and "baterija_otpor_mohm" in k["odrzavanje"]:
+        n.append("lažna uzbuna: upozorenje o starenju baterije bez ubrzanog starenja")
     if "odrzavanje_pokazatelj" in o and o["odrzavanje_pokazatelj"] not in k["odrzavanje"]:
         n.append(f"prediktivno održavanje nije upozorilo na {o['odrzavanje_pokazatelj']}")
     return n

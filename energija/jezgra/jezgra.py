@@ -314,8 +314,16 @@ class Jezgra:
             else:
                 nedostaje = max(0.0, 2 * bojler["energija_kwh_dan"] - self.dnevno.get("bojler_kwh", 0.0))
             if self.prisutni or not self.navike_naucene:
+                # otočno: prozor do idućeg sunčanog dana (grije višak sunca, ne baterija u večernjem vrhu)
+                do_h = 6 if self.prisutni else 12
+                if not self.prisutni and not self.navike_naucene:
+                    # dok uči: FIKSNI rok (15 h, tipičan dolazak) – pomični prozor bi grijanje stalno odgađao
+                    lt = time.localtime(ts)
+                    do_h = (15 - lt.tm_hour) % 24 or 24
+                if not self.mreza_dostupna:
+                    do_h = 24
                 zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": nedostaje,
-                               "od_h": 0, "do_h": 6 if self.prisutni else 12})
+                               "od_h": 0, "do_h": do_h})
             elif dolazak is not None and dolazak <= 30:
                 zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": nedostaje,
                                "od_h": max(0, dolazak - 24), "do_h": max(1, dolazak)})
@@ -416,11 +424,23 @@ class Jezgra:
         # 3) kaskada niske baterije (otočni rad)
         if soc is not None and not mreza_dostupna:
             for t in self.cfg["trosila"]:
-                if t["prioritet"] >= 3 and soc < rezerva or t["prioritet"] >= 2 and soc < b["soc_min"]:
+                if t["prioritet"] >= 3 and soc < rezerva or t["prioritet"] >= 2 and soc <= b["soc_min"] + 0.02:
                     if not self._zasticeno(t["id"], ts):
                         self._dogadjaj("zastita", {"trosilo": t["id"], "uzrok": "niska_baterija",
                                                    "poruka": f"Baterija {soc:.0%} – isključeno: {t['naziv']}"}, ts)
                     self.zastita_do[t["id"]] = ts + 900
+
+        # 3b) vršna snaga (otočno): izmjenjivač daje najviše max_praznjenje (+ sunce). Fleksibilna trošila
+        # se gase na 10 min kad je zbroj previsok (bez titranja), a uključuju se samo uz dovoljnu rezervu snage.
+        vrsna_w = b["max_praznjenje_kw"] * 1000 * 0.9 + max(0.0, pv)
+        slobodno_w = vrsna_w - potr if not mreza_dostupna else float("inf")
+        if not mreza_dostupna and potr > vrsna_w:
+            for t in ("bojler", "pumpa"):
+                if self.releji.get(t):
+                    self.zastita_do[t] = max(self.zastita_do.get(t, 0), ts + 600)
+                    self._dogadjaj("zastita", {"trosilo": t, "uzrok": "vrsna_snaga",
+                                               "poruka": f"Otočno: potrošnja {potr:.0f} W iznad snage izmjenjivača – "
+                                                         f"{t} odgođen 10 min"}, ts)
 
         # 4) električni pastir
         n = self.pastir.n
@@ -479,6 +499,12 @@ class Jezgra:
             bojler_plan = True  # negativna cijena: grijanje vode se plaća nama
         elif self._treba_topla_voda():
             bojler_plan = True  # udobnost: voda ispod 42 °C, a stanari su tu
+        # otočno: bojler samo uz rezervu snage i za tipičan kućni vrh (štednjak, kuhalo) dok su stanari tu –
+        # kratki nestanak struje je kvar, a malo hladnija voda samo neudobnost
+        rezerva_vrha = self._rezerva_vrha(ts) if self.prisutni else 200.0
+        if bojler_plan and not mreza_dostupna and slobodno_w + (2000 if self.releji.get("bojler") else 0) \
+                < 2000 + rezerva_vrha:
+            bojler_plan = False
         self.releji["bojler"] = bojler_plan and not self._zasticeno("bojler", ts)
         for t in ("uticnice", "hladnjak"):
             self.releji[t] = not self._zasticeno(t, ts)
@@ -568,7 +594,9 @@ class Jezgra:
             t_bat = o.get("baterija_temp_c")
             hladno = t_bat is not None and t_bat < b["temp_punjenje_min_c"] + 0.5
             bez_punjenja = ts < self.zabrana_punjenja_do or soc >= b["soc_max"] or hladno
-            bez_praznjenja = soc <= b["soc_min"]
+            # s mrežom: ispod soc_min mreža preuzima. Otočno: nekritična trošila su već isključena (kaskada),
+            # pa kritična (hladnjak, usmjernik) smiju bateriju do kritične razine – bolje nego mrak.
+            bez_praznjenja = soc <= (b["soc_min"] if mreza_dostupna else b.get("soc_kriticno", b["soc_min"]))
             granica = bez_punjenja or bez_praznjenja
             if granica:
                 razlog = ("punjenje zabranjeno na hladnom" if hladno else
@@ -675,6 +703,15 @@ class Jezgra:
         if vrijednost is None:
             vrijednost = max((p["cijena"] for p in self.plan[h + 1:h + 25]), default=cijena["kupnja"])
         return cijena["prodaja"] * 0.95 - self.cfg["baterija"]["trosak_ciklusa_eur_kwh"] > vrijednost
+
+    def _rezerva_vrha(self, ts: float) -> float:
+        """Koliko snage ostaviti za kućne vrhove (štednjak, kuhalo) u ovom satu: iz naučenog profila
+        (prosjek iznad osnovnog opterećenja ×1,5), a dok sustav uči – tipična vremena obroka."""
+        h = time.localtime(ts).tm_hour
+        if self.navike_naucene:
+            profil = self.navike.prognoza(ts, 1)[0]
+            return min(2000.0, max(200.0, 1.5 * (profil - self.navike.osnova_w)))
+        return 1700.0 if h in (7, 8, 9, 12, 13, 14, 18, 19, 20) else 200.0
 
     @property
     def navike_naucene(self) -> bool:

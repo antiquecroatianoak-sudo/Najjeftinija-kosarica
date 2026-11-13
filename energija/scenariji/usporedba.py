@@ -63,36 +63,69 @@ def usporedi(scenariji: list[str], politika_pametne: dict | None = None, procesa
     return {s: ocijeni_scenarij(v) for s, v in tablica.items()}
 
 
+# Mjerila (niže = bolje) i prag ispod kojeg se razlika smatra šumom simulacije
+MJERILA = {"trosak_eur": 0.02, "bez_tople_vode_min": 15, "stres_biljaka_h": 1.0, "neisporuceno_kwh": 0.01,
+           "ograda_bez_napona": 0.002}
+
+
+def _vektor(x: dict) -> dict:
+    return {"trosak_eur": x["trosak_eur"], "bez_tople_vode_min": x["bez_tople_vode_min"],
+            "stres_biljaka_h": x["stres_biljaka_h"], "neisporuceno_kwh": x["neisporuceno_kwh"],
+            "ograda_bez_napona": 1.0 - (x["pastir"] or 0.0)}
+
+
+def _nadmasuje(a: dict, b: dict) -> bool:
+    """a nadmašuje b: nije lošija ni po jednom mjerilu (uz prag šuma), a bolja je po barem jednom."""
+    va, vb = _vektor(a), _vektor(b)
+    nije_losija = all(va[k] <= vb[k] + t for k, t in MJERILA.items())
+    bolja = any(va[k] < vb[k] - t for k, t in MJERILA.items())
+    return nije_losija and bolja
+
+
 def ocijeni_scenarij(v: dict) -> dict:
+    """Višekriterijski (Pareto): trošak, topla voda, stres biljaka, neisporučeno, ograda pod naponom.
+
+    - "dominira": pametna nadmašuje svaku referentnu strategiju,
+    - "nenadmasena": nijedna referentna je ne nadmašuje, ali neka je bolja po nekom mjerilu (kompromis),
+    - "nadmasena": neka referentna strategija je bolja ili jednaka po svemu.
+    Sigurnosno kršenje ili iznimka uvijek znači neuspjeh.
+    """
     p = v["pametna"]
     ref = {k: x for k, x in v.items() if k != "pametna"}
     najbolja_ref = min(ref, key=lambda k: ref[k]["trosak_eur"])
+    nadmasuju = [k for k, x in ref.items() if _nadmasuje(x, p)]
     nalazi = []
-    if p["trosak_eur"] > ref[najbolja_ref]["trosak_eur"] + 0.01:
-        nalazi.append(f"skuplje od '{najbolja_ref}' za {p['trosak_eur'] - ref[najbolja_ref]['trosak_eur']:.2f} €")
-    if p["bez_tople_vode_min"] > min(x["bez_tople_vode_min"] for x in ref.values()) + 30:
-        nalazi.append(f"manje udobno: {p['bez_tople_vode_min']} min bez tople vode")
-    if p["stres_biljaka_h"] > min(x["stres_biljaka_h"] for x in ref.values()) + 2:
-        nalazi.append(f"biljke pod stresom {p['stres_biljaka_h']} h")
-    if (p["pastir"] or 0) < max((x["pastir"] or 0) for x in ref.values()) - 0.001:
-        nalazi.append(f"manja pokrivenost ograde ({p['pastir']:.1%})")
     if p["krsenja"] or p["iznimke"]:
         nalazi.append("sigurnosno kršenje ili iznimka")
-    if p["neisporuceno_kwh"] > min(x["neisporuceno_kwh"] for x in ref.values()) + 0.01:
-        nalazi.append(f"više neisporučene energije ({p['neisporuceno_kwh']} kWh)")
+    if nadmasuju:
+        nalazi.append(f"nadmašuje je: {', '.join(nadmasuju)}")
+    if all(_nadmasuje(p, x) for x in ref.values()):
+        ishod = "dominira"
+    elif not nadmasuju:
+        ishod = "nenadmasena"
+    else:
+        ishod = "nadmasena"
+    kompromisi = []
+    if ishod == "nenadmasena":
+        for k, x in ref.items():
+            vp, vx = _vektor(p), _vektor(x)
+            bolje_ref = [m for m, t in MJERILA.items() if vx[m] < vp[m] - t]
+            bolje_nas = [m for m, t in MJERILA.items() if vp[m] < vx[m] - t]
+            if bolje_ref:
+                kompromisi.append(f"{k} bolja u: {', '.join(bolje_ref)}; lošija u: {', '.join(bolje_nas) or '–'}")
     vl = v["vlastita"]["trosak_eur"]
     g = p["granica_eur"]
     udio = None
     if g is not None and vl - g > 0.05:
         udio = round((vl - p["trosak_eur"]) / (vl - g), 3)
-    return {"strategije": v, "najbolja_referentna": najbolja_ref, "udio_ostvarivog": udio,
-            "nalazi": nalazi, "pametna_najbolja": not nalazi}
+    return {"strategije": v, "najbolja_referentna": najbolja_ref, "udio_ostvarivog": udio, "ishod": ishod,
+            "kompromisi": kompromisi, "nalazi": nalazi, "pametna_najbolja": ishod != "nadmasena" and not nalazi}
 
 
 def u_markdown(r: dict) -> str:
     red = ["| Scenarij | Pametna € | Vlastita € | ToU € | Cjenovni prag € | Granica € | Ostvareno od mogućeg | "
-           "Ograda pod naponom (pametna / referentne) | Bez tople vode min (P/V) | Ishod |",
-           "|---|---|---|---|---|---|---|---|---|---|"]
+           "Ograda pod naponom (pametna / referentne) | Bez tople vode min (P/V) | Stres biljaka h (P/V) | Ishod |",
+           "|---|---|---|---|---|---|---|---|---|---|---|"]
     for s, x in r.items():
         v = x["strategije"]
         trosak = {k: f"{v[k]['trosak_eur']:.2f}" for k in v}
@@ -101,10 +134,13 @@ def u_markdown(r: dict) -> str:
         udio = "–" if x["udio_ostvarivog"] is None else f"{x['udio_ostvarivog']:.0%}"
         pastir_p = v["pametna"]["pastir"] or 0
         pastir_ref = min((v[k]["pastir"] or 0) for k in v if k != "pametna")
-        ishod = "✓" if x["pametna_najbolja"] else "✗ " + "; ".join(x["nalazi"])
+        oznaka = {"dominira": "✓ dominira", "nenadmasena": "✓ nenadmašena (" + "; ".join(x["kompromisi"]) + ")",
+                  "nadmasena": "✗ " + "; ".join(x["nalazi"])}[x["ishod"]]
+        ishod = oznaka if not x["nalazi"] or x["ishod"] == "nadmasena" else "✗ " + "; ".join(x["nalazi"])
         red.append(f"| {s} | **{trosak['pametna']}** | {trosak['vlastita']} | {trosak['tou']} | "
                    f"{trosak['cjenovni_prag']} | {granica} | {udio} | {pastir_p:.1%} / {pastir_ref:.1%} | "
-                   f"{v['pametna']['bez_tople_vode_min']} / {v['vlastita']['bez_tople_vode_min']} | {ishod} |")
+                   f"{v['pametna']['bez_tople_vode_min']} / {v['vlastita']['bez_tople_vode_min']} | "
+                   f"{v['pametna']['stres_biljaka_h']} / {v['vlastita']['stres_biljaka_h']} | {ishod} |")
     return "\n".join(red)
 
 
@@ -122,7 +158,9 @@ def main(argv: list[str] | None = None) -> int:
     md = u_markdown(r)
     print(md)
     losih = [s for s, x in r.items() if not x["pametna_najbolja"]]
-    print(f"\nPametna najbolja u {len(r) - len(losih)}/{len(r)} scenarija ({time.time() - t0:.0f} s)."
+    dom = sum(1 for x in r.values() if x["ishod"] == "dominira")
+    print(f"\nPametna nenadmašena u {len(r) - len(losih)}/{len(r)} scenarija (od toga dominira u {dom}) "
+          f"({time.time() - t0:.0f} s)."
           + (f" Nije: {', '.join(losih)}" if losih else ""))
     if a.izlaz:
         a.izlaz.mkdir(parents=True, exist_ok=True)

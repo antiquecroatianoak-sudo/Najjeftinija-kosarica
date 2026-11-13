@@ -93,7 +93,7 @@ class Lokacija:
     def okolina_temp(self, ts: float) -> float:
         d = self._dan(ts)
         h = time.localtime(ts).tm_hour + time.localtime(ts).tm_min / 60
-        return d["temp"] - 6 + 7 * math.sin((h - 9) / 24 * 2 * math.pi) + self.temp_pomak
+        return d["temp"] - 5.5 + 5.5 * math.sin((h - 9) / 24 * 2 * math.pi) + self.temp_pomak  # dnevni raspon ~11 °C
 
     def naoblaka(self, ts: float, stvarna: bool = True) -> float:
         """Naoblaka dana; scenarij: "oblacno" (najavljeno) ili "nenajavljeno_oblacno" (samo stvarno)."""
@@ -205,7 +205,11 @@ class Lokacija:
         if self.releji["hladnjak"]:
             p += 90.0 if (int(ts) // 600) % 5 < 2 else 0.0
         if self.prisutni(ts):
-            p += 140 + (1600 if h in (8, 13, 19) and self.rng.random() < 0.6 else 0) + self.rng.uniform(0, 150)
+            # kuhanje: stvarni događaj od 30 min oko obroka (60 % vjerojatnosti po obroku), ne šum po koraku
+            r_obrok = random.Random(int(ts // 3600) * 977 + 3)
+            pocetak_min = r_obrok.randint(0, 30)
+            kuha = h in (8, 13, 19) and r_obrok.random() < 0.6 and pocetak_min <= time.localtime(ts).tm_min < pocetak_min + 30
+            p += 140 + (1600 if kuha else 0) + self.rng.uniform(0, 150)
             t_vani = self.okolina_temp(ts)
             if t_vani < 10:  # električno grijanje: ovisi o vremenu, ne o rasporedu
                 p += min(2000.0, 160.0 * (10 - t_vani))

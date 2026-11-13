@@ -20,6 +20,7 @@ ZADANO: dict = {
         "celija_min_v": 2.9,             # radni prag (ne apsolutni minimum 2,5 V) – štedi bateriju
         "celija_max_v": 3.5,             # radni prag ispod 3,65 V – manje trošenja
         "soc_min": 0.15,                 # ispod ovoga samo kritična trošila
+        "soc_kriticno": 0.07,            # otočno: kritična trošila smiju do ove razine (LiFePO4 podnosi)
         "soc_max": 0.90,                 # ne puniti do 100 % bez potrebe
         "max_punjenje_kw": 3.0,
         "max_praznjenje_kw": 3.0,

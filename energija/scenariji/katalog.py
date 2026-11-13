@@ -70,7 +70,7 @@ KATALOG: list[Scenarij] = [
              ocekivanja={"pastir_dostupnost_min": 0.93, "izolacija_max_min": 20, "izolacija_min_broj": 2},
              oznake=("brzi",)),
     Scenarij("starenje_baterije", "Baterija ubrzano stari: prediktivno održavanje mora upozoriti",
-             (2026, 4, 6), dani=9, korak_s=180, starenje=0.004,
+             (2026, 4, 6), dani=11, korak_s=60, starenje=0.004,
              ocekivanja={"odrzavanje_pokazatelj": "baterija_otpor_mohm"}),
 ]
 

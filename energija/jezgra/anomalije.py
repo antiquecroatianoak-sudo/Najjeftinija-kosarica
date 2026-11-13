@@ -84,18 +84,17 @@ class Trend:
         del self.tocke[:-60]
 
     def nagib(self) -> tuple[float, float] | None:
-        if len(self.tocke) < 5:
+        """Theil–Sen: medijan nagiba svih parova točaka – otporan na šum i pojedinačne stršeće dane.
+        Najmanje 7 dnevnih točaka, inače nema predviđanja (bolje šutjeti nego lažno uzbuniti)."""
+        if len(self.tocke) < 7:
             return None
-        n = len(self.tocke)
-        sx = sum(t[0] for t in self.tocke)
-        sy = sum(t[1] for t in self.tocke)
-        sxx = sum(t[0] ** 2 for t in self.tocke)
-        sxy = sum(t[0] * t[1] for t in self.tocke)
-        nazivnik = n * sxx - sx * sx
-        if abs(nazivnik) < 1e-12:
+        nagibi = sorted((b[1] - a[1]) / (b[0] - a[0]) for i, a in enumerate(self.tocke)
+                        for b in self.tocke[i + 1:] if abs(b[0] - a[0]) > 1e-9)
+        if not nagibi:
             return None
-        k = (n * sxy - sx * sy) / nazivnik
-        return k, (sy - k * sx) / n
+        k = nagibi[len(nagibi) // 2]
+        odsjecci = sorted(t[1] - k * t[0] for t in self.tocke)
+        return k, odsjecci[len(odsjecci) // 2]
 
     def dana_do(self, prag: float, raste: bool) -> float | None:
         r = self.nagib()
@@ -218,10 +217,10 @@ class Detektor:
 
     # ------------------------------------------------------------------ prediktivno
     def dnevni_pokazatelji(self, dan: float, pokazatelji: dict[str, float]) -> None:
-        if self._r_uzorci:
+        if len(self._r_uzorci) >= 3:  # premalo skokova struje u danu = nepouzdana procjena, preskoči
             srt = sorted(self._r_uzorci)
             pokazatelji = dict(pokazatelji, baterija_otpor_mohm=srt[len(srt) // 2] * 1000)
-            self._r_uzorci.clear()
+        self._r_uzorci.clear()
         for k, v in pokazatelji.items():
             if v is not None:
                 self.trendovi.setdefault(k, Trend()).dodaj(dan, v)
