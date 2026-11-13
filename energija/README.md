@@ -60,6 +60,14 @@ Simulator i lažni servis mogu se pokrenuti i zasebno:
 - `python3 -m simulator.modbus_pymodbus --modbus-port 5020 --mqtt-host <jezgra>`
 - `python3 -m simulator.mock_openmeteo --port 8080` (opcija `--kvar N` vraća 503 na prvih N zahtjeva).
 
+## Sučelje i integracija
+
+- Prikaz **Dom** (za stanara) i **Kontrolni centar** (za administratora): grafikoni uživo, odluke automatike, dijagnostika i upravljanje.
+- **API v1** s OpenAPI specifikacijom, ulogama i prijenosom uživo; zahtjevi pametne mreže za fleksibilnost; MQTT i Home Assistant discovery.
+- **Web Components** za ugradnju u bilo koju stranicu.
+
+Sve je opisano u `INTEGRACIJA.md`.
+
 ## Automatizirani scenariji i učenje politike
 
 Scenariji koriste isti fizikalni simulator s ubačenim kvarovima. Mrežni pozivi idu stvarnim kodom jezgre, uz mokirani `urlopen`. U svakom koraku čuvar provjerava sigurnosne invarijante.

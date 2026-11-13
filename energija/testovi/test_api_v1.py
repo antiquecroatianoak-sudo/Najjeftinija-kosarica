@@ -135,3 +135,41 @@ class TestApiV1(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMqttIntegracija(unittest.TestCase):
+    def test_objava_ha_najava_i_naredba(self):
+        from jezgra.integracija import MqttIntegracija
+        from jezgra.mqtt import Broker, Klijent
+        with tempfile.TemporaryDirectory() as d:
+            cfg = copy.deepcopy(konfig.ZADANO)
+            t0 = time.mktime((2026, 6, 5, 12, 0, 0, 0, 0, -1))
+            lok = Lokacija(cfg, t0, kvarovi=False)
+            sat = Sat(t0)
+            j = Jezgra(Path(d), cfg, sat=sat, uredaji=izravni_uredaji(lok))
+            for _ in range(5):
+                lok.korak(60); sat.t = lok.t; j.korak()
+            b = Broker().pokreni()
+            try:
+                k = Klijent("jezgra", port=b.port).pokreni(); k.spojen.wait(3)
+                ha = Klijent("homeassistant", port=b.port); primljeno = {}
+                ha.pri_poruci = lambda t, p: primljeno.__setitem__(t, p)
+                ha.pokreni(); ha.spojen.wait(3); ha.pretplati("#")
+                integ = MqttIntegracija(j, k)
+                time.sleep(0.3)
+                integ.objavi()
+                for _ in range(30):
+                    if "energija/stanje/pv_w" in primljeno:
+                        break
+                    time.sleep(0.1)
+                najave = [t for t in primljeno if t.startswith("homeassistant/sensor/energija_")]
+                self.assertGreaterEqual(len(najave), 8)
+                cfg_pv = json.loads(primljeno[next(t for t in najave if t.endswith("/pv_w/config"))])
+                self.assertEqual((cfg_pv["unit_of_measurement"], cfg_pv["device_class"]), ("W", "power"))
+                self.assertIn("energija/stanje/baterija_soc", primljeno)
+                self.assertTrue(integ.poruka("energija/naredbe/topla_voda", b"ON"))
+                self.assertIn("bojler", j.rucno)
+                k.zaustavi(); ha.zaustavi()
+            finally:
+                b.zaustavi()
+                j.zatvori()

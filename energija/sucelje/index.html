@@ -5,147 +5,48 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Energija</title>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="stil.css">
 </head>
 <body>
 <div id="uparivanje" class="uparivanje" hidden>
-  <form id="obrazac-uparivanja" class="kartica">
+  <form id="obrazac-uparivanja" class="kartica-uparivanja">
     <h1>Upari uređaj</h1>
-    <p class="blago">Upiši šesteroznamenkasti kod s jezgre (zaslon ili naljepnica). Kod vrijedi 15 minuta.</p>
-    <input id="kod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required>
+    <p class="blago">Upišite kod s jezgre (zaslon ili naljepnica) ili kod koji vam je dao administrator.</p>
+    <input id="kod" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{6,8}" placeholder="kod" required aria-label="Kod za uparivanje">
     <button type="submit">Upari</button>
     <p id="greska-uparivanja" class="greska" role="alert"></p>
   </form>
 </div>
 
-<main id="app" hidden>
+<div id="aplikacija" hidden>
   <header class="zaglavlje">
-    <div>
-      <div class="naziv">Energija</div>
-      <div class="blago" id="podnaslov">–</div>
+    <div class="marka">
+      <span class="logo" aria-hidden="true"></span>
+      <div><div class="naziv" id="naziv">Energija</div><div class="blago" id="podnaslov">–</div></div>
     </div>
-    <div class="status" id="status-sustava"><span class="tocka"></span><span id="status-tekst">–</span></div>
+    <div class="kontrole">
+      <div class="segment" role="radiogroup" aria-label="Prikaz" id="izbor-prikaza">
+        <button type="button" role="radio" data-prikaz="stanar">Dom</button>
+        <button type="button" role="radio" data-prikaz="admin">Kontrolni centar</button>
+      </div>
+      <button type="button" class="ikona-gumb" id="tema" aria-label="Tema: prema sustavu" title="Tema">◐</button>
+    </div>
   </header>
 
-  <section class="glavno">
-    <div class="usteda">
-      <div class="oznaka">Ušteda ovaj mjesec</div>
-      <div class="broj" id="usteda-mjesec">–</div>
-      <div class="blago" id="usteda-opis">procjena u odnosu na iste uređaje bez upravljanja</div>
-      <div class="mini">
-        <div><span class="blago">Danas</span><b id="usteda-danas">–</b></div>
-        <div><span class="blago">Samoopskrba</span><b id="samoopskrba">–</b></div>
-        <div><span class="blago">Ukupno</span><b id="usteda-ukupno">–</b></div>
-      </div>
+  <div id="filteri" class="filteri" hidden>
+    <div class="segment" role="radiogroup" aria-label="Razdoblje" id="izbor-raspona">
+      <button type="button" role="radio" data-raspon="6h">6 h</button>
+      <button type="button" role="radio" data-raspon="24h">24 h</button>
+      <button type="button" role="radio" data-raspon="48h">48 h</button>
+      <button type="button" role="radio" data-raspon="7d">7 dana</button>
+      <button type="button" role="radio" data-raspon="30d">30 dana</button>
     </div>
-    <div class="tok kartica" aria-label="Tok energije">
-      <svg viewBox="0 0 320 200" id="tok-svg" role="img" aria-label="Tok energije sada">
-        <defs><marker id="strelica" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8z" fill="currentColor"/></marker></defs>
-        <g class="cvor" transform="translate(160 34)"><circle r="26"/><text y="-4">Sunce</text><text y="12" id="t-pv" class="vrijednost">–</text></g>
-        <g class="cvor" transform="translate(60 160)"><circle r="26"/><text y="-4">Baterija</text><text y="12" id="t-bat" class="vrijednost">–</text></g>
-        <g class="cvor" transform="translate(160 160)"><circle r="26"/><text y="-4">Kuća</text><text y="12" id="t-kuca" class="vrijednost">–</text></g>
-        <g class="cvor" transform="translate(260 160)"><circle r="26"/><text y="-4">Mreža</text><text y="12" id="t-mreza" class="vrijednost">–</text></g>
-        <path id="l-pv-kuca" class="linija" d="M160 62 L160 132"/>
-        <path id="l-pv-bat" class="linija" d="M140 54 L78 138"/>
-        <path id="l-bat-kuca" class="linija" d="M88 160 L132 160"/>
-        <path id="l-mreza-kuca" class="linija" d="M232 160 L188 160"/>
-      </svg>
-    </div>
-  </section>
+    <span class="blago" id="uzivo-oznaka"><span class="puls" aria-hidden="true"></span> uživo</span>
+  </div>
 
-  <section class="mreza-kartica">
-    <article class="kartica">
-      <h2>Baterija</h2>
-      <div class="prsten-omot">
-        <svg viewBox="0 0 120 120" class="prsten"><circle cx="60" cy="60" r="50" class="podloga"/><circle cx="60" cy="60" r="50" id="prsten-soc" class="vrijednost-prsten" pathLength="100" stroke-dasharray="0 100"/><line id="prsten-rezerva" x1="60" y1="4" x2="60" y2="16" class="rezerva"/></svg>
-        <div class="prsten-tekst"><b id="soc">–</b><span class="blago" id="bat-temp">–</span></div>
-      </div>
-      <p class="blago" id="bat-opis">–</p>
-    </article>
-
-    <article class="kartica">
-      <h2>Električni pastir</h2>
-      <div id="pastir-dionice" class="dionice"></div>
-      <p id="pastir-opis" class="blago">–</p>
-    </article>
-
-    <article class="kartica">
-      <h2>Navodnjavanje</h2>
-      <div id="zone"></div>
-      <p id="navodnjavanje-opis" class="blago">–</p>
-    </article>
-
-    <article class="kartica siroka">
-      <h2>Sljedećih 36 sati</h2>
-      <svg viewBox="0 0 640 170" id="plan-svg" role="img" aria-label="Plan: cijena, sunce i napunjenost"></svg>
-      <div class="legenda"><span><i class="l-pv"></i>Sunce (prognoza)</span><span><i class="l-soc"></i>Plan napunjenosti</span><span><i class="l-cijena"></i>Cijena</span></div>
-    </article>
-
-    <article class="kartica">
-      <h2>Upozorenja i održavanje</h2>
-      <ul id="upozorenja" class="popis"></ul>
-    </article>
-
-    <article class="kartica">
-      <h2>Sustav</h2>
-      <dl id="sustav" class="sustav"></dl>
-    </article>
-
-    <article class="kartica siroka">
-      <h2>Zašto sustav ovo radi</h2>
-      <ul id="odluke" class="odluke"></ul>
-    </article>
-
-    <article class="kartica siroka">
-      <details id="napredno">
-        <summary>Napredne postavke</summary>
-        <div class="napredno-mreza">
-          <div>
-            <h3>Rubni AI</h3>
-            <label class="prekidac"><input type="checkbox" id="ai-ukljucen"> Prognoza potrošnje kvantiziranim modelom</label>
-            <p class="blago" id="ai-stanje">–</p>
-            <dl id="ai-detalji" class="sustav"></dl>
-            <button type="button" class="gumb sporedno" id="ai-provjera">Ponovno izmjeri memoriju i CPU</button>
-          </div>
-          <div>
-            <h3>Baterija – ručno premošćivanje</h3>
-            <div class="izbor" role="radiogroup" id="bat-nacin">
-              <label><input type="radio" name="bn" value="auto"> Automatski (preporučeno)</label>
-              <label><input type="radio" name="bn" value="vlastita"> Samo vlastita potrošnja</label>
-              <label><input type="radio" name="bn" value="bez_punjenja_iz_mreze"> Ne puni iz mreže</label>
-              <label><input type="radio" name="bn" value="rucno"> Ručna snaga</label>
-            </div>
-            <div class="rucno" id="rucno-polja" hidden>
-              <label>Snaga (W, + puni / − prazni) <input type="number" id="rucno-w" step="100" value="0"></label>
-              <label>Trajanje (min) <input type="number" id="rucno-min" min="5" max="480" value="60"></label>
-            </div>
-            <button type="button" id="spremi-napredno">Primijeni</button>
-            <p class="blago">Sigurnosne granice (napon, temperatura, najmanja i najveća napunjenost) i zaštita pastira
-              uvijek imaju prednost i ne mogu se isključiti.</p>
-            <p id="napredno-poruka" class="blago" role="status"></p>
-          </div>
-          <div>
-            <h3>Trošila – ručno</h3>
-            <div class="gumbi" id="rucna-trosila"></div>
-            <p class="blago">Ručna naredba traje 30 min, zatim se vraća automatika. Pumpa radi samo kroz navodnjavanje.</p>
-          </div>
-        </div>
-      </details>
-    </article>
-
-    <article class="kartica">
-      <h2>Izvještaj o učinku</h2>
-      <p class="blago">Potpisan ključem jezgre – kupac može provjeriti da brojke nisu mijenjane.</p>
-      <div class="gumbi">
-        <a class="gumb" id="izv-7" href="#" data-dana="7" data-format="html">7 dana</a>
-        <a class="gumb" id="izv-30" href="#" data-dana="30" data-format="html">30 dana</a>
-        <a class="gumb sporedno" href="#" data-dana="30" data-format="csv">CSV</a>
-        <a class="gumb sporedno" href="#" data-dana="30" data-format="json">JSON</a>
-      </div>
-    </article>
-  </section>
-  <footer class="podnozje blago" id="podnozje">Radi lokalno · bez interneta nastavlja autonomno</footer>
-</main>
-<script src="app.js"></script>
+  <main id="sadrzaj"></main>
+  <footer class="podnozje blago">Radi lokalno · bez interneta nastavlja autonomno · <a href="/api/v1/openapi.json">API v1</a> · <a href="primjer-ugradnje.html">primjer ugradnje</a></footer>
+</div>
+<script type="module" src="app.js"></script>
 </body>
 </html>

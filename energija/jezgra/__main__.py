@@ -150,6 +150,11 @@ def main(argv: list[str] | None = None) -> int:
     nadzor.dodaj("otkrivanje", registar.skeniraj,
                  lambda: 300.0 if any(u.protokol.startswith("modbus") for u in j.uredaji) else 15.0, rok_s=120)
     nadzor.dodaj("oblak", j.sinkronizacija.korak, lambda: 900.0, rok_s=120)
+    # kućna automatika / pametna mreža: stanje na MQTT + Home Assistant discovery
+    from .integracija import MqttIntegracija
+    registar.integracija = MqttIntegracija(j, registar.mqtt)
+    nadzor.dodaj("mqtt_objava", registar.integracija.objavi,
+                 lambda: 30.0 if j.nacin in ("NORMALNO", "PRILIKA") else 300.0, rok_s=30)
     j.nadzor = nadzor
 
     def kraj(*_):

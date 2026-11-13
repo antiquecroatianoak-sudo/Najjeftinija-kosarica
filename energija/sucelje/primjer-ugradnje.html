@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Primjer ugradnje</title>
+<style>
+  /* Stranica "domaćin" (npr. portal operatora ili kućna automatika) – vlastiti izgled, komponente se prilagođavaju */
+  body { margin: 0; font: 15px/1.5 Georgia, serif; background: #eef1f4; color: #1b2733; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  h1 { grid-column: 1 / -1; margin: 0; font-weight: normal; }
+  /* tema komponenti preko CSS varijabli – bez diranja u njihov kod */
+  e-usteda, e-bojler, e-tok, e-pastir { --e-naglasak: #0b5cad; --e-radijus: 10px; --e-povrsina: #ffffff; --e-font: system-ui, sans-serif; }
+  pre { grid-column: 1 / -1; background: #fff; padding: 12px; border-radius: 10px; overflow: auto; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Portal: moja vikendica</h1>
+  <!-- api = adresa jezgre (prazno = ista adresa); token = token s ulogom "stanar" ili "integracija";
+       tema="svijetla" jer ovaj portal ima samo svijetlu temu -->
+  <e-usteda prikaz="jednostavno" tema="svijetla"></e-usteda>
+  <e-tok tema="svijetla"></e-tok>
+  <e-bojler prikaz="napredno" raspon="24h" tema="svijetla"></e-bojler>
+  <e-pastir prikaz="jednostavno" tema="svijetla"></e-pastir>
+  <pre>&lt;script type="module" src="https://&lt;jezgra&gt;/komponente/komponente.js"&gt;&lt;/script&gt;
+&lt;e-usteda api="https://&lt;jezgra&gt;" token="…" prikaz="jednostavno"&gt;&lt;/e-usteda&gt;
+
+Drugi izvor (portal na drugoj domeni): u postavke.json jezgre dodati
+  "api": {"cors_izvori": ["https://portal.primjer"]}</pre>
+</main>
+<script type="module" src="komponente/komponente.js"></script>
+</body>
+</html>

@@ -1,5 +1,33 @@
 # Energija – zapis stanja
 
+## 13.11.2026. 17:54 CET (Europe/Zagreb) – modularno sučelje i čisti API-ji
+
+### Dogovoreno (vlasnik, 13.11.2026.)
+- Modularni sustav s čistim API-jima za ugradnju u pametne mreže i druge sustave.
+- Premium modularno sučelje: interaktivni grafikoni uživo (uštede, potrošnja, bojler, sunce, pastir, navodnjavanje),
+  prebacivanje između prikaza za stanara i kontrolnog centra s dijagnostikom.
+
+### Implementirano i testirano
+- **API v1:** `jezgra/api_v1.py`, OpenAPI 3.1, uloge stanar / integracija / administrator, pozivnice, SSE uživo, CORS
+  (zadano isključen), vremenske serije (`jezgra/povijest.py`), dnevne uštede.
+- **Pametna mreža:** zahtjevi za fleksibilnost (ograniči uvoz, ograniči izvoz, povećaj potrošnju) i procjena fleksibilnosti.
+- **Kućna automatika:** MQTT objava stanja i Home Assistant discovery (`jezgra/integracija.py`). Vlastite objave se ne
+  prepoznaju kao uređaji (provjereno).
+- **Sučelje:** Web Components (`sucelje/komponente/`), SDK (`sucelje/sdk/`), motor grafikona (`graf.js`) i ljuska
+  (`index.html`, `app.js`). Paleta je validirana skriptom (CVD i kontrast, obje teme). Stari `app.js` i `app.css` su uklonjeni.
+- **Testovi:** 57/57, uključujući `testovi/test_api_v1.py` (stvarni HTTP: uloge, pozivnice, SSE, OpenAPI pokriva sve
+  rute, CORS, zahtjevi mreže, MQTT/HA). `provjera/pokreni_lokalno.sh`: 15/15.
+- **Preglednik (Chromium):**
+  - administrator na 1360 px, svijetla i tamna tema, 24 h i 7 dana; stanar na Pixel 7; primjer ugradnje;
+  - bez JS grešaka i bez vodoravnog pomicanja; stanaru se kontrolni centar ne nudi;
+  - popravljene greške: gubitak promjene raspona tijekom učitavanja, preklapanje oznaka osi X, ponovljene oznake osi Y,
+    kontrast u primjeru ugradnje.
+
+### Nije provjereno
+- Stvarni Home Assistant, stvarni operator mreže / OpenADR (ugovor API-ja postoji; OpenADR nije implementiran).
+- Čitač zaslona; provjereni su samo ARIA oznake, rad s tipkovnicom i prikaz u obliku tablice.
+
+
 ## 13.11.2026. (Europe/Zagreb) – značajnost prema konkurenciji: unaprijed zadani kriterij i dvije neovisne ocjene
 
 - **Kriterij:** zadan prije analize (`KRITERIJ_ZNACAJNOSTI.md`, commit `c049e77`) i dopunjen K1‑R prije 2. ocjene (`9dee073`).

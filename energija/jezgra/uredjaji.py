@@ -31,6 +31,11 @@ class Registar:
         self.j._dogadjaj("uredaj", {"poruka": f"Prepoznat uređaj {u.id} ({u.tip}, {u.protokol})", **u.opis()})
 
     def _poruka(self, tema: str, poruka: bytes) -> None:
+        integ = getattr(self, "integracija", None)
+        if integ and integ.poruka(tema, poruka):
+            return
+        if tema.startswith(("energija/stanje/", "homeassistant/sensor/energija_", "homeassistant/button/energija_")):
+            return  # vlastite objave jezgre nisu uređaji
         if tema.startswith(("energija/otkrij/", "homeassistant/")) and tema.endswith(("config",)) or \
                 tema.startswith("energija/otkrij/"):
             u = iz_najave(tema, poruka, self.mqtt.objavi)
