@@ -195,3 +195,24 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - ekstremno: nenadmašena 8/8, dominira 7/8.
 - **GitLab razvoj, commit 7cd6ce56, cjevovod 3078397405:** svih 7 poslova prošlo.
 - **Spajanje u main nije izvršeno:** automatska zaštita odbila je spajanje razvoj → main. Treba izričito odobrenje vlasnika ili spajanje u GitLab sučelju.
+
+## 17.11.2026. 13:49 (Europe/Zagreb) – spajanje u main, opoziv tokena, rigorozno testiranje
+
+- **Spojeno:** razvoj → main, MR !1, merge commit 7afb783d. Cjevovod 3078503196 na main: svih 7 poslova uspjeh.
+- **Tokeni opozvani:** "Api" i "Claude-transfer2". Za oba GitLab nakon opoziva vraća 401.
+- **Nalaz 1 – neponovljiva simulacija.** Odluke su ovisile o opterećenju računala:
+  - način rada prema load average;
+  - provjera memorije za AI;
+  - vremenski proračun treniranja.
+
+  Isti tjedan davao je 40–222 min bez tople vode. Ispravak (commit 0c3fcd1): pokretač scenarija glumi referentni uređaj, a proračun treniranja se u simulaciji ne mjeri. Pet pokretanja (4 pod opterećenjem) daje identične KPI; dodan je test.
+
+  **Posljedica:** sve ranije presude (K1/K2) bile su izložene tom šumu.
+- **Nalaz 2 – testovi ovisni o zoni računala.** Lokacija je u Hrvatskoj, a sat u drugoj zoni. Testovi sada rade u zoni lokacije; ispravljen je i test koji prelazi ljetno vrijeme. 68/68 testova u 5 zona.
+- **Ponovljive presude**, stari model bojlera, commit 0c3fcd1:
+  - katalog: NEUSPJEŠNA (K1 p = 0,23; K2: zima_otocno_hladno topla voda 2808 prema 2776 min);
+  - ocjena 2027.: DJELOMIČNA (K1 nije, K2 jest);
+  - ocjena 2028.: NEUSPJEŠNA (K1 nije; K2: 2028-04-24 VT/NT, 218 prema 198 min);
+  - ocjena 2028. ravnopravno: DJELOMIČNA (K1-R ispunjen, 21/1, p < 0,001; K2 pao na toploj vodi u 2 tjedna);
+  - stres (sintetički): 0 kršenja, K1 p = 0,09.
+- **Zaključak:** glavna slabost je topla voda. Sljedeći korak je prediktivno upravljanje spremnikom (zasebna grana ccr-dt-rad, commit bf25e2a); usporedbe s njim su u tijeku.
