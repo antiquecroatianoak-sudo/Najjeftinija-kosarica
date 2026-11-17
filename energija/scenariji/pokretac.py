@@ -229,7 +229,12 @@ def _pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = 
     kpi = _kpi(izv, dog, lok, cuvar, mok, prognoza_izvori, tarifa_izvori, odrzavanje)
     kpi.update(usporedivi_trosak(sati, cfg, sc.soc0))
     kpi.update({"bez_tople_vode_min": round(lok.bez_tople_vode_min), "stres_biljaka_h": round(lok.stres_biljaka_h, 1),
-                "voda_min": round(lok.voda_min)})
+                "voda_min": round(lok.voda_min),
+                # zaštita od legionele (mjeri simulator): najveći razmak između stvarnih dezinfekcija i kašnjenje
+                "legionela_ciklusa": len(lok.legionela_ciklusi) - 1,
+                "legionela_max_razmak_dana": round(lok.legionela_max_razmak_dana(), 2),
+                "legionela_kasnjenje_dana": round(max(0.0, lok.legionela_max_razmak_dana() -
+                                                      cfg["spremnik"]["legionela"]["period_dana"]), 2)})
     kpi["iznimke"] = len(iznimke)
     kpi["preklapanja"] = dict(getattr(j, "preklapanja", {}))
     rez = {"scenarij": sc.ime, "opis": sc.opis, "kpi": kpi, "krsenja": cuvar.krsenja, "iznimke": iznimke[:2],

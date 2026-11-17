@@ -411,7 +411,11 @@ class Jezgra:
         if leg.aktivno(ts) and (leg.drzanje_s > 0 or (x and x.get("legionela")) or leg.rok_h(ts) <= 0
                                 and ts - (leg.zadnja + leg.p["period_dana"] * 86400) > 24 * 3600):
             if t < leg.cilj_c or (leg.drzanje_s > 0 and t < 60.5):
-                gr, dz = True, t < sp["dt_max_c"]
+                # dizalica topline do svoje granice, grijač tek za zadnjih nekoliko stupnjeva (prednost dizalici);
+                # ako je ciklus više od dana zakasnio, grijač pomaže odmah
+                dz = t < sp["dt_max_c"]
+                zakasnio = ts - (leg.zadnja + leg.p["period_dana"] * 86400) > 24 * 3600
+                gr = t >= sp["dt_max_c"] - 1.0 or zakasnio or leg.drzanje_s > 0
                 odluka, razlog = "zaštita od legionele", (f"ciklus > 60 °C (cilj {leg.cilj_c:.1f} °C, držanje "
                                                           f"{leg.drzanje_s / 60:.0f}/{leg.p['drzanje_min']:.0f} min)")
         # udobnost ispred plana: stanari su tu, a voda je ispod granice (prognoza potrošnje je promašila)
