@@ -216,6 +216,7 @@ def pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = N
     kpi.update({"bez_tople_vode_min": round(lok.bez_tople_vode_min), "stres_biljaka_h": round(lok.stres_biljaka_h, 1),
                 "voda_min": round(lok.voda_min)})
     kpi["iznimke"] = len(iznimke)
+    kpi["preklapanja"] = dict(getattr(j, "preklapanja", {}))
     rez = {"scenarij": sc.ime, "opis": sc.opis, "kpi": kpi, "krsenja": cuvar.krsenja, "iznimke": iznimke[:2],
            "trajanje_s": round(trajanje, 1), "koraka": int(sc.dani * 86400 / sc.korak_s)}
     rez["neuspjesi"] = _ocijeni(sc, rez)

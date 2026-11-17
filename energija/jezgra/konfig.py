@@ -57,7 +57,11 @@ ZADANO: dict = {
     "politika": {"rezerva_dodatak": 0.0, "cuvanje_faktor": 1.0, "trosak_ciklusa_plan": None,
                  "strategija": "pametna", "nadzor_pastira": True, "zastita_pumpe": True,
                  # prodaja energije iz baterije u mrežu pri visokoj izvoznoj cijeni (isključiti ako priključak to ne dopušta)
-                 "izvoz_iz_baterije": True},
+                 "izvoz_iz_baterije": True,
+                 # prag šuma (stabilnost): način rada baterije drži se najmanje min_trajanje_baterija_s (zaštita,
+                 # ručne naredbe i zahtjevi mreže djeluju odmah). Mrtva zona cijene i zadržavanje bojlera su
+                 # podesivi, ali zadano isključeni: u simulaciji su podizali trošak (vidi STANJE.md, 17.11.2026.)
+                 "prag_cijene_eur_kwh": 0.0, "min_trajanje_baterija_s": 900, "min_trajanje_bojler_s": 0},
     "prognoza": {"url": "https://api.open-meteo.com/v1/forecast"},
     "otkrivanje": {"multicast": "239.255.70.70", "port": 47070, "modbus_hostovi": [], "modbus_jedinice": [1, 2, 3]},
     "trosila": [

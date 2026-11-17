@@ -110,6 +110,10 @@ class Jezgra:
         self.mreza_dostupna = self.cfg["mreza"]["dostupna"]
         self.rucno: dict[str, tuple[bool, float]] = {}  # ručne naredbe s aplikacije (trošilo -> (stanje, do))
         self.kod_uparivanja: str | None = None
+        # prag šuma: zadnji način baterije / stanje bojlera iz plana i od kada vrijede; broj preklapanja
+        self._bat_nacin: tuple[str, float | None, float] | None = None  # (kategorija, snaga, od_ts)
+        self._bojler_plan: tuple[bool, float] | None = None
+        self.preklapanja = {"baterija": 0, "bojler": 0}
 
         # --- oporavak bez gubitka: ponovi telemetriju nakon snimke
         self._zakljuceni = {z["d"]["ts"] for z in self.arhiva.citaj(0, {"sat"})}
@@ -514,6 +518,8 @@ class Jezgra:
             bojler_plan = True  # negativna cijena: grijanje vode se plaća nama
         elif self._treba_topla_voda():
             bojler_plan = True  # udobnost: voda ispod 42 °C, a stanari su tu
+        if strategija == "pametna":  # prag šuma; vršna snaga i zahtjevi mreže (niže) i dalje djeluju odmah
+            bojler_plan = self._zadrzi_bojler(bojler_plan, ts)
         # otočno: bojler samo uz rezervu snage i za tipičan kućni vrh (štednjak, kuhalo) dok su stanari tu –
         # kratki nestanak struje je kvar, a malo hladnija voda samo neudobnost
         rezerva_vrha = self._rezerva_vrha(ts) if self.prisutni else 200.0
@@ -609,6 +615,8 @@ class Jezgra:
                     cmd = 0.0  # čuvaj bateriju za skuplje sate
                     odl = ("čuva energiju", f"mreža sada {cijena['kupnja'] * 100:.1f} c jeftinija je od energije u bateriji "
                            "(skuplji sati ili trošak ponovnog punjenja i trošenja)", "plan")
+            if strategija == "pametna" and nacin_b == "auto":
+                cmd, odl = self._zadrzi_bateriju(cmd, odl, ts)
             if self.kalibracija.get("faza", "").startswith("mjerenje"):
                 cmd = 0.0
                 odl = ("miruje", "kalibracija brojila", "kalibracija")
@@ -688,6 +696,44 @@ class Jezgra:
             self.napravi_kopiju(ts)
         return {"ts": ts, "nacin": self.nacin, "pastir": self.pastir.nacin}
 
+    # ------------------------------------------------------------------ prag šuma (stabilnost)
+    @staticmethod
+    def _kategorija(cmd: float | None) -> str:
+        return "auto" if cmd is None else "puni" if cmd > 1 else "prazni" if cmd < -1 else "cuva"
+
+    def _zadrzi_bateriju(self, cmd: float | None, odl: tuple, ts: float) -> tuple[float | None, tuple]:
+        """Novi način baterije iz plana vrijedi tek kad stari traje barem min_trajanje_baterija_s.
+        Sigurnosne granice primjenjuju se nakon ovoga, pa zadržavanje nikad ne zaobilazi zaštitu."""
+        nova = self._kategorija(cmd)
+        min_s = self.cfg["politika"].get("min_trajanje_baterija_s", 0)
+        if self._bat_nacin is None or nova == self._bat_nacin[0]:
+            self._bat_nacin = (nova, cmd, self._bat_nacin[2] if self._bat_nacin else ts)
+            return cmd, odl
+        stara, stari_cmd, od = self._bat_nacin
+        if ts - od < min_s:
+            preostalo = min_s - (ts - od)
+            return stari_cmd, (odl[0] if stara == nova else self.odluke.get("baterija", {}).get("odluka", stara),
+                               f"zadržava način još {preostalo / 60:.0f} min (prag šuma: bez titranja na malim "
+                               f"promjenama)", "plan")
+        self._bat_nacin = (nova, cmd, ts)
+        self.preklapanja["baterija"] += 1
+        return cmd, odl
+
+    def _zadrzi_bojler(self, plan: bool, ts: float) -> bool:
+        min_s = self.cfg["politika"].get("min_trajanje_bojler_s", 0)
+        if self._bojler_plan is None:
+            self._bojler_plan = (plan, ts)
+            return plan
+        staro, od = self._bojler_plan
+        if plan == staro:
+            return plan
+        # otočno gašenje radi vršne snage ide kroz zaštitu (odmah); ovdje se zadržava samo odluka plana
+        if ts - od < min_s:
+            return staro
+        self._bojler_plan = (plan, ts)
+        self.preklapanja["bojler"] += 1
+        return plan
+
     def _vrijednost_kwh(self, h: int, soc: float, sigurnost: float = 1.0) -> tuple[float | None, bool]:
         """Koliko vrijedi kWh u bateriji sada? Vraća (vrijednost €/kWh, oskudno).
 
@@ -723,9 +769,10 @@ class Jezgra:
             return False
         faktor = self.cfg["politika"]["cuvanje_faktor"]
         trosenje = self.cfg["baterija"]["trosak_ciklusa_eur_kwh"]
+        prag = self.cfg["politika"].get("prag_cijene_eur_kwh", 0.0)  # mrtva zona: sitne razlike ne mijenjaju odluku
         if punjenje:  # punjenje iz mreže samo kad će energija sigurno trebati u skupljim satima
             return oskudno and vrijednost * 0.9 * faktor - 2 * trosenje > cijena["kupnja"]
-        return cijena["kupnja"] < vrijednost * faktor - (trosenje if oskudno else 0.0)
+        return cijena["kupnja"] < vrijednost * faktor - (trosenje if oskudno else 0.0) - prag
 
     def _isplati_izvoz(self, h: int, cijena: dict, soc: float) -> bool:
         """Prodati energiju iz baterije u mrežu sada? Samo ako izvozna cijena (uz gubitke i trošenje)
@@ -740,7 +787,8 @@ class Jezgra:
         vrijednost, _ = self._vrijednost_kwh(h, soc, sigurnost=1.5 if self.navike_naucene else 2.0)
         if vrijednost is None:
             vrijednost = max((p["cijena"] for p in self.plan[h + 1:h + 25]), default=cijena["kupnja"])
-        return cijena["prodaja"] * 0.95 - self.cfg["baterija"]["trosak_ciklusa_eur_kwh"] > vrijednost
+        prag = self.cfg["politika"].get("prag_cijene_eur_kwh", 0.0)
+        return cijena["prodaja"] * 0.95 - self.cfg["baterija"]["trosak_ciklusa_eur_kwh"] > vrijednost + prag
 
     def _rezerva_vrha(self, ts: float) -> float:
         """Koliko snage ostaviti za kućne vrhove (štednjak, kuhalo) u ovom satu: iz naučenog profila

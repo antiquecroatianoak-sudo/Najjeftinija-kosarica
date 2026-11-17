@@ -74,11 +74,23 @@ def _vektor(x: dict) -> dict:
             "ograda_bez_napona": 1.0 - (x["pastir"] or 0.0)}
 
 
+# Prag šuma troška (odluka vlasnika 17.11.2026., donesena NAKON rezultata cjevovoda 3078153762, gdje je
+# cjenovni_prag u nenajavljena_naoblaka bio 0,04 € jeftiniji): razlika troška manja od 0,05 € ili od 1 %
+# većeg troška smatra se izjednačenjem. Ne mijenja unaprijed zadani kriterij značajnosti (K1/K2).
+PRAG_TROSKA_EUR, PRAG_TROSKA_UDIO = 0.05, 0.01
+
+
+def _prag(k: str, x: float, y: float) -> float:
+    if k == "trosak_eur":
+        return max(PRAG_TROSKA_EUR, PRAG_TROSKA_UDIO * max(abs(x), abs(y)))
+    return MJERILA[k]
+
+
 def _nadmasuje(a: dict, b: dict) -> bool:
     """a nadmašuje b: nije lošija ni po jednom mjerilu (uz prag šuma), a bolja je po barem jednom."""
     va, vb = _vektor(a), _vektor(b)
-    nije_losija = all(va[k] <= vb[k] + t for k, t in MJERILA.items())
-    bolja = any(va[k] < vb[k] - t for k, t in MJERILA.items())
+    nije_losija = all(va[k] <= vb[k] + _prag(k, va[k], vb[k]) for k in MJERILA)
+    bolja = any(va[k] < vb[k] - _prag(k, va[k], vb[k]) for k in MJERILA)
     return nije_losija and bolja
 
 
@@ -109,8 +121,8 @@ def ocijeni_scenarij(v: dict) -> dict:
     if ishod == "nenadmasena":
         for k, x in ref.items():
             vp, vx = _vektor(p), _vektor(x)
-            bolje_ref = [m for m, t in MJERILA.items() if vx[m] < vp[m] - t]
-            bolje_nas = [m for m, t in MJERILA.items() if vp[m] < vx[m] - t]
+            bolje_ref = [m for m in MJERILA if vx[m] < vp[m] - _prag(m, vx[m], vp[m])]
+            bolje_nas = [m for m in MJERILA if vp[m] < vx[m] - _prag(m, vx[m], vp[m])]
             if bolje_ref:
                 kompromisi.append(f"{k} bolja u: {', '.join(bolje_ref)}; lošija u: {', '.join(bolje_nas) or '–'}")
     vl = v["vlastita"]["trosak_eur"]
