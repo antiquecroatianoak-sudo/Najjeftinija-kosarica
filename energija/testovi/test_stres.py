@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import lokalno_vrijeme  # noqa: E402,F401  (zona simulirane lokacije)
 
 from jezgra.prognoza import zracenje_vedro  # noqa: E402
 from stres import povijest as P  # noqa: E402

@@ -12,6 +12,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import lokalno_vrijeme  # noqa: E402,F401  (zona simulirane lokacije)
 
 from jezgra import konfig  # noqa: E402
 from jezgra.api import pokreni_api  # noqa: E402

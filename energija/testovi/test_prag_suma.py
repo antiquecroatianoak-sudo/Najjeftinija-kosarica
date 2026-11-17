@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import lokalno_vrijeme  # noqa: E402,F401  (zona simulirane lokacije)
 
 from jezgra import konfig  # noqa: E402
 from jezgra.jezgra import Jezgra  # noqa: E402
@@ -68,3 +69,20 @@ class TestPragTroska(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPonovljivost(unittest.TestCase):
+    """Isti scenarij mora dati iste brojke bez obzira na opterećenje računala (referentni uređaj u pokretaču)."""
+
+    def test_isti_rezultat_pod_razlicitim_opterecenjem(self):
+        import os
+        from unittest import mock
+        from scenariji import pokretac
+        from scenariji.katalog import po_imenu
+        sc = po_imenu("bunar_presusio")
+        a = pokretac.pokreni(sc)["kpi"]
+        with mock.patch.object(os, "getloadavg", return_value=(50.0, 50.0, 50.0)):  # "preopterećeno" računalo
+            b = pokretac.pokreni(sc)["kpi"]
+        self.assertEqual(a, b)  # svi KPI identični
+        for k in ("trosak_eur", "bez_tople_vode_min", "preklapanja"):
+            self.assertEqual(a[k], b[k], k)

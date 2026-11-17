@@ -18,6 +18,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import lokalno_vrijeme  # noqa: E402,F401  (zona simulirane lokacije)
 
 from jezgra import konfig  # noqa: E402
 from jezgra.anomalije import Detektor, Trend  # noqa: E402
@@ -385,7 +386,7 @@ class TestOdluke(unittest.TestCase):
                 lt = time.localtime(ts)
                 prisutni = lt.tm_wday == 5 and 8 <= lt.tm_hour < 22
                 n.dodaj(ts, 900.0 if prisutni else 60.0, 600)
-        petak = pocetak + 3 * 7 * 86400 + 4 * 86400 + 12 * 3600
+        petak = time.mktime((2026, 3, 27, 12, 0, 0, 0, 0, -1))  # petak 12 h lokalno (ne fiksne sekunde: ljetno vrijeme)
         p = n.parametri(petak, cfg())
         self.assertEqual(p["sljedeci_dolazak_h"], 20)  # subota 8 h
         self.assertGreater(p["rezerva_soc"], cfg()["baterija"]["soc_min"])

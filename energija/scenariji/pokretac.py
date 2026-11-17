@@ -156,7 +156,22 @@ class Cuvar:
                 self._bez_napona[k] = 0
 
 
+# Referentni uređaj (Raspberry Pi klase, mirno opterećenje): u simulaciji odluke ne smiju ovisiti o računalu
+# na kojem se simulacija vrti (opterećenje CPU-a, slobodna memorija, brzina) – inače rezultati nisu ponovljivi.
+REFERENTNI_UREDAJ = {"jezgri": 4, "load1": 0.3, "mem_slobodno_mb": 512, "rss_mb": 40}
+REFERENTNI_RESURSI = {"mem_dostupno_mb": 512.0, "mem_ukupno_mb": 1024.0, "rss_mb": 40.0, "cgroup_limit_mb": None,
+                      "cgroup_zauzeto_mb": None, "load1": 0.3, "jezgri": 4}
+
+
 def pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = None, ispis: bool = False) -> dict:
+    from jezgra import resursi, rubni_ai
+    with mock.patch.object(resursi, "opterecenje", lambda: dict(REFERENTNI_UREDAJ)), \
+            mock.patch.object(rubni_ai, "procijeni_resurse", lambda: dict(REFERENTNI_RESURSI)), \
+            mock.patch.object(rubni_ai, "PRORACUN_AKTIVAN", False):
+        return _pokreni(sc, cfg_izmjene, mapa, ispis)
+
+
+def _pokreni(sc: Scenarij, cfg_izmjene: dict | None = None, mapa: Path | None = None, ispis: bool = False) -> dict:
     cfg = copy.deepcopy(konfig.ZADANO)
     cfg["mreza"]["dostupna"] = sc.mreza
     for k, v in (cfg_izmjene or {}).items():

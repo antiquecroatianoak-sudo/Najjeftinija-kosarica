@@ -22,6 +22,9 @@ import time
 from array import array
 
 ULAZA, SKRIVENIH = 10, 8
+# Na uređaju treniranje ima vremenski proračun (nikad ne zadržava upravljački ciklus). U simulaciji se isključuje,
+# jer bi rezultat inače ovisio o brzini i opterećenju računala na kojem se simulacija vrti (neponovljivo).
+PRORACUN_AKTIVAN = True
 MJERILO_W = 2000.0  # normalizacija snage
 MAX_ISPRAVAK_W = 1500.0
 
@@ -188,7 +191,7 @@ class RubniModel:
                       for u in prov)
             if najbolja is None or mae < najbolja[0]:
                 najbolja = (mae, lam)
-            if (time.perf_counter() - t0) * 1000 > proracun_ms:
+            if PRORACUN_AKTIVAN and (time.perf_counter() - t0) * 1000 > proracun_ms:
                 break  # nikad ne zadržavaj upravljački ciklus
         if najbolja is None:
             return 0
