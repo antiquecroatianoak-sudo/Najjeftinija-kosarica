@@ -145,3 +145,11 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
 ### Sljedeći korak
 - Pokretanje na jednom stvarnom uređaju (Pi + izmjenjivač s Modbusom), uz mjerenje RAM‑a, CPU‑a i W.
 - Kriterij dovršenosti: jezgra 72 h radi bez ponovnog pokretanja, a izmjereni podaci su upisani ovdje.
+
+## 17.11.2026. 09:02 (Europe/Zagreb) – GitLab CI/CD
+
+- Implementirano: `.gitlab-ci.yml` (testovi, svi i ekstremni scenariji, stres testovi na povijesnim podacima 2024.–2025., Compose u Docker-in-Dockeru, provjera slike; optimizacija ručno ili po rasporedu `OPTIMIZACIJA=1`; objava slike ručno i samo na tagu). Postavke Composea idu kroz `ENERGIJA_POSTAVKE` (bez bind-mounta).
+- Testirano lokalno (commit cda948d): 60/60 testova, 7/7 brzih scenarija, 15/15 provjera sustava. YAML se ispravno parsira. Docker u ovom okruženju trenutačno ne radi: Compose i slika nisu provjereni ovdje.
+- GitLab (n3k-group/hibridni-sustav-upravljanja), grana `razvoj`: preneseno 10 commitova (dokumentacija i dio `jezgra/`). SHA blobova potvrđen za 17 datoteka. `.gitlab-ci.yml` još nije prenesen, pa cjevovod nije pokrenut. `main` nije diran.
+- Zapreka: `git push` na gitlab.com nema prijavu (spremljeni token proxy ne primjenjuje). Prijenos datoteku po datoteku kroz spojnik je prekinut.
+- Sljedeći korak: vlasnik gurne podstablo `energija/` na GitLab granu `razvoj`. Gotovo kad cjevovod na `razvoj` prođe; tek tada `main`.
