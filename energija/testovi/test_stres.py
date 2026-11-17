@@ -103,3 +103,40 @@ class TestStresNaPovijesti(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPonovniPokusaji(unittest.TestCase):
+    def test_429_ceka_i_ponavlja(self):
+        import io
+        import urllib.error
+        pozivi = []
+
+        class Odg(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                pass
+
+        def lazni(z, timeout=60):
+            pozivi.append(1)
+            if len(pozivi) < 3:
+                raise urllib.error.HTTPError(z.full_url, 429, "Too Many Requests", {"Retry-After": "2"}, None)
+            return Odg(b'{"ok": 1}')
+
+        with mock.patch.object(P.urllib.request, "urlopen", lazni), mock.patch.object(P.time, "sleep") as spavaj:
+            self.assertEqual(P._json("http://primjer"), {"ok": 1})
+        self.assertEqual(len(pozivi), 3)
+        self.assertEqual([c.args[0] for c in spavaj.call_args_list], [2.0, 2.0])
+
+    def test_404_ne_ponavlja(self):
+        import urllib.error
+
+        def lazni(z, timeout=60):
+            raise urllib.error.HTTPError(z.full_url, 404, "Not Found", {}, None)
+
+        with mock.patch.object(P.urllib.request, "urlopen", lazni), mock.patch.object(P.time, "sleep") as spavaj:
+            with self.assertRaises(urllib.error.HTTPError):
+                P._json("http://primjer")
+        spavaj.assert_not_called()
+

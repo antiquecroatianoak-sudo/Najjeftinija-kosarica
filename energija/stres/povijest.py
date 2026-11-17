@@ -21,6 +21,7 @@ import os
 import random
 import statistics
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -33,10 +34,24 @@ ZONE = ("HR", "SI", "HU")
 
 
 # ------------------------------------------------------------------ preuzimanje
-def _json(url: str, timeout: float = 60) -> dict:
+def _json(url: str, timeout: float = 60, pokusaja: int = 6) -> dict:
+    """GET JSON s ponovnim pokušajima: 429/5xx i prekidi veze čekaju (Retry-After ili 5, 10, 20… s, najviše 120 s)."""
     z = urllib.request.Request(url, headers={"User-Agent": "energija-stres-test/1.0"})
-    with urllib.request.urlopen(z, timeout=timeout) as r:
-        return json.loads(r.read())
+    for i in range(pokusaja):
+        try:
+            with urllib.request.urlopen(z, timeout=timeout) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code != 429 and e.code < 500 or i == pokusaja - 1:
+                raise
+            ra = e.headers.get("Retry-After", "") if e.headers else ""
+            cekaj = float(ra) if ra.isdigit() else 5.0 * 2 ** i
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if i == pokusaja - 1:
+                raise
+            cekaj = 5.0 * 2 ** i
+        time.sleep(min(120.0, cekaj))
+    raise RuntimeError("nedostižno")
 
 
 def preuzmi_vrijeme(od: str, do: str, lat: float = LAT, lon: float = LON) -> dict:
@@ -64,7 +79,7 @@ def preuzmi_cijene(od: str, do: str) -> tuple[str, dict[int, float]]:
                     if p is not None:
                         satne.setdefault(int(t) - int(t) % 3600, []).append(float(p))
                 d = sljedeci
-                time.sleep(0.5)
+                time.sleep(3.0)  # Energy-Charts ograničava učestalost zahtjeva
             if len(satne) > 24 * 30:
                 return zona, {t: sum(v) / len(v) / 1000.0 for t, v in satne.items()}  # EUR/MWh -> EUR/kWh
         except Exception as e:  # zona nije podržana ili servis nedostupan -> sljedeća
