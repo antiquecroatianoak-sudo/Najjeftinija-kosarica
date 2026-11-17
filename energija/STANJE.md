@@ -178,3 +178,20 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - izgradnja i probno pokretanje produkcijske slike.
 - Palo: `scenariji_ekstremni_usporedba`. U `nenajavljena_naoblaka` je cjenovni_prag 0,04 € jeftiniji (stvaran nalaz, ne greška izvođenja).
 - `main` nije diran. Čeka odluku vlasnika: popraviti ponašanje (preporuka) ili prag šuma u kriteriju.
+
+## 17.11.2026. 11:48 (Europe/Zagreb) – prag šuma; cjevovod 3078397405 zelen
+
+- **Odluka vlasnika (17.11.2026.):** implementirati prag šuma.
+- **Implementirano:**
+  - zadržavanje načina baterije 15 min (zadano uključeno);
+  - mrtva zona cijene i zadržavanje bojlera: podesivi, zadano isključeni, jer su u simulaciji podizali trošak (hladni val: mrtva zona +0,48 do +1,63 €; bojler 18,08 prema 17,16 €);
+  - prag troška u usporedbi: max(0,05 €, 1 %). Uveden nakon poznatog rezultata; K1/K2 nepromijenjeni;
+  - brojač `preklapanja` u scenarijima.
+- **Učinak:** promjena načina baterije 5–13 % manje, trošak nije porastao (usporedba, hladni val: 17,16 → 16,34 €).
+- **Testirano lokalno u Europe/Zagreb (commit cd9b7c6):**
+  - 68/68 testova;
+  - 18/18 scenarija;
+  - 15/15 provjera sustava;
+  - ekstremno: nenadmašena 8/8, dominira 7/8.
+- **GitLab razvoj, commit 7cd6ce56, cjevovod 3078397405:** svih 7 poslova prošlo.
+- **Spajanje u main nije izvršeno:** automatska zaštita odbila je spajanje razvoj → main. Treba izričito odobrenje vlasnika ili spajanje u GitLab sučelju.
