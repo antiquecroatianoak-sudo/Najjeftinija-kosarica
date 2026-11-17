@@ -55,6 +55,17 @@ docker compose -f kontejneri/compose.provjera.yaml down -v
 ```
 
 Na GitHubu to automatski radi `.github/workflows/energija-provjera.yml`, samo kad se mijenja `energija/`.
+
+Na GitLabu (`.gitlab-ci.yml`) nakon svakog komita idu ovi koraci:
+
+1. **Testovi:** jedinični i integracijski testovi te lokalna provjera sustava.
+2. **Scenariji:** svi scenariji i usporedba na ekstremnim scenarijima.
+3. **Stres testovi:** na povijesnim podacima o vremenu i cijenama za 2024. i 2025. (Open‑Meteo arhiva, Energy‑Charts). Podaci se preuzimaju jednom i čuvaju u predmemoriji.
+4. **Compose provjera:** izolirana provjera u Docker‑in‑Dockeru.
+5. **Produkcijska slika:** izgradnja i probno pokretanje.
+
+Optimizacija parametara pokreće se ručno ili po rasporedu s `OPTIMIZACIJA=1`. Rezultat se samo predlaže kao artefakt. Objava slike u registar je ručna i samo na tagu `vX.Y.Z`.
+
 Simulator i lažni servis mogu se pokrenuti i zasebno:
 
 - `python3 -m simulator.modbus_pymodbus --modbus-port 5020 --mqtt-host <jezgra>`

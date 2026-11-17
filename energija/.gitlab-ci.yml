@@ -1,0 +1,198 @@
+# GitLab CI/CD – hibridni sustav upravljanja energijom
+#
+# Nakon svakog komita (push, merge request): jedinični i integracijski testovi, simulacijski scenariji
+# (uključujući ekstremne), stres testovi s povijesnim podacima o vremenu i cijenama, te izolirana
+# provjera cijelog sustava u Docker Composeu (mreža bez izlaza na internet).
+# Optimizacija parametara politike: ručno (web) ili po rasporedu (schedule) – ne na svaki komit.
+# Objava slike u registar: samo na tag (svjesno – nema automatskog troška ni javnog pristupa).
+
+stages: [test, scenariji, stres, sustav, optimizacija, produkcija]
+
+variables:
+  TZ: Europe/Zagreb
+  PYTHONUNBUFFERED: "1"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PY_IMAGE: python:3.13-slim
+
+default:
+  image: $PY_IMAGE
+  interruptible: true
+  cache:
+    key: pip-$CI_JOB_IMAGE
+    paths: [.cache/pip]
+  before_script:
+    - pip install -q -r requirements-provjera.txt
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never                      # bez dvostrukih cjevovoda za istu promjenu
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+.ne_raspored: &ne_raspored
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $OPTIMIZACIJA == "1"
+      when: never
+    - when: on_success
+
+# ---------------------------------------------------------------- test
+jedinicni_i_integracijski:
+  stage: test
+  <<: *ne_raspored
+  script:
+    - python3 -m unittest discover -s testovi -p "test_*.py" -v 2>&1 | tee testovi.log
+  artifacts:
+    when: always
+    paths: [testovi.log]
+    expire_in: 14 days
+
+lokalna_provjera_sustava:
+  stage: test
+  <<: *ne_raspored
+  script:
+    - bash provjera/pokreni_lokalno.sh
+
+# ---------------------------------------------------------------- scenariji
+scenariji_svi:
+  stage: scenariji
+  <<: *ne_raspored
+  needs: [jedinicni_i_integracijski]
+  script:
+    - python3 -m scenariji.pokretac --sve --izlaz rezultati_ci/scenariji
+  artifacts:
+    when: always
+    paths: [rezultati_ci/scenariji]
+    expire_in: 30 days
+
+scenariji_ekstremni_usporedba:
+  stage: scenariji
+  <<: *ne_raspored
+  needs: [jedinicni_i_integracijski]
+  script:
+    # ekstremno vrijeme i cijene: naša jezgra i referentne strategije na istim podacima
+    - python3 -m scenariji.usporedba --oznaka ekstremno --izlaz rezultati_ci/ekstremno
+  artifacts:
+    when: always
+    paths: [rezultati_ci/ekstremno]
+    expire_in: 30 days
+
+# ---------------------------------------------------------------- stres (povijesni podaci)
+stres_povijesni:
+  stage: stres
+  <<: *ne_raspored
+  needs: [jedinicni_i_integracijski]
+  timeout: 90m
+  cache:
+    - key: pip-$CI_JOB_IMAGE
+      paths: [.cache/pip]
+    - key: povijest-2024-2025-v1       # povijesni podaci se ne mijenjaju: preuzimaju se jednom
+      paths: [podaci/]
+  script:
+    - |
+      if [ ! -s podaci/povijest.json ]; then
+        python3 -m stres.povijest preuzmi --od 2024-01-01 --do 2025-12-31 --izlaz podaci/povijest.json
+      fi
+    # pada samo na sigurnosnim kršenjima; trošak i značajnost (K1/K2) su u izvještaju
+    - python3 -m stres.povijest pokreni --podaci podaci/povijest.json --izlaz rezultati_ci/stres
+  artifacts:
+    when: always
+    paths: [rezultati_ci/stres]
+    expire_in: 90 days
+
+# ---------------------------------------------------------------- sustav (izolirano, Docker Compose)
+compose_izolirano:
+  stage: sustav
+  <<: *ne_raspored
+  needs: [jedinicni_i_integracijski]
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+  cache: []
+  before_script:
+    - docker info --format '{{.ServerVersion}}'
+  script:
+    - docker compose -f kontejneri/compose.provjera.yaml up --build --abort-on-container-exit --exit-code-from provjera
+  after_script:
+    - docker compose -f kontejneri/compose.provjera.yaml logs --no-color > compose.log 2>&1 || true
+    - docker compose -f kontejneri/compose.provjera.yaml down -v || true
+  artifacts:
+    when: always
+    paths: [compose.log]
+    expire_in: 14 days
+
+# ---------------------------------------------------------------- optimizacija parametara
+# Pokreće se ručno ili po rasporedu (varijabla OPTIMIZACIJA=1). Naučena politika se samo predlaže
+# (artefakt) – primjenjuje se tek nakon pregleda, dodavanjem u postavke.json na uređaju.
+optimizacija_politike:
+  stage: optimizacija
+  timeout: 3h
+  interruptible: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $OPTIMIZACIJA == "1"
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+      allow_failure: true
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  needs: []
+  script:
+    - python3 -m scenariji.ucenje_politike --izlaz rezultati_ci/naucena_politika.json
+    # provjera prijedloga na cijelom katalogu: nijedno sigurnosno kršenje
+    - python3 -m scenariji.pokretac --sve --postavke rezultati_ci/naucena_politika.json --izlaz rezultati_ci/s_naucenom
+    - python3 -m scenariji.usporedba --postavke rezultati_ci/naucena_politika.json --izlaz rezultati_ci/usporedba_naucena
+  artifacts:
+    when: always
+    paths: [rezultati_ci/]
+    expire_in: 180 days
+
+# ---------------------------------------------------------------- produkcija
+slika_provjera:
+  stage: produkcija
+  <<: *ne_raspored
+  needs: [compose_izolirano, scenariji_svi, stres_povijesni]
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+  cache: []
+  before_script: []
+  script:
+    # produkcijska slika (amd64 na runneru) se gradi i pokreće: dan simulacije + potpisani izvještaj
+    - docker build -f kontejneri/Dockerfile -t energija:$CI_COMMIT_SHORT_SHA .
+    - docker run --rm energija:$CI_COMMIT_SHORT_SHA --sim-dani 1 --podaci /tmp/e
+
+objava_slike:
+  stage: produkcija
+  needs: [slika_provjera]
+  image: docker:27
+  services:
+    - name: docker:27-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+  cache: []
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+      when: manual                     # objava tek nakon izričite potvrde
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build -f kontejneri/Dockerfile -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
