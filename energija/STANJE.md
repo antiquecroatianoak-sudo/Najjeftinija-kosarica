@@ -216,3 +216,21 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - ocjena 2028. ravnopravno: DJELOMIČNA (K1-R ispunjen, 21/1, p < 0,001; K2 pao na toploj vodi u 2 tjedna);
   - stres (sintetički): 0 kršenja, K1 p = 0,09.
 - **Zaključak:** glavna slabost je topla voda. Sljedeći korak je prediktivno upravljanje spremnikom (zasebna grana ccr-dt-rad, commit bf25e2a); usporedbe s njim su u tijeku.
+
+## 17.11.2026. 15:17 (Europe/Zagreb) – prediktivno upravljanje spremnikom PTV-a
+
+- Implementirano (`jezgra/spremnik.py`, spojeno u radnu granu, da88f94):
+  - toplinski model spremnika; gubici UA se uče iz mirnih razdoblja ≥ 3 h (sim: naučeno 1,85, stvarno 1,8 W/K);
+  - MPC 36 h nad temperaturom: dinamička tarifa, višak sunca po izvoznoj cijeni, udobnost ≥ 45 °C;
+  - prednost dizalici topline (kazna grijaču 0,05 €/kWh), predgrijavanje u jeftinim satima;
+  - ciklus legionele: 62 °C, ≥ 60 °C 30 min, svakih 7 dana. Pad zbog potrošnje = izmjereni gubitak (kWh, info događaj), sljedeći ciklus nadoknađuje (cilj do +3 °C, rok unutar 24 h); pad temperature spremnika nije anomalija.
+- Simulator: fizika spremnika, dizalica s COP-om, 2 tuša dnevno, neovisno mjerenje stvarne dezinfekcije. Referentne strategije: termostat dizalice 50–55 °C i tjedni program legionele (ned 2–5 h).
+- Usporedba: novo mjerilo "kašnjenje dezinfekcije". Bez njega su dva scenarija "pobijedila" konkurentu koji je preskočio dezinfekciju. K1/K2 nepromijenjeni.
+- Odbačeno: pouzdanost prognoze sunca 0,7 i 0,5 za spremnik (nenajavljena naoblaka −1,4 c, bunar_presusio +6 do +12 c lošije).
+- Testirano (ponovljivo, Europe/Zagreb):
+  - 81/81 testova; katalog 18/18; brzi 7/7; provjera sustava 15/15;
+  - usporedba katalog: nenadmašena 18/18 (dominira 15), K1 +48,5 p.b., 10/1, p = 0,006, K2 ispunjen → USPJEŠNA;
+  - ekstremno: nenadmašena 8/8 (dominira 7), K1 p = 0,06 → DJELOMIČNA;
+  - ocjene 2027./2028./2028.R prije mjerila legionele: sve USPJEŠNE (K1 p < 0,001, K2 ispunjen).
+- Ograničenje: fizika simulatora i referentne strategije su promijenjene, pa usporedba sa starim brojkama nije izravna. Ocjene 2027./2028. ranije su korištene (informativno, ne neovisna potvrda).
+- GitLab: ova verzija nije prenesena (tokeni opozvani). Čeka novi kratkotrajni token ili vlasnikov push.
