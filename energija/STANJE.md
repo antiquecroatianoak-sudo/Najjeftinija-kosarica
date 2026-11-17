@@ -166,3 +166,15 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - scenarij produljen s 11 na 14 dana (baterija puna miruje, nema mjerljivih skokova struje);
   - prolazi u Europe/Zagreb i UTC; cijeli katalog u Europe/Zagreb još se izvodi.
 - Otvoreno, odluka vlasnika: popraviti nenajavljenu naoblaku ili uvesti prag šuma u kriteriju prolaza.
+
+## 17.11.2026. 10:53 (Europe/Zagreb) – cjevovod 3078153762 (GitLab razvoj, 002a9be3)
+
+- Prošlo 6/7 poslova:
+  - jedinični i integracijski testovi;
+  - lokalna provjera sustava;
+  - svi scenariji 18/18;
+  - stres testovi na povijesnim podacima;
+  - Compose u Docker-in-Dockeru;
+  - izgradnja i probno pokretanje produkcijske slike.
+- Palo: `scenariji_ekstremni_usporedba`. U `nenajavljena_naoblaka` je cjenovni_prag 0,04 € jeftiniji (stvaran nalaz, ne greška izvođenja).
+- `main` nije diran. Čeka odluku vlasnika: popraviti ponašanje (preporuka) ili prag šuma u kriteriju.
