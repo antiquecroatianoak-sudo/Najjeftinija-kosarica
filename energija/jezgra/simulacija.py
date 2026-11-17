@@ -48,9 +48,16 @@ class Lokacija:
         self.bat_struja = 0.0
         self.bat_snaga_w = 0.0
         self.naredba_bat: float | None = None
-        self.releji = {"bojler": False, "pumpa": False, "uticnice": True, "hladnjak": True}
+        self.releji = {"bojler": False, "dizalica": False, "pumpa": False, "uticnice": True, "hladnjak": True}
         self.ventili = {"z1": False, "z2": False}
-        self.bojler_kwh = 1.5        # energija u spremniku (max 3)
+        # spremnik PTV-a 150 L: temperatura, stvarni gubici (UA 1,8 W/K – jezgri nepoznato, uči ih), dizalica topline
+        # 0,5 kW el. (do 55 °C, COP ovisan o temperaturi), grijač 2 kW (sigurnosni termostat 75 °C)
+        self.spremnik_t = 50.0
+        self.spremnik_l, self.spremnik_ua, self.prostorija_c, self.ulaz_c = 150.0, 1.8, 18.0, 12.0
+        self.dizalica_w = 0.0
+        self.legionela_drzanje_s = 0.0
+        self.legionela_ciklusi: list[float] = [pocetak - 6 * 86400]  # zadnja dezinfekcija prije početka
+        self.potrosnja_vode_kwh = 0.0
         self.vlaga = {"z1": 34.0, "z2": 31.0}
         self.pastir_sklopke = {k: True for k in range(1, N_DIONICA + 1)}
         self.pastir_povrat = False
@@ -222,16 +229,11 @@ class Lokacija:
             t_vani = self.okolina_temp(ts)
             if t_vani < 10:  # električno grijanje: ovisi o vremenu, ne o rasporedu
                 p += min(2000.0, 160.0 * (10 - t_vani))
-            self.bojler_kwh = max(0.0, self.bojler_kwh - 0.25 * dt / 3600)
-            if self.bojler_kwh < 0.3:
+            if self.spremnik_t < 40.0:  # mlaka voda dok su stanari tu
                 self.bez_tople_vode_min += dt / 60
         if not self.releji["uticnice"]:
             p = min(p, 100.0)
-        bojler_w = 0.0
-        if self.releji["bojler"] and self.bojler_kwh < 3.0:
-            bojler_w = 2000.0
-            self.bojler_kwh += 2.0 * dt / 3600
-        self.bojler_w = bojler_w
+        bojler_w = self._spremnik(ts, dt)
         suho = bool(self.aktivni("suho", ts))  # bunar presušio
         self.suho = suho
         pumpa_w = 0.0
@@ -243,7 +245,7 @@ class Lokacija:
         pastir_w = 8.0 * self.pastir_snaga
         punjenje_pastira_w = 15.0 if self.pastir_punjenje and self.pastir_bat < 1.0 else 0.0
         self.pastir_bat = min(1.0, max(0.0, self.pastir_bat + (punjenje_pastira_w * 0.9 - pastir_w) * dt / 3600 / 100))
-        potreba = p + bojler_w + pumpa_w + punjenje_pastira_w
+        potreba = p + bojler_w + self.dizalica_w + pumpa_w + punjenje_pastira_w
 
         # baterija + mreža
         b = self.cfg["baterija"]
@@ -308,6 +310,47 @@ class Lokacija:
                 stopa, od = par, od_d
         self.vegetacija = min(0.09, max(0.0, (ts - self.pocetak_sim) / 86400 - od) * stopa) if stopa else 0.0
 
+    def potrosnja_tople_vode_kw(self, ts: float) -> float:
+        """Toplina koju odnosi topla voda: tuširanje ujutro i navečer (slučajno vrijeme), sitna potrošnja preko dana."""
+        if not self.prisutni(ts):
+            return 0.0
+        lt = time.localtime(ts)
+        r = random.Random(int(ts // 86400) * 7919 + 11)
+        jutro, vecer = 6.5 + r.random() * 2.0, 19.5 + r.random() * 2.5
+        h = lt.tm_hour + lt.tm_min / 60
+        tus = (jutro <= h < jutro + 0.25) or (vecer <= h < vecer + 0.25)  # 15 min tuša ≈ 1,1 kWh
+        return (4.4 if tus else 0.0) + 0.08
+
+    def _spremnik(self, ts: float, dt: float) -> float:
+        """Fizika spremnika; vraća snagu grijača (W). Dizalica topline: self.dizalica_w."""
+        from .spremnik import C_VODA_KWH_L_K, cop
+        c = self.spremnik_l * C_VODA_KWH_L_K
+        sati = dt / 3600
+        t = self.spremnik_t
+        t_zrak = self.okolina_temp(ts)
+        q = -self.spremnik_ua * (t - self.prostorija_c) / 1000 * sati
+        potrosnja = min(self.potrosnja_tople_vode_kw(ts) * sati, max(0.0, (t - self.ulaz_c) * c))
+        self.potrosnja_vode_kwh += potrosnja
+        q -= potrosnja
+        self.dizalica_w = 500.0 if self.releji["dizalica"] and t < 55.0 else 0.0
+        q += self.dizalica_w / 1000 * cop(t, t_zrak) * sati
+        grijac_w = 2000.0 if self.releji["bojler"] and t < 75.0 else 0.0
+        q += grijac_w / 1000 * sati
+        self.spremnik_t = t + q / c
+        # stvarna zaštita od legionele (mjeri simulator, neovisno o jezgri): ≥ 60 °C barem 30 min zaredom
+        if self.spremnik_t >= 60.0:
+            self.legionela_drzanje_s += dt
+            if self.legionela_drzanje_s >= 1800 > self.legionela_drzanje_s - dt:  # jednom po držanju
+                self.legionela_ciklusi.append(ts)
+        else:
+            self.legionela_drzanje_s = 0.0
+        self.bojler_w = grijac_w
+        return grijac_w
+
+    def legionela_max_razmak_dana(self) -> float:
+        t = self.legionela_ciklusi + [self.t]
+        return max(b - a for a, b in zip(t, t[1:])) / 86400
+
     # ------------------------------------------------------------------ očitanja / naredbe
     def ocitanja(self) -> dict[str, float]:
         v = self.pastir_naponi()
@@ -322,7 +365,8 @@ class Lokacija:
             "tlo_z1_vlaga": round(self.vlaga["z1"] + self.rng.gauss(0, 0.15), 2),
             "tlo_z2_vlaga": round(self.vlaga["z2"] + self.rng.gauss(0, 0.15), 2),
             "pumpa_struja_a": round(self.pumpa_struja, 2), "bojler_snaga_w": self.bojler_w,
-            "bojler_temp_c": round(15.0 + self.bojler_kwh / 3.0 * 45.0, 1),  # osjetnik na spremniku
+            "bojler_temp_c": round(self.spremnik_t, 1),  # osjetnik na spremniku
+            "dizalica_snaga_w": round(self.dizalica_w, 1),
             "pastir_baterija_soc": round(self.pastir_bat, 3),
         }
         for k, x in enumerate(v):
@@ -380,7 +424,7 @@ def izravni_uredaji(lok: Lokacija) -> list[Uredaj]:
                    "baterija_temp_c", "baterija_snaga_w", "okolina_temp_c", "mreza_prisutna"]),
         SimUredaj(lok, "sim-impulsi", "impulsno_brojilo", ["brojilo_impulsi"]),
         SimUredaj(lok, "sim-tlo", "senzor_tla", ["tlo_z1_vlaga", "tlo_z2_vlaga"]),
-        SimUredaj(lok, "sim-pumpa", "pumpa", ["pumpa_struja_a", "bojler_snaga_w", "bojler_temp_c"]),
+        SimUredaj(lok, "sim-pumpa", "pumpa", ["pumpa_struja_a", "bojler_snaga_w", "bojler_temp_c", "dizalica_snaga_w"]),
         SimUredaj(lok, "sim-pastir", "pastir", ["pastir_*"]),
     ]
 
@@ -404,7 +448,7 @@ class ProtokolniMost:
         self.mqtt.pretplati("sim/+/set")
         kanali = {k: {"tema": f"sim/{k}"} for k in lok.ocitanja() if not k.startswith(("pv_", "baterija_soc"))}
         upravljanje = {k: {"tema": f"sim/{k}/set"} for k in
-                       ["rele_bojler", "rele_pumpa", "rele_uticnice", "rele_hladnjak", "ventil_z1", "ventil_z2",
+                       ["rele_bojler", "rele_dizalica", "rele_pumpa", "rele_uticnice", "rele_hladnjak", "ventil_z1", "ventil_z2",
                         "rele_pastir_povrat", "rele_pastir_punjenje", "pastir_snaga", "baterija_snaga_w", "baterija_auto", "baterija_ogranicenje"]
                        + [f"rele_pastir_k{k}" for k in range(1, N_DIONICA + 1)]}
         self.mqtt.objavi("energija/otkrij/sim-farma", json.dumps(

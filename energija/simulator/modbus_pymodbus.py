@@ -32,7 +32,7 @@ SUNSPEC = 40000
 A103 = 40070
 A124 = A103 + 52
 KRAJ = A124 + 26
-UPRAVLJANJE = [f"rele_{t}" for t in ("bojler", "pumpa", "uticnice", "hladnjak", "pastir_povrat", "pastir_punjenje")] + \
+UPRAVLJANJE = [f"rele_{t}" for t in ("bojler", "dizalica", "pumpa", "uticnice", "hladnjak", "pastir_povrat", "pastir_punjenje")] + \
     [f"ventil_{z}" for z in ("z1", "z2")] + [f"rele_pastir_k{k}" for k in range(1, N_DIONICA + 1)] + ["pastir_snaga"]
 
 
