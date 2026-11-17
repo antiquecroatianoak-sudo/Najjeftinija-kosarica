@@ -217,10 +217,12 @@ class Detektor:
 
     # ------------------------------------------------------------------ prediktivno
     def dnevni_pokazatelji(self, dan: float, pokazatelji: dict[str, float]) -> None:
-        if len(self._r_uzorci) >= 3:  # premalo skokova struje u danu = nepouzdana procjena, preskoči
+        # premalo skokova struje u danu = nepouzdana procjena: uzorci se ne bacaju, nego se prenose u idući dan
+        # (inače broj točaka trenda ovisi o tome gdje pada ponoć, a ne o bateriji)
+        if len(self._r_uzorci) >= 3:
             srt = sorted(self._r_uzorci)
             pokazatelji = dict(pokazatelji, baterija_otpor_mohm=srt[len(srt) // 2] * 1000)
-        self._r_uzorci.clear()
+            self._r_uzorci.clear()
         for k, v in pokazatelji.items():
             if v is not None:
                 self.trendovi.setdefault(k, Trend()).dodaj(dan, v)

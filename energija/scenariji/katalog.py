@@ -71,7 +71,9 @@ KATALOG: list[Scenarij] = [
              ocekivanja={"pastir_dostupnost_min": 0.93, "izolacija_max_min": 20, "izolacija_min_broj": 2},
              oznake=("brzi",)),
     Scenarij("starenje_baterije", "Baterija ubrzano stari: prediktivno održavanje mora upozoriti",
-             (2026, 4, 6), dani=11, korak_s=60, starenje=0.004,
+             # 14 dana: u proljeće je baterija sunčanih dana puna i miruje (nema skokova struje, otpor se ne može
+             # mjeriti), pa 11 dana daje samo ~6 mjerljivih dana – manje od 7 točaka potrebnih za pouzdan trend
+             (2026, 4, 6), dani=14, korak_s=60, starenje=0.004,
              ocekivanja={"odrzavanje_pokazatelj": "baterija_otpor_mohm"}),
 ]
 

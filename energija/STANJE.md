@@ -153,3 +153,16 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
 - GitLab (n3k-group/hibridni-sustav-upravljanja), grana `razvoj`: preneseno 10 commitova (dokumentacija i dio `jezgra/`). SHA blobova potvrđen za 17 datoteka. `.gitlab-ci.yml` još nije prenesen, pa cjevovod nije pokrenut. `main` nije diran.
 - Zapreka: `git push` na gitlab.com nema prijavu (spremljeni token proxy ne primjenjuje). Prijenos datoteku po datoteku kroz spojnik je prekinut.
 - Sljedeći korak: vlasnik gurne podstablo `energija/` na GitLab granu `razvoj`. Gotovo kad cjevovod na `razvoj` prođe; tek tada `main`.
+
+## 17.11.2026. 10:36 (Europe/Zagreb) – prvi GitLab cjevovodi
+
+- Kod je na GitLab grani `razvoj`: 85/85 datoteka, SHA blobova potvrđen. `main` nije diran.
+- Cjevovod na commitu d10b8d1b:
+  - prošlo: testovi, lokalna provjera, Compose u Docker-in-Dockeru, stres testovi na povijesnim podacima 2024.–2025. (9 tjedana; 0 kršenja; dominira 9/9; K1 medijan +50,8 p.b., 9/0, p = 0,002; K2 ispunjen);
+  - palo `starenje_baterije`: ovisno o TZ (Europe/Zagreb; lokalno testirano u UTC);
+  - pala usporedba `--oznaka ekstremno`: `nenajavljena_naoblaka`, cjenovni_prag 0,04 € jeftiniji.
+- Ispravak starenja (necommitano u trenutku zapisa, zatim commitano ovdje):
+  - uzorci otpora prenose se preko dana s premalo mjerenja;
+  - scenarij produljen s 11 na 14 dana (baterija puna miruje, nema mjerljivih skokova struje);
+  - prolazi u Europe/Zagreb i UTC; cijeli katalog u Europe/Zagreb još se izvodi.
+- Otvoreno, odluka vlasnika: popraviti nenajavljenu naoblaku ili uvesti prag šuma u kriteriju prolaza.
