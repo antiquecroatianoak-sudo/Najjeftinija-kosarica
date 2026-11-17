@@ -30,6 +30,8 @@ from .prognoza import Prognoza
 from .rubni_ai import RubniModel, provjera_profila, ulazi
 from .sifra import Trezor
 from .sinkronizacija import Sinkronizacija
+from .spremnik import Legionela, ModelSpremnika, cop
+from .spremnik import planiraj as planiraj_spremnik
 from .tarife import Tarife
 from .ucenje import Navike
 
@@ -69,8 +71,13 @@ class Jezgra:
         self.brojilo.konstanta_izvor = k.get("izvor", self.brojilo.konstanta_izvor)
         self.kalibracija: dict = st.get("kalibracija") or {"faza": "ceka"}
 
-        self.releji: dict[str, bool] = st.get("releji") or {"bojler": False, "pumpa": False, "uticnice": True,
-                                                            "hladnjak": True}
+        self.releji: dict[str, bool] = st.get("releji") or {"bojler": False, "dizalica": False, "pumpa": False,
+                                                            "uticnice": True, "hladnjak": True}
+        self.releji.setdefault("dizalica", False)
+        # spremnik PTV-a: model gubitaka (uči se), MPC plan po satima, ciklus protiv legionele
+        self.spremnik = ModelSpremnika(self.cfg["spremnik"], st.get("spremnik"))
+        self.legionela = Legionela(self.cfg["spremnik"]["legionela"], st.get("legionela"), sada=self.sat())
+        self.plan_spremnika: list[dict] = []
         self.ventili: dict[str, bool] = {}
         self.zastita_do: dict[str, float] = st.get("zastita_do", {})
         self.zabrana_punjenja_do = st.get("zabrana_punjenja_do", 0.0)
@@ -110,10 +117,9 @@ class Jezgra:
         self.mreza_dostupna = self.cfg["mreza"]["dostupna"]
         self.rucno: dict[str, tuple[bool, float]] = {}  # ručne naredbe s aplikacije (trošilo -> (stanje, do))
         self.kod_uparivanja: str | None = None
-        # prag šuma: zadnji način baterije / stanje bojlera iz plana i od kada vrijede; broj preklapanja
+        # prag šuma: zadnji način baterije iz plana i od kada vrijedi; broj preklapanja
         self._bat_nacin: tuple[str, float | None, float] | None = None  # (kategorija, snaga, od_ts)
-        self._bojler_plan: tuple[bool, float] | None = None
-        self.preklapanja = {"baterija": 0, "bojler": 0}
+        self.preklapanja = {"baterija": 0, "bojler": 0, "dizalica": 0}
 
         # --- oporavak bez gubitka: ponovi telemetriju nakon snimke
         self._zakljuceni = {z["d"]["ts"] for z in self.arhiva.citaj(0, {"sat"})}
@@ -316,30 +322,6 @@ class Jezgra:
         self._odluka("prognoza", self.prognoza_info["izvor"], self.prognoza_info["razlog"],
                      "ai" if self.prognoza_info["izvor"].startswith("rubni") else "profil", ts)
         zadaci = []
-        bojler = next((t for t in self.cfg["trosila"] if t["id"] == "bojler"), None)
-        if bojler:
-            # Topla voda: s osjetnikom temperature spremnika puni se točno koliko nedostaje; dok sustav ne
-            # nauči navike (prva 2 tjedna) voda se drži toplom kao kod NT tajmera, ali u najjeftinijim satima.
-            dolazak = self.parametri.get("bojler_spreman_do_h")
-            t_bojler = self.zadnje_ocitanje.get("bojler_temp_c")
-            if t_bojler is not None:
-                nedostaje = max(0.0, (58.0 - t_bojler) / 45.0 * bojler["energija_kwh_dan"])
-            else:
-                nedostaje = max(0.0, 2 * bojler["energija_kwh_dan"] - self.dnevno.get("bojler_kwh", 0.0))
-            if self.prisutni or not self.navike_naucene:
-                # otočno: prozor do idućeg sunčanog dana (grije višak sunca, ne baterija u večernjem vrhu)
-                do_h = 6 if self.prisutni else 12
-                if not self.prisutni and not self.navike_naucene:
-                    # dok uči: FIKSNI rok (15 h, tipičan dolazak) – pomični prozor bi grijanje stalno odgađao
-                    lt = time.localtime(ts)
-                    do_h = (15 - lt.tm_hour) % 24 or 24
-                if not self.mreza_dostupna:
-                    do_h = 24
-                zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": nedostaje,
-                               "od_h": 0, "do_h": do_h})
-            elif dolazak is not None and dolazak <= 30:
-                zadaci.append({"id": "bojler", "snaga_w": bojler["snaga_w"], "energija_kwh": nedostaje,
-                               "od_h": max(0, dolazak - 24), "do_h": max(1, dolazak)})
         pumpa_kwh = self.navodnjavanje.potrebna_energija_kwh(24)
         if pumpa_kwh > 0:
             zadaci.append({"id": "pumpa", "snaga_w": self.cfg["navodnjavanje"]["pumpa_kw"] * 1000,
@@ -349,6 +331,15 @@ class Jezgra:
             cfg_plan = dict(self.cfg, baterija=dict(self.cfg["baterija"],
                                                     trosak_ciklusa_eur_kwh=self.cfg["politika"]["trosak_ciklusa_plan"]))
         ukupno, self.raspored = smjesti_fleksibilna(potr, pv, cijene, zadaci, soc, cfg_plan)
+        # spremnik PTV-a: MPC nad temperaturom (gubici, dinamička tarifa, višak sunca, legionela); njegova
+        # planirana potrošnja ulazi u plan baterije
+        self.plan_spremnika = []
+        if self._spremnik_mpc():
+            self.plan_spremnika = self._planiraj_spremnik(ts, cijene, pv, ukupno, prog)
+            for h, x in enumerate(self.plan_spremnika):
+                ukupno[h] += x["el_kwh"] * 1000
+            self.raspored["bojler"] = [h for h, x in enumerate(self.plan_spremnika) if x["grijac"]]
+            self.raspored["dizalica"] = [h for h, x in enumerate(self.plan_spremnika) if x["dizalica"]]
         self.plan = planiraj_bateriju(ukupno, pv, cijene, soc, cfg_plan,
                                       self.parametri.get("rezerva_soc", self.cfg["baterija"]["soc_min"]), ts,
                                       mreza=self.mreza_dostupna)
@@ -358,6 +349,85 @@ class Jezgra:
         for p, u in zip(self.plan, ukupno):
             p["potr_w"] = round(u)
         self.plan_ts = ts
+
+    def _spremnik_mpc(self) -> bool:
+        """Naša jezgra (i referentne strategije u ravnopravnoj usporedbi) vode spremnik prediktivno."""
+        return self.cfg["politika"].get("strategija", "pametna") == "pametna" or \
+            self.cfg["politika"].get("bojler_pravilo") == "udobnost"
+
+    def _prisutnost_plana(self, ts: float, H: int) -> list[bool]:
+        """Kad trebaju stanari toplu vodu: naučena prisutnost; dok uči – tipično 7–22 h; sada prisutni – odmah."""
+        out = []
+        for i in range(H):
+            lt = time.localtime(ts + i * 3600)
+            if self.navike_naucene:
+                p = self.navike.prisutnost[lt.tm_wday][lt.tm_hour] >= 0.3
+            else:
+                p = 7 <= lt.tm_hour <= 22
+            out.append(p or (i < 2 and self.prisutni))
+        return out
+
+    def _planiraj_spremnik(self, ts: float, cijene: list[dict], pv: list[float], ukupno: list[float],
+                           prog: list[dict]) -> list[dict]:
+        H = len(cijene)
+        t0 = self.zadnje_ocitanje.get("bojler_temp_c")
+        if t0 is None:
+            return []
+        pris = self._prisutnost_plana(ts, H)
+        return planiraj_spremnik(self.spremnik, t0, cijene, [max(0.0, a - b) for a, b in zip(pv, ukupno)],
+                                 [g.get("temp") if g.get("temp") is not None else 10.0 for g in prog], pris,
+                                 self.spremnik.prognoza_potrosnje(ts, H, pris), self.legionela.rok_h(ts),
+                                 self.legionela.cilj_c, mreza=self.mreza_dostupna)
+
+    def _spremnik_odluka(self, ts: float, h_plan: int, strategija: str, cijena: dict) -> tuple[bool, bool, str, str]:
+        """(dizalica, grijač, odluka, razlog) za ovaj korak. Plan zadaje temperaturu na kraju sata; izvršava se
+        praćenjem te temperature (termostat s histerezom), da prognoza i stvarnost ne moraju biti iste."""
+        sp = self.cfg["spremnik"]
+        t = self.zadnje_ocitanje.get("bojler_temp_c")
+        if t is None:
+            return False, False, "nema osjetnika", "bez osjetnika temperature spremnika grijanje miruje"
+        dz_sada, gr_sada = self.releji.get("dizalica", False), self.releji.get("bojler", False)
+        leg = self.legionela
+        if not self._spremnik_mpc():
+            # referentni sustavi: termostat dizalice 50–55 °C, tjedni program legionele (nedjelja 2–5 h, grijač)
+            lt = time.localtime(ts)
+            dz = t < 55.0 if dz_sada else t < 50.0
+            if strategija == "cjenovni_prag":
+                buduce = sorted(p["cijena"] for p in self.plan[h_plan:h_plan + 24]) if self.plan else []
+                jeftino = bool(buduce) and cijena["kupnja"] <= buduce[min(2, len(buduce) - 1)]
+                dz = (jeftino and t < 55.0) or t < 40.0
+            gr = lt.tm_wday == 6 and 2 <= lt.tm_hour < 5 and t < 62.0
+            return dz, gr, "termostat", "referentna strategija: termostat dizalice i tjedni program legionele"
+        x = self.plan_spremnika[h_plan] if 0 <= h_plan < len(self.plan_spremnika) else None
+        cilj = x["t_kraj"] if x else sp["t_min_c"]
+        dz = x is not None and x["dizalica"] and (t < cilj + 0.3 if dz_sada else t < cilj - 0.3)
+        gr = x is not None and x["grijac"] and (t < cilj + 0.3 if gr_sada else t < cilj - 0.3)
+        odluka, razlog = "miruje", f"plan: {cilj:.1f} °C na kraju sata"
+        if dz or gr:
+            odluka = "grije dizalicom" if dz and not gr else "grije grijačem" if gr and not dz else "grije oboje"
+            razlog = (f"predgrijavanje u jeftinijem satu ({cijena['kupnja'] * 100:.1f} c/kWh, COP "
+                      f"{cop(t, self.zadnje_ocitanje.get('okolina_temp_c') or 10.0):.1f}) do {cilj:.1f} °C")
+        # ciklus legionele: rok je istekao ili se voda upravo drži iznad 60 °C → grijač dovršava ciklus
+        if leg.aktivno(ts) and (leg.drzanje_s > 0 or (x and x.get("legionela")) or leg.rok_h(ts) <= 0
+                                and ts - (leg.zadnja + leg.p["period_dana"] * 86400) > 24 * 3600):
+            if t < leg.cilj_c or (leg.drzanje_s > 0 and t < 60.5):
+                # dizalica topline do svoje granice, grijač tek za zadnjih nekoliko stupnjeva (prednost dizalici);
+                # ako je ciklus više od dana zakasnio, grijač pomaže odmah
+                dz = t < sp["dt_max_c"]
+                zakasnio = ts - (leg.zadnja + leg.p["period_dana"] * 86400) > 24 * 3600
+                gr = t >= sp["dt_max_c"] - 1.0 or zakasnio or leg.drzanje_s > 0
+                odluka, razlog = "zaštita od legionele", (f"ciklus > 60 °C (cilj {leg.cilj_c:.1f} °C, držanje "
+                                                          f"{leg.drzanje_s / 60:.0f}/{leg.p['drzanje_min']:.0f} min)")
+        # udobnost ispred plana: stanari su tu, a voda je ispod granice (prognoza potrošnje je promašila)
+        if self.prisutni and t < sp["t_min_c"] - 3:
+            dz = t < sp["dt_max_c"]
+            if t < sp["t_min_c"] - 8:
+                gr = True
+            odluka, razlog = "grije (udobnost)", f"stanari su tu, a voda je {t:.1f} °C"
+        if cijena["kupnja"] <= 0 and self.mreza_dostupna and t < sp["grijac_max_c"] - 1:
+            dz, gr = t < sp["dt_max_c"], True
+            odluka, razlog = "grije oboje", f"negativna cijena ({cijena['kupnja'] * 100:.1f} c/kWh)"
+        return dz, gr, odluka, razlog
 
     def _sat_plana(self, ts: float) -> int:
         return int((ts - (self.plan_ts - self.plan_ts % 3600)) // 3600)
@@ -405,7 +475,8 @@ class Jezgra:
                 self.zabrana_punjenja_do = ts + 1800
 
         # prisutnost sada (iz potrošnje bez fleksibilnih trošila, ~20 min tromosti)
-        osnovna = potr - o.get("bojler_snaga_w", 0.0) - (750.0 if self.releji.get("pumpa") else 0.0)
+        osnovna = potr - o.get("bojler_snaga_w", 0.0) - o.get("dizalica_snaga_w", 0.0) - \
+            (750.0 if self.releji.get("pumpa") else 0.0)
         aktivno = 1.0 if osnovna > max(150.0, 2.5 * self.navike.osnova_w) else 0.0
         self._prisutnost += min(1.0, dt / 1200) * (aktivno - self._prisutnost)
 
@@ -502,38 +573,30 @@ class Jezgra:
             self._postavi(f"ventil_{z}", 1.0 if otv else 0.0, ts)
 
         # 6) bojler i ostala trošila
-        bojler_plan = "bojler" in self.raspored and h_plan in self.raspored["bojler"]
-        # ravnopravna usporedba (bojler_pravilo = "udobnost"): konkurent koristi NAŠU logiku bojlera u cijelosti
-        ref_bojler = strategija != "pametna" and self.cfg["politika"].get("bojler_pravilo") != "udobnost"
-        if ref_bojler and strategija in ("vlastita", "tou"):
-            # NT tajmer: fiksni noćni termin (zimi 21–7, ljeti 22–8), neovisno o vrsti tarife – kao stvarni sat/HDO
-            from .tarife import vt_nt
-            bojler_plan = vt_nt(ts, self.cfg["tarifa"])[1] == "NT"
-        elif (ref_bojler and strategija == "cjenovni_prag") \
-                or self.cfg["politika"].get("bojler_pravilo") == "najjeftiniji_sati":
-            # (drugi uvjet samo za pokus isključivanja: naša jezgra s konkurentovim pravilom za bojler)
-            buduce = sorted(p["cijena"] for p in self.plan[h_plan:h_plan + 24]) if self.plan else []
-            bojler_plan = bool(buduce) and cijena["kupnja"] <= buduce[min(2, len(buduce) - 1)]  # 3 najjeftinija sata
-        elif cijena["kupnja"] <= 0 and mreza_dostupna:
-            bojler_plan = True  # negativna cijena: grijanje vode se plaća nama
-        elif self._treba_topla_voda():
-            bojler_plan = True  # udobnost: voda ispod 42 °C, a stanari su tu
-        if strategija == "pametna":  # prag šuma; vršna snaga i zahtjevi mreže (niže) i dalje djeluju odmah
-            bojler_plan = self._zadrzi_bojler(bojler_plan, ts)
-        # otočno: bojler samo uz rezervu snage i za tipičan kućni vrh (štednjak, kuhalo) dok su stanari tu –
+        dizalica, grijac, odluka_sp, razlog_sp = self._spremnik_odluka(ts, h_plan, strategija, cijena)
+        # otočno: grijanje samo uz rezervu snage i za tipičan kućni vrh (štednjak, kuhalo) dok su stanari tu –
         # kratki nestanak struje je kvar, a malo hladnija voda samo neudobnost
         rezerva_vrha = self._rezerva_vrha(ts) if self.prisutni else 200.0
+        t_sp = self.zadnje_ocitanje.get("bojler_temp_c") or 0.0
         for zm in self._aktivni_zahtjevi(ts):
             if zm["vrsta"] == "ogranici_uvoz":
-                bojler_plan = False
+                dizalica = grijac = False
+                odluka_sp, razlog_sp = "miruje", f"zahtjev mreže: ograničenje uvoza ({zm['izvor']})"
                 if self.releji.get("pumpa"):
                     self.zastita_do["pumpa"] = max(self.zastita_do.get("pumpa", 0), ts + 600)
-            elif zm["vrsta"] == "povecaj_potrosnju" and (self.zadnje_ocitanje.get("bojler_temp_c") or 0) < 57:
-                bojler_plan = True
-        if bojler_plan and not mreza_dostupna and slobodno_w + (2000 if self.releji.get("bojler") else 0) \
-                < 2000 + rezerva_vrha:
-            bojler_plan = False
-        self.releji["bojler"] = bojler_plan and not self._zasticeno("bojler", ts)
+            elif zm["vrsta"] == "povecaj_potrosnju" and t_sp < 60:
+                dizalica, grijac = t_sp < self.cfg["spremnik"]["dt_max_c"], True
+                odluka_sp, razlog_sp = "grije oboje", f"zahtjev mreže: povećaj potrošnju ({zm['izvor']})"
+        if not mreza_dostupna:
+            if grijac and slobodno_w + (2000 if self.releji.get("bojler") else 0) < 2000 + rezerva_vrha:
+                grijac = False
+            if dizalica and slobodno_w + (500 if self.releji.get("dizalica") else 0) < 500 + rezerva_vrha:
+                dizalica = False
+        for ime, novo_stanje in (("bojler", grijac), ("dizalica", dizalica)):
+            novo_stanje = novo_stanje and not self._zasticeno(ime, ts)
+            if novo_stanje != self.releji.get(ime, False):
+                self.preklapanja[ime] += 1
+            self.releji[ime] = novo_stanje
         for t in ("uticnice", "hladnjak"):
             self.releji[t] = not self._zasticeno(t, ts)
         if self._zasticeno("pumpa", ts):
@@ -543,6 +606,8 @@ class Jezgra:
                 self.rucno.pop(t)
             elif not self._zasticeno(t, ts):  # zaštita uvijek ima prednost pred ručnom naredbom
                 self.releji[t] = stanje
+        if self.kalibracija.get("faza", "").startswith("mjerenje"):
+            self.releji["dizalica"] = False  # poznato trošilo mora biti samo grijač
         if self.kalibracija.get("faza") == "mjerenje_s":
             self.releji["bojler"] = True
         if self.kalibracija.get("faza") == "mjerenje_s":
@@ -551,12 +616,11 @@ class Jezgra:
             self._odluka("bojler", "isključen", "zaštita aktivna", "zastita", ts)
         elif "bojler" in self.rucno:
             self._odluka("bojler", "uključen" if self.releji["bojler"] else "isključen", "ručna naredba", "rucno", ts)
-        elif self.releji["bojler"]:
-            self._odluka("bojler", "uključen", f"planirani sat najnižeg graničnog troška ({cijena['kupnja'] * 100:.1f} c/kWh,"
-                         f" sunce {pv:.0f} W)", "plan", ts)
         else:
-            self._odluka("bojler", "isključen", "nitko nije prisutan ni očekivan" if "bojler" not in self.raspored
-                         else "čeka jeftiniji/sunčaniji sat iz plana", "plan", ts)
+            self._odluka("bojler", odluka_sp if (self.releji["bojler"] or self.releji["dizalica"]) else "miruje",
+                         razlog_sp, "plan" if self._spremnik_mpc() else "pravilo", ts,
+                         temp_c=self.zadnje_ocitanje.get("bojler_temp_c"),
+                         dizalica=self.releji["dizalica"], grijac=self.releji["bojler"])
         if vlage:
             self._odluka("pumpa", "radi" if self.releji.get("pumpa") else "ne radi",
                          self.navodnjavanje_izlaz.get("razlog", ""), "zastita" if self._zasticeno("pumpa", ts) else "pravilo",
@@ -675,7 +739,7 @@ class Jezgra:
 
         # 8) zapis i satni zbroj
         uzorak = {"dt": dt, "pv": pv, "potr": potr, "mreza": mreza_w, "bat": bat_w or 0.0, "soc": soc,
-                  "ck": cijena["kupnja"], "cp": cijena["prodaja"], "bojler": o.get("bojler_snaga_w", 0.0),
+                  "ck": cijena["kupnja"], "cp": cijena["prodaja"], "bojler": o.get("bojler_snaga_w", 0.0) + o.get("dizalica_snaga_w", 0.0),
                   "pumpa": self.releji.get("pumpa", False),
                   "pumpa_w": self.cfg["navodnjavanje"]["pumpa_kw"] * 1000 if self.releji.get("pumpa") else 0.0,
                   "presk": self.navodnjavanje.ustedjeno_min - presk_prije,
@@ -685,6 +749,7 @@ class Jezgra:
                   "o": {k: v for k, v in o.items()
                         if k in ("baterija_temp_c", "baterija_napon_v", "okolina_temp_c", "bojler_temp_c",
                                  "pumpa_struja_a") or k.startswith(("tlo_", "pastir_v"))}}
+        self._spremnik_korak(o, ts, dt)
         self.dnevnik.zapisi(TELEMETRIJA, uzorak, ts=ts)
         self.povijest.dodaj(ts, self._za_povijest(uzorak))
         self._akumuliraj(uzorak, ts)
@@ -719,20 +784,18 @@ class Jezgra:
         self.preklapanja["baterija"] += 1
         return cmd, odl
 
-    def _zadrzi_bojler(self, plan: bool, ts: float) -> bool:
-        min_s = self.cfg["politika"].get("min_trajanje_bojler_s", 0)
-        if self._bojler_plan is None:
-            self._bojler_plan = (plan, ts)
-            return plan
-        staro, od = self._bojler_plan
-        if plan == staro:
-            return plan
-        # otočno gašenje radi vršne snage ide kroz zaštitu (odmah); ovdje se zadržava samo odluka plana
-        if ts - od < min_s:
-            return staro
-        self._bojler_plan = (plan, ts)
-        self.preklapanja["bojler"] += 1
-        return plan
+    def _spremnik_korak(self, o: dict, ts: float, dt: float) -> None:
+        """Učenje gubitaka i profila potrošnje vode; praćenje ciklusa legionele (pad zbog potrošnje = gubitak)."""
+        t = o.get("bojler_temp_c")
+        t_zrak = o.get("okolina_temp_c") if o.get("okolina_temp_c") is not None else 10.0
+        toplina = (o.get("bojler_snaga_w", 0.0) + o.get("dizalica_snaga_w", 0.0) *
+                   (cop(t, t_zrak) if t is not None else 1.0)) * dt / 3.6e6
+        self.spremnik.uci(ts, t, toplina, dt, mirno=not self.prisutni and self._prisutnost < 0.05)
+        br = len(self.legionela.dogadjaji)
+        self.legionela.korak(ts, dt, t, self.spremnik.c_kwh_k)
+        for d in self.legionela.dogadjaji[br:]:
+            self._dogadjaj("legionela", d, ts)
+        del self.legionela.dogadjaji[:-20]
 
     def _vrijednost_kwh(self, h: int, soc: float, sigurnost: float = 1.0) -> tuple[float | None, bool]:
         """Koliko vrijedi kWh u bateriji sada? Vraća (vrijednost €/kWh, oskudno).
@@ -892,14 +955,6 @@ class Jezgra:
     def navike_naucene(self) -> bool:
         return len(self.sati) >= 14 * 24
 
-    def _treba_topla_voda(self) -> bool:
-        """Udobnost ispred cijene: ispod 42 °C dok su stanari tu ili upravo stižu."""
-        t = self.zadnje_ocitanje.get("bojler_temp_c")
-        if t is None or t >= 42.0:
-            return False
-        dolazak = self.parametri.get("sljedeci_dolazak_h")
-        return self.prisutni or (dolazak is not None and dolazak <= 2)
-
     @property
     def prisutni(self) -> bool:
         return self._prisutnost > 0.5
@@ -976,6 +1031,7 @@ class Jezgra:
                 "kalibracija": self.kalibracija, "zadnja_kopija": self.zadnja_kopija,
                 "izvjestaji": self.izvjestaji_izradjeni[-50:], "ai": self.ai.stanje(), "napredno": self.napredno,
                 "ai_zadnje_ucenje": self._ai_zadnje_ucenje,
+                "spremnik": self.spremnik.stanje(), "legionela": self.legionela.stanje(),
                 "zahtjevi_mreze": [z for z in self.zahtjevi_mreze if z["do"] > (self.zadnji_ts or 0)]}
 
     def spremi_snimku(self, ts: float | None = None) -> None:

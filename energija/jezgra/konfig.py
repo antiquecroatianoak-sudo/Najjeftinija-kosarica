@@ -59,18 +59,24 @@ ZADANO: dict = {
                  # prodaja energije iz baterije u mrežu pri visokoj izvoznoj cijeni (isključiti ako priključak to ne dopušta)
                  "izvoz_iz_baterije": True,
                  # prag šuma (stabilnost): način rada baterije drži se najmanje min_trajanje_baterija_s (zaštita,
-                 # ručne naredbe i zahtjevi mreže djeluju odmah). Mrtva zona cijene i zadržavanje bojlera su
-                 # podesivi, ali zadano isključeni: u simulaciji su podizali trošak (vidi STANJE.md, 17.11.2026.)
-                 "prag_cijene_eur_kwh": 0.0, "min_trajanje_baterija_s": 900, "min_trajanje_bojler_s": 0},
+                 # ručne naredbe i zahtjevi mreže djeluju odmah). Mrtva zona cijene je podesiva, ali zadano
+                 # isključena: u simulaciji je podizala trošak (vidi STANJE.md, 17.11.2026.). Spremnik vodi MPC.
+                 "prag_cijene_eur_kwh": 0.0, "min_trajanje_baterija_s": 900},
     "prognoza": {"url": "https://api.open-meteo.com/v1/forecast"},
+    # spremnik PTV-a: model za prediktivno upravljanje (UA se uči iz mjerenja), dizalica topline + grijač, legionela
+    "spremnik": {"volumen_l": 150.0, "ua_w_k": 1.5, "t_prostorije_c": 18.0, "t_min_c": 45.0,
+                 "dizalica_kw": 0.5, "dt_max_c": 55.0, "grijac_kw": 2.0, "grijac_max_c": 65.0,
+                 # ciklički režim protiv legionele: ≥ 60 °C barem drzanje_min, svakih period_dana dana
+                 "legionela": {"period_dana": 7.0, "cilj_c": 62.0, "drzanje_min": 30.0, "nadoknada_max_c": 3.0}},
     "otkrivanje": {"multicast": "239.255.70.70", "port": 47070, "modbus_hostovi": [], "modbus_jedinice": [1, 2, 3]},
     "trosila": [
         # prioritet: 0 = nikad ne isključivati (pastir), veći broj = ranije isključiti
         {"id": "pastir", "naziv": "Električni pastir", "prioritet": 0, "snaga_w": 8},
         {"id": "hladnjak", "naziv": "Hladnjak", "prioritet": 1, "snaga_w": 90},
         {"id": "pumpa", "naziv": "Pumpa za navodnjavanje", "prioritet": 3, "snaga_w": 750, "fleksibilno": True},
-        {"id": "bojler", "naziv": "Bojler", "prioritet": 4, "snaga_w": 2000, "fleksibilno": True,
+        {"id": "bojler", "naziv": "Grijač spremnika", "prioritet": 4, "snaga_w": 2000, "fleksibilno": True,
          "energija_kwh_dan": 3.0},
+        {"id": "dizalica", "naziv": "Dizalica topline (PTV)", "prioritet": 4, "snaga_w": 500, "fleksibilno": True},
         {"id": "uticnice", "naziv": "Utičnice", "prioritet": 2, "snaga_w": 0},
     ],
 }

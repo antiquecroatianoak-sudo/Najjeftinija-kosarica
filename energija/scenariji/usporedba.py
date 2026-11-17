@@ -48,7 +48,8 @@ def _posao(arg):
         "neisporuceno_kwh": k["neisporuceno_kwh"], "krsenja": k["krsenja"], "iznimke": k["iznimke"],
         "bez_tople_vode_min": k["bez_tople_vode_min"], "stres_biljaka_h": k["stres_biljaka_h"],
         "voda_min": k["voda_min"], "suho_koraka": k["suho_koraka_max"], "prosao": r["prosao"],
-        "neuspjesi": r["neuspjesi"],
+        "neuspjesi": r["neuspjesi"], "legionela_kasnjenje_dana": k.get("legionela_kasnjenje_dana", 0.0),
+        "legionela_max_razmak_dana": k.get("legionela_max_razmak_dana"),
     }
 
 
@@ -65,13 +66,17 @@ def usporedi(scenariji: list[str], politika_pametne: dict | None = None, procesa
 
 # Mjerila (niže = bolje) i prag ispod kojeg se razlika smatra šumom simulacije
 MJERILA = {"trosak_eur": 0.02, "bez_tople_vode_min": 15, "stres_biljaka_h": 1.0, "neisporuceno_kwh": 0.01,
-           "ograda_bez_napona": 0.002}
+           "ograda_bez_napona": 0.002,
+           # dodano 17.11.2026. uz zaštitu od legionele (obvezni zahtjev vlasnika): sustav koji u razdoblju preskoči
+           # dezinfekciju ne smije "pobijediti" na trošku. Unaprijed zadani kriterij značajnosti (K1/K2) nije mijenjan.
+           "legionela_kasnjenje_dana": 0.25}
 
 
 def _vektor(x: dict) -> dict:
     return {"trosak_eur": x["trosak_eur"], "bez_tople_vode_min": x["bez_tople_vode_min"],
             "stres_biljaka_h": x["stres_biljaka_h"], "neisporuceno_kwh": x["neisporuceno_kwh"],
-            "ograda_bez_napona": 1.0 - (x["pastir"] or 0.0)}
+            "ograda_bez_napona": 1.0 - (x["pastir"] or 0.0),
+            "legionela_kasnjenje_dana": x.get("legionela_kasnjenje_dana", 0.0)}
 
 
 # Prag šuma troška (odluka vlasnika 17.11.2026., donesena NAKON rezultata cjevovoda 3078153762, gdje je

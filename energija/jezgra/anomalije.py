@@ -142,7 +142,8 @@ class Detektor:
                 continue
             st = self.kanali.setdefault(kanal, StatKanal())
             z = st.dodaj(float(v), dt)
-            if st.n > self.zagrijavanje and abs(z) > self.z_prag and not kanal.startswith(("rele_", "pastir_")):
+            # temperatura spremnika: nagli pad zbog potrošnje vode je normalan rad (mjerljiv gubitak), ne anomalija
+            if st.n > self.zagrijavanje and abs(z) > self.z_prag and not kanal.startswith(("rele_", "pastir_", "bojler_temp")):
                 nalazi.append(Anomalija(kanal, "skok", "info", f"{kanal}: neuobičajena vrijednost (z={z:.1f})", v))
             pratilac = self.kanali.get(ZIVI_KANALI.get(kanal) or "")
             if (kanal in ZIVI_KANALI and st.nepromijenjeno_s > self.zaglavljen_s and st.raspon_sum > 0
@@ -193,7 +194,7 @@ class Detektor:
             else:
                 self.kanali.setdefault("pumpa_nominal", StatKanal(0.02)).dodaj(i, 0)
         # trošilo troši iako je relej isključen (kvar releja / curenje)
-        for ime in ("bojler", "pumpa"):
+        for ime in ("bojler", "dizalica", "pumpa"):
             snaga = o.get(f"{ime}_snaga_w")
             if snaga is not None and not releji.get(ime, False) and snaga > 50:
                 out.append(Anomalija(f"{ime}_snaga_w", "trosi_iskljuceno", "upozorenje",

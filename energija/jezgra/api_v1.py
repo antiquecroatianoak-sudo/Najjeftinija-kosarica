@@ -52,11 +52,26 @@ def bojler(j) -> dict:
     o = _o(j)
     t = o.get("bojler_temp_c")
     h = j._sat_plana(j.sat()) if j.plan else 0
-    sljedece = next((p["ts"] for i, p in enumerate(j.plan) if i > h and i in j.raspored.get("bojler", [])), None)
-    return {"temp_c": t, "spremna_topla_voda": None if t is None else t >= 42.0, "grije": bool(j.releji.get("bojler")),
-            "snaga_w": o.get("bojler_snaga_w"), "energija_danas_kwh": round(j.dnevno.get("bojler_kwh", 0.0), 2),
+    sljedece = next((p["ts"] for i, p in enumerate(j.plan) if i > h and (i in j.raspored.get("bojler", []) or
+                                                                         i in j.raspored.get("dizalica", []))), None)
+    sp, leg = j.cfg["spremnik"], j.legionela
+    return {"temp_c": t, "spremna_topla_voda": None if t is None else t >= 42.0,
+            "grije": bool(j.releji.get("bojler") or j.releji.get("dizalica")),
+            "dizalica": bool(j.releji.get("dizalica")), "grijac": bool(j.releji.get("bojler")),
+            "snaga_w": (o.get("bojler_snaga_w") or 0.0) + (o.get("dizalica_snaga_w") or 0.0),
+            "dizalica_w": o.get("dizalica_snaga_w"), "grijac_w": o.get("bojler_snaga_w"),
+            "energija_danas_kwh": round(j.dnevno.get("bojler_kwh", 0.0), 2),
             "sljedece_planirano_grijanje": sljedece, "odluka": j.odluke.get("bojler"),
-            "rucno_do": j.rucno.get("bojler", (None, None))[1]}
+            "rucno_do": j.rucno.get("bojler", (None, None))[1],
+            "model": {"gubici_w_k": round(j.spremnik.ua, 2), "naucenih_razdoblja": j.spremnik.ua_uzoraka,
+                      "volumen_l": sp["volumen_l"], "t_min_c": sp["t_min_c"]},
+            "plan": [{"ts": p["ts"], "t_kraj": x["t_kraj"], "dizalica": x["dizalica"], "grijac": x["grijac"],
+                      "legionela": x["legionela"]} for p, x in zip(j.plan, j.plan_spremnika)][:36],
+            "legionela": {"zadnji_ciklus": leg.zadnja, "sljedeci_rok": leg.zadnja + leg.p["period_dana"] * 86400,
+                          "u_tijeku": leg.drzanje_s > 0, "drzanje_min": round(leg.drzanje_s / 60, 1),
+                          "cilj_c": round(leg.cilj_c, 1), "nadoknada_c": round(leg.nadoknada_c, 1),
+                          "ciklusa": leg.ciklusa, "prekinutih_potrosnjom": leg.prekinutih,
+                          "izmjereni_gubitak_kwh": round(leg.gubitak_kwh, 2)}}
 
 
 def solar(j) -> dict:
