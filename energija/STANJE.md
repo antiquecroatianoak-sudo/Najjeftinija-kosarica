@@ -362,3 +362,4 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - stres 2024.–2025.: 0 kršenja, K1 +68,8 p.b. (8/0, p = 0,0039), K2 ispunjen;
   - ocjena 2023.: 0 kršenja, K1 +45,4 p.b. (8/1, p = 0,0195), K2 ispunjen – identično prije izmjena.
 - **GitLab:** razvoj ← 0.3.0 u pet commitova kroz spojnik (25fa9b4d … ovaj zapis), zatim MR razvoj → main.
+- **Spojeno** (18.11.2026. 20:22, Europe/Zagreb): GitLab MR !4 razvoj → main uz SHA zaštitu; main = 0b787ce0. Prijenos provjeren veličinom svih 17 datoteka (jednake izvoru). GitLab Duo je opet automatski dodan kao recenzent.
