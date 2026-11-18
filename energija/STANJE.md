@@ -357,3 +357,8 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - provjera sustava 15/15;
   - katalog 18/18, 0 kršenja; uštede identične prethodnom pokretanju (provjera ne mijenja ponašanje na ispravnim podacima).
 - **Nije provjereno:** stvarni izmjenjivači s oznakama „nije dostupno” (samo simulirano i jediničnim testom).
+- **GitHub CI** (353db1d; GitLab CI i dalje ne radi):
+  - cjelovita provjera (run 44363639684) 5/5 i izolirana Compose provjera (run 44363639858) – uspjeh;
+  - stres 2024.–2025.: 0 kršenja, K1 +68,8 p.b. (8/0, p = 0,0039), K2 ispunjen;
+  - ocjena 2023.: 0 kršenja, K1 +45,4 p.b. (8/1, p = 0,0195), K2 ispunjen – identično prije izmjena.
+- **GitLab:** razvoj ← 0.3.0 u pet commitova kroz spojnik (25fa9b4d … ovaj zapis), zatim MR razvoj → main.
