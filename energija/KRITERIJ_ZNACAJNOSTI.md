@@ -54,3 +54,21 @@ K1 je, dakle, uspoređivao trošak uz nejednaku uslugu.
     (`--ravnopravno`), pa se uspoređuje samo upravljanje energijom.
 - **Odluka za 2. ocjenu:** optimizacija upravljanja energijom je **USPJEŠNA** ako vrijede K1‑R i K2. Ishod K1 navodi se
   uz nju, bez obzira na to kakav je.
+
+## 3. ocjena – stvarni podaci za 2023. (zapisano 18.11.2026., PRIJE pokretanja)
+
+Skup nikad nije korišten za razvoj ni za ocjenu:
+- razvoj: sintetički 2026.;
+- ocjene 1 i 2: sintetički 2027. i 2028.;
+- stres testovi: stvarni 2024.–2025.
+
+Skup za ovu ocjenu: 9 tjedana iz 2023. s istim pravilom odabira kao u stres testovima (`stres/povijest.py`, `odaberi_tjedne`). To su najhladniji, najtopliji, najtamniji, najskuplji, najnestabilniji tjedan, tjedan s najviše negativnih cijena i 3 nasumična (sjeme 11). Podaci su Open-Meteo arhiva i Energy-Charts (zona HR, uz isti maloprodajni dodatak).
+
+Ocjenjuje se konfiguracija u commitu prije pokretanja, bez ikakvog podešavanja nakon što se vide rezultati.
+
+**Uspjeh** traži sve tri stavke:
+- K1 ispunjen: medijan Δ ≥ +10 p.b. i p < 0,05;
+- K2 ispunjen;
+- nula sigurnosnih kršenja.
+
+Uz presudu se navodi i medijan „ostvarenog od mogućeg” (granica uz zabranu punjenja na mrazu). Ishod se upisuje u STANJE.md kakav god bio.

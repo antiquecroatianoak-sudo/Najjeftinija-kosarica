@@ -101,6 +101,28 @@ stres_povijesni:
     paths: [rezultati_ci/stres]
     expire_in: 90 days
 
+# 3. ocjena (KRITERIJ_ZNACAJNOSTI.md): stvarni podaci za 2023., skup nikad korišten za razvoj ni ocjenu
+ocjena_2023:
+  stage: stres
+  <<: *ne_raspored
+  needs: [jedinicni_i_integracijski]
+  timeout: 90m
+  cache:
+    - key: pip-$CI_JOB_IMAGE
+      paths: [.cache/pip]
+    - key: povijest-2023-v1
+      paths: [podaci2023/]
+  script:
+    - |
+      if [ ! -s podaci2023/povijest.json ]; then
+        python3 -m stres.povijest preuzmi --od 2023-01-01 --do 2023-12-31 --izlaz podaci2023/povijest.json
+      fi
+    - python3 -m stres.povijest pokreni --podaci podaci2023/povijest.json --izlaz rezultati_ci/ocjena_2023
+  artifacts:
+    when: always
+    paths: [rezultati_ci/ocjena_2023]
+    expire_in: 365 days
+
 # ---------------------------------------------------------------- sustav (izolirano, Docker Compose)
 compose_izolirano:
   stage: sustav
