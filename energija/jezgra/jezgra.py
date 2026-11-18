@@ -330,7 +330,9 @@ class Jezgra:
         pol = self.cfg["politika"]
         if pol.get("ucenje_pristranosti") and self._pv_zbroj_prognoza > 3.0:  # barem ~3 kWh prognoze u zadnja 24 h
             f = max(0.3, min(1.2, self._pv_zbroj_stvarno / self._pv_zbroj_prognoza))
-            pv = [x * f for x in pv]
+            if abs(f - 1.0) > pol.get("pristranost_prag", 0.0):  # samo jasna, trajna pristranost (ne šum)
+                f = 1.0 + (f - 1.0) * pol.get("pristranost_udio", 1.0)
+                pv = [x * f for x in pv]
         if pol.get("korekcija_prognoze") and abs(self._pv_omjer - 1.0) > 0.1:
             # kratkoročno: prognoza promašuje sada -> idućih sati vjerojatno slično, ali sve manje
             import math
