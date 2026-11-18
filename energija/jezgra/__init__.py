@@ -5,4 +5,4 @@ navodnjavanje, zaštita od kvarova) odlučuje se lokalno. Oblak je samo za sinkr
 šifriranih podataka, izvještaje i daljinsko održavanje.
 """
 
-VERZIJA = "0.1.0"
+VERZIJA = "0.2.0"

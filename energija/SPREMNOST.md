@@ -5,7 +5,7 @@ Ovaj popis odvaja ono što je **automatski dokazano na simulatorima** od onoga �
 dijela B. Simulator može pokazati da je logika sigurna i robusna. Ne može pokazati da stvarni
 hardver radi kako ga model opisuje.
 
-## A. Automatske provjere (svaki push na `energija/**`, radni tok „Energija – izolirana provjera”)
+## A. Automatske provjere (svaki commit: GitLab CI `.gitlab-ci.yml`; na GitHubu radni tok „Energija – izolirana provjera”)
 
 | Vrata | Kako se provjerava | Gdje |
 |---|---|---|
@@ -16,6 +16,10 @@ hardver radi kako ga model opisuje.
 | Scenariji kvarova | ograda (kratki spoj, prekid, više kvara, vegetacija), suhi bunar, ispad izmjenjivača i senzora, ispadi Open‑Meteo, rad bez mreže ljeti i zimi, mraz, starenje baterije | `scenariji/katalog.py` |
 | Cjeloviti sustav | jezgra + pymodbus + MQTT + lažni Open‑Meteo, stroga provjera TLS‑a, uparivanje, ručno premošćivanje do izmjenjivača, potpis izvještaja | `provjera/provjera_sustava.py` |
 | Izolacija i ograničenja kontejnera | Compose s `internal: true` (dokazano: bez interneta), jezgra ograničena na 160 MB i 1 CPU, slika samo za čitanje, bez Linux sposobnosti (capabilities) | `kontejneri/compose.provjera.yaml` |
+| Spremnik tople vode i legionela | MPC s dizalicom topline; stvarna dezinfekcija ≥ 60 °C 30 min, koju mjeri simulator neovisno o jezgri; prekid potrošnjom nadoknađuje sljedeći ciklus | `testovi/test_spremnik.py` |
+| Automatsko traženje uređaja | samo privatne mreže (najviše /22), paralelno, preskače poznate | `testovi/test_otkrivanje.py` |
+| Ponovljivost | isti KPI bez obzira na opterećenje računala i zonu računala | `testovi/test_prag_suma.py` |
+| Stvarni podaci | stres 2024.–2025. i neovisna ocjena 2023. u GitLab CI-ju | `.gitlab-ci.yml` |
 | Politika upravljanja | naučena na skupu za učenje, prihvaćena samo ako je bolja na odvojenim tjednima i bez ijednog sigurnosnog kršenja | `scenariji/ucenje_politike.py` |
 
 ## B. Samo na terenu (otvoreno)
