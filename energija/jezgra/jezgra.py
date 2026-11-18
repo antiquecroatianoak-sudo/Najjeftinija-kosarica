@@ -357,7 +357,13 @@ class Jezgra:
         # planirana potrošnja ulazi u plan baterije
         self.plan_spremnika = []
         if self._spremnik_mpc():
-            self.plan_spremnika = self._planiraj_spremnik(ts, cijene, pv, ukupno, prog)
+            granicne = None
+            if self.cfg["politika"].get("zajednicko_planiranje") and self.mreza_dostupna:
+                okvir = planiraj_bateriju(ukupno, pv, cijene, soc, cfg_plan,
+                                          self.parametri.get("rezerva_soc", self.cfg["baterija"]["soc_min"]), ts,
+                                          mreza=self.mreza_dostupna)
+                granicne = self._granicne_cijene(okvir, cijene)
+            self.plan_spremnika = self._planiraj_spremnik(ts, cijene, pv, ukupno, prog, granicne)
             for h, x in enumerate(self.plan_spremnika):
                 ukupno[h] += x["el_kwh"] * 1000
             self.raspored["bojler"] = [h for h, x in enumerate(self.plan_spremnika) if x["grijac"]]
@@ -389,13 +395,36 @@ class Jezgra:
             out.append(p or (i < 2 and self.prisutni))
         return out
 
+    def _granicne_cijene(self, okvir: list[dict], cijene: list[dict]) -> list[dict]:
+        """Što stoji dodatni kWh u svakom satu, iz okvirnog plana baterije: izvoz -> izvozna cijena, uvoz ->
+        kupovna, baterija balansira -> vrijednost uskladištenog kWh (prosječna kupovna cijena sati u kojima se
+        baterija prazni, umanjena za gubitke i trošenje), ali ne manje od izvozne cijene tog sata."""
+        trosenje = self.cfg["baterija"]["trosak_ciklusa_eur_kwh"]
+        praznjenje = [c["kupnja"] for p, c in zip(okvir, cijene) if p["baterija_kw"] < -0.05]
+        vrijednost = (sum(praznjenje) / len(praznjenje) * 0.9025 - 2 * trosenje) if praznjenje else None
+        out = []
+        for p, c in zip(okvir, cijene):
+            if p["mreza_kw"] < -0.05:
+                g = c["prodaja"]
+            elif p["mreza_kw"] > 0.05:
+                g = c["kupnja"]
+            else:
+                g = max(c["prodaja"], vrijednost) if vrijednost is not None else c["prodaja"]
+            out.append({"kupnja": g, "prodaja": g})
+        return out
+
     def _planiraj_spremnik(self, ts: float, cijene: list[dict], pv: list[float], ukupno: list[float],
-                           prog: list[dict]) -> list[dict]:
+                           prog: list[dict], granicne: list[dict] | None = None) -> list[dict]:
         H = len(cijene)
         t0 = self.zadnje_ocitanje.get("bojler_temp_c")
         if t0 is None:
             return []
         pris = self._prisutnost_plana(ts, H)
+        if granicne is not None:  # granične cijene već sadrže višak sunca i bateriju
+            return planiraj_spremnik(self.spremnik, t0, granicne, [0.0] * H,
+                                     [g.get("temp") if g.get("temp") is not None else 10.0 for g in prog], pris,
+                                     self.spremnik.prognoza_potrosnje(ts, H, pris), self.legionela.rok_h(ts),
+                                     self.legionela.cilj_c, mreza=True)
         return planiraj_spremnik(self.spremnik, t0, cijene, [max(0.0, a - b) for a, b in zip(pv, ukupno)],
                                  [g.get("temp") if g.get("temp") is not None else 10.0 for g in prog], pris,
                                  self.spremnik.prognoza_potrosnje(ts, H, pris), self.legionela.rok_h(ts),
