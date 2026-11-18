@@ -318,3 +318,4 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - 91/91 testova; 3 nova testa padaju na starom kodu;
   - provjera sustava 15/15; katalog scenarija 18/18, 0 kršenja.
 - **Ispravci su na razvoju, nisu u mainu.**
+- **CI na GitLabu trenutačno ne radi:** razvoj 14119833 (cjevovod 3084986814) također je pao za 1 s, s praznim zapisnikom. Kvar nije vezan uz main, nego uz projekt ili grupu. Razlog treba pogledati na stranici cjevovoda; za te ispravke CI na GitLabu zato nije potvrđen.
