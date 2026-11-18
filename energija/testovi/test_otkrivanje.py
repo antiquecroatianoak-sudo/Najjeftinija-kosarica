@@ -91,6 +91,30 @@ class TestSkeniranje(unittest.TestCase):
         self.assertEqual(len(s["novi_uredaji"]), 1)
         self.assertEqual(r.skeniraj()["novi_uredaji"], [])  # drugi put: već poznat, ne ispituje se ponovno
 
+    def test_prvo_trazenje_odmah_nakon_pokretanja(self):
+        # time.monotonic() broji od pokretanja računala: svježe pokrenut uređaj ne smije čekati prvo traženje
+        from jezgra import uredjaji
+
+        class Jezgra:
+            uredaji: list = []
+
+            class trezor:
+                @staticmethod
+                def id_uredaja():
+                    return "abcdefgh12"
+
+        class Broker:
+            port = 1
+        with mock.patch.object(uredjaji, "Klijent"):
+            r = uredjaji.Registar(Jezgra(), Broker(), {"otkrivanje": {"modbus_hostovi": [], "modbus_jedinice": [1],
+                                                                     "lan_skeniranje": True}})
+        with mock.patch.object(uredjaji.time, "monotonic", return_value=120.0), \
+                mock.patch.object(uredjaji, "lokalne_mreze", return_value=[]), \
+                mock.patch.object(uredjaji, "nadji_otvorene", return_value=[]) as nadji, \
+                mock.patch.object(uredjaji, "skeniraj_modbus", return_value=[]):
+            r.skeniraj()
+        nadji.assert_called_once()
+
 
 class TestApi(unittest.TestCase):
     def test_ruta_otkrivanja(self):

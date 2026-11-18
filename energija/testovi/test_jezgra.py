@@ -276,6 +276,29 @@ class TestAnomalije(unittest.TestCase):
         self.assertTrue(any(a.vrsta == "punjenje_na_hladnom" for a in n))
         n = d.obradi({"baterija_napon_v": 16 * 2.7}, 10)
         self.assertIn("pastir", {"pastir"} - set(next(a for a in n if a.vrsta == "podnapon").trosila))
+        # dizalica topline je fleksibilno trošilo: gasi se preventivno kao i grijač
+        self.assertIn("dizalica", next(a for a in n if a.vrsta == "podnapon").trosila)
+        n = d.obradi({"baterija_temp_c": 58.0}, 10)
+        self.assertIn("dizalica", next(a for a in n if a.vrsta == "pregrijavanje").trosila)
+
+    def test_sigurno_stanje_gasi_dizalicu(self):
+        from jezgra.jezgra import Jezgra
+
+        class J:
+            ventili: dict = {}
+            zastita_do: dict = {}
+            postavljeno: dict = {}
+
+            def sat(self):
+                return 1000.0
+
+            def _postavi(self, k, v, ts, osvjezi_s=None):
+                self.postavljeno[k] = v
+        j = J()
+        Jezgra.sigurno_stanje(j)
+        self.assertEqual(j.postavljeno.get("rele_dizalica"), 0.0)
+        self.assertGreater(j.zastita_do["dizalica"], 1000.0)
+        self.assertEqual(j.postavljeno.get("pastir_snaga"), 1.0)  # pastir ostaje pod naponom
 
     def test_zaglavljen_samo_ako_pratilac_radi(self):
         d = Detektor(cfg())

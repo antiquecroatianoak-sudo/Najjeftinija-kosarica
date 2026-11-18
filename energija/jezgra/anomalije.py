@@ -166,7 +166,7 @@ class Detektor:
             if t > b["temp_max_c"]:
                 out.append(Anomalija("baterija_temp_c", "pregrijavanje", "kriticno",
                                      f"Baterija {t:.0f} °C – smanjujem opterećenje", t,
-                                     trosila=["bojler", "pumpa", "uticnice"]))
+                                     trosila=["bojler", "dizalica", "pumpa", "uticnice"]))
             elif t < b["temp_punjenje_min_c"] and struja > 0.5:
                 out.append(Anomalija("baterija_temp_c", "punjenje_na_hladnom", "kriticno",
                                      f"Punjenje na {t:.0f} °C oštećuje LiFePO4 – punjenje zaustavljeno", t))
@@ -176,7 +176,7 @@ class Detektor:
             if v / n < b["celija_min_v"] - 0.1:
                 out.append(Anomalija("baterija_napon_v", "podnapon", "kriticno",
                                      f"Napon ćelije {v / n:.2f} V – isključujem nekritična trošila", v,
-                                     trosila=["bojler", "pumpa", "uticnice", "hladnjak"]))
+                                     trosila=["bojler", "dizalica", "pumpa", "uticnice", "hladnjak"]))
             elif v / n > b["celija_max_v"] + 0.1:
                 out.append(Anomalija("baterija_napon_v", "prenapon", "kriticno",
                                      f"Napon ćelije {v / n:.2f} V – punjenje zaustavljeno", v))

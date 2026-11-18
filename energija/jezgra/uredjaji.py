@@ -14,7 +14,7 @@ class Registar:
         self.cfg = cfg
         self.hostovi: set[tuple[str, int]] = {tuple(h) for h in cfg["otkrivanje"]["modbus_hostovi"]}
         self._lock = threading.Lock()
-        self._zadnje_trazenje = 0.0
+        self._zadnje_trazenje = float("-inf")  # prvo traženje odmah (monotonic broji od pokretanja računala)
         self.zadnje_skeniranje: dict = {}
         self.mqtt = Klijent(f"jezgra-{jezgra.trezor.id_uredaja()[:8]}", port=broker.port)
         self.mqtt.pri_poruci = self._poruka

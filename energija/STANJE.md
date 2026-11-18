@@ -301,3 +301,20 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - U najtamnijem tjednu (01/2023) cjenovni prag je jeftiniji: 16,73 € prema 16,88 € (+0,15 €). Razlika je unutar praga šuma (1 %), zato je to „dominira” u tablici, ali K1 to broji kao lošije.
   - Uštede prema vlastitoj potrošnji: 0,6–1,9 € tjedno po tjednu. Maloprodajni dodatak 0,085 €/kWh je pretpostavka.
 - **main nije diran.** Spajanje razvoj → main čeka izričitu potvrdu vlasnika.
+
+## 18.11.2026. 16:50 (Europe/Zagreb) – spojeno u main (GitLab), ispravci iz pregleda
+
+- **Spojeno:** GitLab MR !2 razvoj → main, spojen 18.11.2026. 16:29.
+  - Cjevovodi na commitu 6cb7eeb3 prije spajanja: zeleni (MR 3084816873, razvoj 3084814675).
+  - main = a049c87a (commit spajanja).
+- **Ispravljena utrka u izoliranoj provjeri:** korak 5 sada čeka plan nakon prognoze (6cb7eeb3). Pao je na 054097a3; kod upravljanja nije bio uzrok.
+- **Cjevovod na mainu (3084873518) pao je za 1 s:** svi poslovi, s praznim zapisnikom. Uzrok kroz spojnik nije vidljiv (nema failure_reason).
+  - Pretpostavka, nepotvrđeno: iscrpljene CI minute ili ograničenje runnera na zaštićenoj grani.
+  - Kod je isti kao na zelenim cjevovodima.
+- **GitLab Duo** je kao recenzent automatski dodan na MR (nisam ga tražio) i pokrenuo je pregled (cjevovod duo_workflow). Oba nalaza su potvrđena u kodu i ispravljena:
+  - gumb „Potraži uređaje” i prvo traženje nakon svježeg pokretanja nisu pretraživali LAN, jer `time.monotonic()` broji od pokretanja računala → početna vrijednost `-inf`;
+  - dizalica topline nije bila u zaštitnim putovima (sigurno stanje, vršna snaga otočno, pregrijavanje i podnapon baterije) → dodana. Kaskada niske baterije ju je već imala.
+- **Testirano** (lokalno, Europe/Zagreb):
+  - 91/91 testova; 3 nova testa padaju na starom kodu;
+  - provjera sustava 15/15; katalog scenarija 18/18, 0 kršenja.
+- **Ispravci su na razvoju, nisu u mainu.**

@@ -592,7 +592,7 @@ class Jezgra:
         vrsna_w = b["max_praznjenje_kw"] * 1000 * 0.9 + max(0.0, pv)
         slobodno_w = vrsna_w - potr if not mreza_dostupna else float("inf")
         if not mreza_dostupna and potr > vrsna_w:
-            for t in ("bojler", "pumpa"):
+            for t in ("bojler", "dizalica", "pumpa"):
                 if self.releji.get(t):
                     self.zastita_do[t] = max(self.zastita_do.get(t, 0), ts + 600)
                     self._dogadjaj("zastita", {"trosilo": t, "uzrok": "vrsna_snaga",
@@ -1141,7 +1141,7 @@ class Jezgra:
         """Pozvano iz nadzornika: pastir ostaje pod naponom, fleksibilna trošila isključena."""
         self.u_sigurnom = True
         ts = self.sat()
-        for t in ("pumpa", "bojler"):
+        for t in ("pumpa", "bojler", "dizalica"):
             self.zastita_do[t] = ts + 900
             self._postavi(f"rele_{t}", 0.0, ts, osvjezi_s=0)
         for z in self.ventili:

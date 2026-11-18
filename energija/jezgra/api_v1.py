@@ -193,7 +193,7 @@ def _otkrivanje(j) -> dict:
     reg = getattr(j, "registar", None)
     if reg is None:
         raise GreskaApi(409, "otkrivanje uređaja ne radi u ovom načinu (simulacija bez protokola)")
-    reg._zadnje_trazenje = 0.0  # ručni zahtjev: odmah pretraži i lokalnu mrežu
+    reg._zadnje_trazenje = float("-inf")  # ručni zahtjev: odmah pretraži i lokalnu mrežu
     return reg.skeniraj() | {"uredaji": [u.opis() for u in j.uredaji]}
 
 
