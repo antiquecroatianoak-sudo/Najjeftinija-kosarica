@@ -286,3 +286,18 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - sintetički stres: 0 kršenja, K1 9/0, p = 0,002.
 - **EMHASS:** instalacija i dalje odbijena od automatske zaštite (i uz vlasnikovo odobrenje); nije zaobiđeno. Treba dopuštenje u postavkama Claude Codea.
 - **Sljedeće:** 3. ocjena na stvarnim podacima 2023. (kriterij zapisan prije pokretanja) kroz GitLab posao ocjena_2023.
+
+## 18.11.2026. 14:10 (Europe/Zagreb) – 3. ocjena (stvarni podaci 2023.): USPJEH
+
+- Cjevovod 3084029923 (razvoj, 3daa789e): svih 8 poslova uspjeh; posao ocjena_2023 (18143817138), artefakt `rezultati_ci/ocjena_2023` (365 dana).
+- Ocijenjeno strogo po kriteriju zapisanom prije pokretanja (KRITERIJ_ZNACAJNOSTI.md, 3. ocjena), bez podešavanja:
+  - K1: medijan Δ +45,4 p.b. (≥ +10), bolje 8 / lošije 1, p = 0,0195 (< 0,05) → **ispunjen**;
+  - K2 → **ispunjen**;
+  - sigurnosna kršenja: **0**; 0 minuta bez tople vode; 0 h stresa biljaka (vlastita: 24,6 h u najtoplijem tjednu).
+- Pametna dominira (Pareto, s pragom šuma) u 9/9 tjedana.
+- Medijan „ostvarenog od mogućeg”: **45 %** (raspon 38–71 %).
+- Iskreno o ograničenjima:
+  - 45 % je znatno manje od razvojnog kataloga (77,8 %) i stres testova 2024.–2025. Na neviđenim podacima ostaje velik prostor do granice.
+  - U najtamnijem tjednu (01/2023) cjenovni prag je jeftiniji: 16,73 € prema 16,88 € (+0,15 €). Razlika je unutar praga šuma (1 %), zato je to „dominira” u tablici, ali K1 to broji kao lošije.
+  - Uštede prema vlastitoj potrošnji: 0,6–1,9 € tjedno po tjednu. Maloprodajni dodatak 0,085 €/kWh je pretpostavka.
+- **main nije diran.** Spajanje razvoj → main čeka izričitu potvrdu vlasnika.
