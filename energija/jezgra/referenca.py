@@ -59,7 +59,7 @@ ULAZI = [
 
 def _naredbeni_redak() -> list[str]:
     from .__main__ import parser
-    ap_pomoc = [(", ".join(a.option_strings), a.metavar or ("|".join(a.choices) if a.choices else
+    ap_pomoc = [(", ".join(a.option_strings), a.metavar or (" / ".join(a.choices) if a.choices else
                                                             "" if a.nargs == 0 else "VRIJEDNOST"), a.help or "")
                 for a in parser()._actions if a.option_strings and a.dest != "help"]
     out = ["### Naredbeni redak (`python3 -m jezgra …`)", "", "| Opcija | Vrijednost | Značenje |", "|---|---|---|"]

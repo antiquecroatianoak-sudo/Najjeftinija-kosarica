@@ -59,7 +59,7 @@ Svaka odluka ima zapisan razlog (`GET /api/v1/odluke`). Zaštita uvijek ima pred
 | `--sim` |  | simulirana farma preko Modbus/MQTT, sučelje uživo |
 | `--sim-dani` | VRIJEDNOST | brza simulacija N dana i izvještaj |
 | `--brzina` | VRIJEDNOST | ubrzanje vremena u --sim načinu |
-| `--sezona` | jesen|ljeto|proljece|zima | godišnje doba simulacije |
+| `--sezona` | jesen / ljeto / proljece / zima | godišnje doba simulacije |
 | `--dinamicka` |  | dinamička satna tarifa u simulaciji |
 | `--otocno` |  | bez mreže (otočni rad) |
 | `--port` | VRIJEDNOST | port HTTPS sučelja (zadano api.port = 8443) |
