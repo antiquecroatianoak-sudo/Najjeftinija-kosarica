@@ -54,19 +54,42 @@ class SunSpecUredaj(Uredaj):
     def sf(r: int) -> float:
         return 10.0 ** u_int16(r)
 
+    @staticmethod
+    def vrijednost(r: int, sf: int, predznak: bool) -> float | None:
+        """Registar s faktorom skale; None za SunSpec oznaku „nije dostupno” (int16 0x8000, uint16 0xFFFF,
+        faktor skale 0x8000) – takav kanal se ne javlja umjesto da postane nemoguć broj (npr. 6553 % SoC)."""
+        if sf == 0x8000 or r == (0x8000 if predznak else 0xFFFF):
+            return None
+        return (u_int16(r) if predznak else r) * 10.0 ** u_int16(sf)
+
     def citaj(self) -> dict[str, float]:
         out: dict[str, float] = {}
         for mid in (101, 102, 103):
             if mid in self.modeli:
                 a, _ = self.modeli[mid]
                 r = self.k.citaj_holding(self.j, a, 18)
-                out["pv_snaga_w"] = u_int16(r[14]) * self.sf(r[15])
+                w = self.vrijednost(r[14], r[15], True)
+                if w is not None:
+                    out["pv_snaga_w"] = w
         if 124 in self.modeli:
             a, _ = self.modeli[124]
             r = self.k.citaj_holding(self.j, a, 26)
-            out["baterija_soc"] = r[8] * self.sf(r[22]) / 100.0
-            out["baterija_napon_v"] = r[10] * self.sf(r[24])
+            soc = self.vrijednost(r[8], r[22], False)
+            v = self.vrijednost(r[10], r[24], False)
+            if soc is not None:
+                out["baterija_soc"] = soc / 100.0
+            if v is not None:
+                out["baterija_napon_v"] = v
         return out
+
+    def nazivno(self) -> dict[str, float]:
+        """Nazivni podaci za samopodešavanje: najveća snaga punjenja/pražnjenja (WChaMax, model 124)."""
+        if 124 not in self.modeli:
+            return {}
+        a, _ = self.modeli[124]
+        r = self.k.citaj_holding(self.j, a, 26)
+        w = self.vrijednost(r[2], r[18], False)
+        return {"baterija_max_kw": w / 1000.0} if w and w > 0 else {}
 
     def postavi(self, kanal: str, vrijednost: float) -> bool:
         if kanal not in ("baterija_snaga_w", "baterija_auto", "baterija_ogranicenje") or 124 not in self.modeli:

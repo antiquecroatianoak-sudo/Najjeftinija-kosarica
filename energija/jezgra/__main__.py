@@ -1,10 +1,12 @@
-"""Pokretanje: `python -m jezgra [--sim | --sim-dani N | --skeniraj | --dijagnoza] [--podaci MAPA] [--port P]`.
+"""Pokretanje: `python -m jezgra [--sim | --sim-dani N | --skeniraj | --dijagnoza | --postavi K=V… | --postavke]`.
 
 - bez opcija: stvarni uređaji (otkrivanje Modbus/MQTT/UDP), HTTPS sučelje i API,
 - `--sim`: simulirana farma preko stvarnih protokola (Modbus TCP + MQTT), ubrzano vrijeme,
 - `--sim-dani N`: brza simulacija N dana bez mreže, na kraju potpisani izvještaj,
 - `--skeniraj`: jednom potraži uređaje u lokalnoj mreži i ispiši ih (za instalatera),
-- `--dijagnoza`: provjeri spremnost uređaja, uz uputu za svaku stavku koja ne prolazi.
+- `--dijagnoza`: provjeri spremnost uređaja, uz uputu za svaku stavku koja ne prolazi,
+- `--postavi kljuc=vrijednost …`: provjereno upiši postavke (bez ručnog uređivanja JSON-a),
+- `--postavke`: ispiši što je promijenjeno u odnosu na zadano i popis važnih postavki.
 """
 from __future__ import annotations
 
@@ -71,7 +73,7 @@ def skeniraj_jednom(cfg: dict) -> int:
     t0 = time.monotonic()
     mreze = lokalne_mreze(o.get("lan_mreze") or None)
     print(f"Adrese ovog uređaja: {', '.join(lokalne_adrese()) or '–'}")
-    print(f"Tražim Modbus uređaje u: {', '.join(mreze) or '– (nema privatne mreže; zadaj otkrivanje.lan_mreze)'}")
+    print(f"Tražim Modbus uređaje u: {', '.join(mreze) or '– (nema privatne mreže; zadaj otkrivanje.lan_mreze s --postavi)'}")
     hostovi = sorted(set(nadji_otvorene(mreze, tuple(o.get("lan_portovi", (502, 1502))))) |
                      {tuple(h) for h in o["modbus_hostovi"]})
     for h, p in hostovi:
@@ -82,7 +84,7 @@ def skeniraj_jednom(cfg: dict) -> int:
         print(f"  ✓ {d.get('tip')}: {u.id} ({d.get('protokol')}{', ' + d['proizvodjac'] if d.get('proizvodjac') else ''})")
     if not uredaji:
         print("  Nijedan SunSpec izmjenjivač ni Eastron brojilo nije prepoznat. Provjeri da je Modbus TCP uključen na "
-              "uređaju, ili upiši adresu u postavke.json: {\"otkrivanje\": {\"modbus_hostovi\": [[\"IP\", 502]]}}")
+              "uređaju, ili zadaj adresu: python3 -m jezgra --postavi 'otkrivanje.modbus_hostovi=[[\"IP\", 502]]'")
     print(f"Gotovo za {time.monotonic() - t0:.1f} s. MQTT senzori se prijavljuju sami kad jezgra radi.")
     return 0 if uredaji else 1
 
@@ -109,6 +111,8 @@ def dijagnoza(mapa: Path, port: int | None = None) -> int:
         stavke.append((False, f"podatkovna mapa {mapa}", f"nije zapisiva ({e}); zadaj --podaci ili ENERGIJA_PODACI"))
     stavke.append(("_greska_postavki" not in cfg, "postavke.json",
                    f"neispravna datoteka: {cfg.get('_greska_postavki')} (koriste se zadane postavke)"))
+    for u in cfg.get("_upozorenja_postavki", []):
+        stavke.append((False, "postavka", f"{u}; ispravi s --postavi kljuc=vrijednost"))
     for ime, p in (("HTTPS sučelje", port or cfg["api"]["port"]), ("MQTT broker", cfg["mqtt"]["port"])):
         s = socket.socket()
         try:
@@ -124,29 +128,98 @@ def dijagnoza(mapa: Path, port: int | None = None) -> int:
     from .otkrivanje import lokalne_mreze
     mreze = lokalne_mreze(cfg["otkrivanje"].get("lan_mreze") or None)
     stavke.append((bool(mreze) or bool(cfg["otkrivanje"]["modbus_hostovi"]), f"lokalna mreža: {', '.join(mreze) or '–'}",
-                   "nema privatne mreže za automatsko traženje; zadaj otkrivanje.lan_mreze ili modbus_hostovi"))
+                   "nema privatne mreže za automatsko traženje; zadaj je: python3 -m jezgra --postavi "
+                   "'otkrivanje.lan_mreze=[\"192.168.1.0/24\"]'"))
+    # preporuke (ne sprječavaju rad): osnovni podaci lokacije koji su još zadani
+    rucno = set(cfg.get("_korisnicki_kljucevi", []))
+    preporuke = [(k, primjer, opis) for k, primjer, opis in PREPORUKE if not any(r.startswith(k) for r in rucno)]
     for ok, naziv, uputa in stavke:
         print(f"{'✓' if ok else '✗'} {naziv}" + ("" if ok else f"\n    → {uputa}"))
+    for k, primjer, opis in preporuke:
+        v = konfig._dohvati(cfg, k)
+        prikaz = {"lokacija": lambda: f"{v['sirina']}, {v['duzina']}",
+                  "tarifa": lambda: f"VT {v['vt_eur_kwh']}, NT {v['nt_eur_kwh']} €/kWh"}.get(
+            k, lambda: f"{v} {konfig.OPIS.get(k, ('',))[0]}".strip())()
+        print(f"! {opis}: zadano {prikaz}\n    → provjeri i upiši: python3 -m jezgra --postavi {primjer}")
     lose = sum(1 for ok, _, _ in stavke if not ok)
     print("Sve je spremno." if not lose else f"Za popravak: {lose} od {len(stavke)} stavki.")
+    if preporuke:
+        print(f"Preporuka: {len(preporuke)} osnovnih podataka još je zadano (sustav radi, ali s procjenom).")
     return 1 if lose else 0
 
 
-def main(argv: list[str] | None = None) -> int:
+# osnovni podaci koje instalater treba potvrditi (ključ, primjer naredbe, opis)
+PREPORUKE = [
+    ("lokacija", "lokacija=45.33,14.44", "lokacija (prognoza sunca)"),
+    ("baterija.kapacitet_kwh", "baterija.kapacitet_kwh=10", "kapacitet baterije"),
+    ("fotonapon.kwp", "fotonapon.kwp=5", "vršna snaga panela"),
+    ("tarifa", "tarifa.vt_eur_kwh=0.16 tarifa.nt_eur_kwh=0.08", "tarifa (VT/NT, €/kWh)"),
+]
+
+
+def ispis_postavki(mapa: Path) -> int:
+    """Za instalatera: što je promijenjeno i koje se važne postavke mogu zadati (s jedinicama i rasponom)."""
+    cfg = konfig.ucitaj(mapa)
+    izmjene = konfig.korisnicke(mapa)
+    print(f"Postavke: {Path(mapa) / 'postavke.json'}")
+    print("Promijenjeno u odnosu na zadano:" if izmjene else "Sve postavke su zadane.")
+
+    def ispisi(d: dict, put: str = "") -> None:
+        for k, v in d.items():
+            p = f"{put}.{k}" if put else k
+            if isinstance(v, dict):
+                ispisi(v, p)
+            else:
+                print(f"  {p} = {json.dumps(v, ensure_ascii=False)}")
+    ispisi(izmjene)
+    for u in cfg.get("_upozorenja_postavki", []):
+        print(f"  ✗ {u}")
+    print("\nVažne postavke (python3 -m jezgra --postavi kljuc=vrijednost):")
+    for k, (jed, mn, mx, opis) in konfig.OPIS.items():
+        v = konfig._dohvati(cfg, k)
+        raspon = f" [{mn}–{mx}]" if mn is not None else ""
+        print(f"  {k} = {json.dumps(v, ensure_ascii=False)} {jed}{raspon}  – {opis}")
+    return 0
+
+
+def postavi(mapa: Path, dodjele: list[str]) -> int:
+    prije = konfig.korisnicke(mapa)
+    nove, upoz = konfig.postavi(mapa, dodjele)
+    for u in upoz:
+        print(f"✗ {u}")
+    if nove != prije:
+        print(f"✓ upisano u {Path(mapa) / 'postavke.json'}; jezgra ih primjenjuje pri sljedećem pokretanju")
+    elif not upoz:
+        print("✓ bez promjene (iste vrijednosti već su upisane)")
+    return 1 if upoz else 0
+
+
+def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="jezgra", description="Lokalna jezgra upravljanja energijom")
-    ap.add_argument("--podaci", type=Path, default=None)
+    ap.add_argument("--podaci", type=Path, default=None, help="podatkovna mapa (zadano ENERGIJA_PODACI ili ~/.energija)")
     ap.add_argument("--sim", action="store_true", help="simulirana farma preko Modbus/MQTT, sučelje uživo")
     ap.add_argument("--sim-dani", type=float, default=None, help="brza simulacija N dana i izvještaj")
     ap.add_argument("--brzina", type=float, default=60.0, help="ubrzanje vremena u --sim načinu")
-    ap.add_argument("--sezona", choices=sorted(SEZONE), default="proljece")
+    ap.add_argument("--sezona", choices=sorted(SEZONE), default="proljece", help="godišnje doba simulacije")
     ap.add_argument("--dinamicka", action="store_true", help="dinamička satna tarifa u simulaciji")
     ap.add_argument("--otocno", action="store_true", help="bez mreže (otočni rad)")
-    ap.add_argument("--port", type=int, default=None)
+    ap.add_argument("--port", type=int, default=None, help="port HTTPS sučelja (zadano api.port = 8443)")
     ap.add_argument("--bez-tls", action="store_true", help="HTTP umjesto HTTPS (samo za lokalni razvoj)")
     ap.add_argument("--skeniraj", action="store_true", help="jednom potraži uređaje u lokalnoj mreži i ispiši ih")
     ap.add_argument("--dijagnoza", action="store_true", help="provjeri je li uređaj spreman za rad (s uputama)")
-    a = ap.parse_args(argv)
+    ap.add_argument("--postavi", nargs="+", metavar="KLJUC=VRIJEDNOST",
+                    help="provjereno upiši postavke, npr. lokacija=45.33,14.44 baterija.kapacitet_kwh=10")
+    ap.add_argument("--postavke", action="store_true", help="ispiši izmjene i važne postavke s rasponima")
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    a = parser().parse_args(argv)
     mapa = a.podaci or konfig.podatkovna_mapa()
+    if a.postavi:
+        return postavi(mapa, a.postavi)
+    if a.postavke:
+        return ispis_postavki(mapa)
     if a.skeniraj:
         return skeniraj_jednom(konfig.ucitaj(mapa))
     if a.dijagnoza:

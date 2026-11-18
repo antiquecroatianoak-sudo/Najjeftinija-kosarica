@@ -472,6 +472,14 @@ class EDijagnostika extends EBaza {
       finally { trazi.disabled = false; trazi.textContent = "Potraži uređaje"; }
     });
     uredaji.append(trazi, opis);
+    // postavke koje su odbačene i očitanja koja nisu vjerodostojna: instalater vidi što i zašto, bez naredbenog retka
+    const post = d.postavke || {}; const odb = d.odbacena_ocitanja || {}; const naz = d.nazivni_podaci || {};
+    const kvaliteta = [
+      ...(post.greska ? [["⚠ postavke.json", `neispravna datoteka: ${post.greska}`]] : []),
+      ...(post.upozorenja || []).map((u) => ["⚠ Postavka odbačena", u.replace(/^postavke\.json: /, "")]),
+      ...Object.entries(odb).map(([k, r]) => [`⚠ Očitanje ${k}`, r]),
+      ...Object.entries(naz).map(([id, v]) => [`Iz uređaja ${id}`, Object.entries(v).map(([k, x]) => `${k} = ${x}`).join(", ")])];
+    if (kvaliteta.length) mreza.append(blok("Postavke i očitanja", kvaliteta));
     mreza.append(
       uredaji,
       blok("Zadaci i oporavak", [

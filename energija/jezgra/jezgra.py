@@ -34,6 +34,7 @@ from .spremnik import Legionela, ModelSpremnika, cop
 from .spremnik import planiraj as planiraj_spremnik
 from .tarife import Tarife
 from .ucenje import Navike
+from .ulazi import broj, ocisti as ocisti_ocitanja
 
 TELEMETRIJA = "o"
 # koliko dugo trošilo ostaje isključeno nakon kritične anomalije (s)
@@ -54,6 +55,8 @@ class Jezgra:
         self.snimka = Snimka(self.mapa, self.trezor.kljuc("snimka"))
         st, slijed, izvor = self.snimka.ucitaj()
         self.uredaji = list(uredaji or [])
+        self.odbacena_ocitanja: dict[str, str] = {}
+        self.nazivni_podaci: dict[str, dict] = {}
         self.dohvati_prognozu, self.dohvati_tarife = dohvati_prognozu, dohvati_tarife
 
         self.detektor = Detektor(self.cfg, st.get("detektor"))
@@ -147,6 +150,9 @@ class Jezgra:
                          "odrezano_bajtova": self.dnevnik.oporavak["odrezano_bajtova"] +
                          self.arhiva.oporavak["odrezano_bajtova"]}
         self._dogadjaj("pokretanje", {"poruka": "Jezgra pokrenuta", **self.oporavak})
+        for u in ([f"postavke.json neispravan: {self.cfg['_greska_postavki']}"] if "_greska_postavki" in self.cfg
+                  else []) + self.cfg.get("_upozorenja_postavki", []):
+            self._dogadjaj("postavke", {"poruka": f"Postavka odbačena (vrijedi zadana): {u}", "ozbiljnost": "upozorenje"})
 
     # ------------------------------------------------------------------ pomoćno
     def _dogadjaj(self, vrsta: str, d: dict, ts: float | None = None) -> None:
@@ -165,6 +171,13 @@ class Jezgra:
                 if u.id not in self.offline_uredaji:
                     self._dogadjaj("uredaj", {"poruka": f"{u.id} nedostupan: {e}", "ozbiljnost": "upozorenje"})
                 self.offline_uredaji[u.id] = str(e)
+        o, odbaceno = ocisti_ocitanja(o)
+        for k, razlog in odbaceno.items():  # jedan događaj po kanalu dok se ne oporavi (bez zatrpavanja dnevnika)
+            if k not in self.odbacena_ocitanja:
+                self._dogadjaj("uredaj", {"poruka": f"Očitanje {k} odbačeno: {razlog}", "ozbiljnost": "upozorenje"})
+        for k in [k for k in self.odbacena_ocitanja if k in o]:
+            self._dogadjaj("uredaj", {"poruka": f"Očitanje {k} ponovno ispravno"})
+        self.odbacena_ocitanja = {k: r for k, r in self.odbacena_ocitanja.items() if k not in o} | odbaceno
         return o
 
     def _postavi(self, kanal: str, v: float, ts: float, osvjezi_s: float = 60.0) -> None:
@@ -300,6 +313,25 @@ class Jezgra:
             self._dogadjaj("odluka", {"podsustav": kljuc, "odluka": odluka, "razlog": razlog, "izvor": izvor,
                                       "poruka": f"{kljuc}: {odluka} – {razlog}"}, ts)
 
+    def primijeni_nazivno(self, uredaj_id: str, nazivno: dict) -> None:
+        """Samopodešavanje iz nazivnih podataka uređaja (npr. SunSpec WChaMax): vrijedi samo za postavke koje
+        instalater nije sam upisao. Planer tako nikad ne planira više snage nego što izmjenjivač može."""
+        kw = nazivno.get("baterija_max_kw")
+        if not kw:
+            return
+        rucno = set(self.cfg.get("_korisnicki_kljucevi", []))
+        b = self.cfg["baterija"]
+        promjene = {}
+        for k in ("max_punjenje_kw", "max_praznjenje_kw"):
+            if f"baterija.{k}" not in rucno and abs(b[k] - kw) > 1e-6:
+                promjene[k] = (b[k], round(kw, 3))
+                b[k] = round(kw, 3)
+        if promjene:
+            self.nazivni_podaci[uredaj_id] = {k: n for k, (_, n) in promjene.items()}
+            self._dogadjaj("postavke", {"poruka": f"Iz nazivnih podataka {uredaj_id}: " + ", ".join(
+                f"baterija.{k} {s:g} → {n:g} kW" for k, (s, n) in promjene.items())})
+            self.plan_ts = 0.0  # novi plan s točnim granicama
+
     def postavi_napredno(self, promjene: dict) -> dict:
         """Ručno premošćivanje iz naprednih postavki. Sigurnosne granice se ne mogu isključiti."""
         dopusteni = {"auto", "vlastita", "bez_punjenja_iz_mreze", "rucno"}
@@ -311,9 +343,9 @@ class Jezgra:
             self.napredno["baterija_nacin"] = promjene["baterija_nacin"]
             if promjene["baterija_nacin"] == "rucno":
                 b = self.cfg["baterija"]
-                w = float(promjene.get("rucna_snaga_w", 0))
+                w = broj(promjene.get("rucna_snaga_w", 0), "rucna_snaga_w", -1e6, 1e6)  # NaN nikad ne prolazi
                 self.napredno["rucna_snaga_w"] = max(-b["max_praznjenje_kw"] * 1000, min(b["max_punjenje_kw"] * 1000, w))
-                self.napredno["rucno_do"] = self.sat() + max(5, min(480, int(promjene.get("minuta", 60)))) * 60
+                self.napredno["rucno_do"] = self.sat() + broj(promjene.get("minuta", 60), "minuta", 5, 480, True) * 60
         self._dogadjaj("postavke", {"poruka": f"Napredne postavke: {self.napredno}", **self.napredno})
         self.primijeni_ai_profil("promjena postavki")
         self.plan_ts = 0.0  # novi plan odmah
@@ -947,9 +979,9 @@ class Jezgra:
         vrsta = z.get("vrsta")
         if vrsta not in self.VRSTE_ZAHTJEVA:
             raise ValueError(f"vrsta mora biti jedna od {self.VRSTE_ZAHTJEVA}")
-        snaga = float(z.get("snaga_w", 0))
-        od = float(z.get("od", ts))
-        do = float(z.get("do", od + 3600))
+        snaga = broj(z.get("snaga_w", 0), "snaga_w", 0, 50_000)
+        od = broj(z.get("od", ts), "od", 0, 4e9)
+        do = broj(z.get("do", od + 3600), "do", 0, 4e9)
         if not 0 <= snaga <= 50_000 or not od < do or do - od > 24 * 3600 or do < ts:
             raise ValueError("snaga 0–50000 W, od < do, najviše 24 h, ne u prošlosti")
         zapis = {"id": f"zm-{int(ts * 1000) % 10**10}-{len(self.zahtjevi_mreze)}", "vrsta": vrsta, "snaga_w": snaga,

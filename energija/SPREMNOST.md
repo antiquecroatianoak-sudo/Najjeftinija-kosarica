@@ -18,6 +18,7 @@ hardver radi kako ga model opisuje.
 | Izolacija i ograničenja kontejnera | Compose s `internal: true` (dokazano: bez interneta), jezgra ograničena na 160 MB i 1 CPU, slika samo za čitanje, bez Linux sposobnosti (capabilities) | `kontejneri/compose.provjera.yaml` |
 | Spremnik tople vode i legionela | MPC s dizalicom topline; stvarna dezinfekcija ≥ 60 °C 30 min, koju mjeri simulator neovisno o jezgri; prekid potrošnjom nadoknađuje sljedeći ciklus | `testovi/test_spremnik.py` |
 | Automatsko traženje uređaja | samo privatne mreže (najviše /22), paralelno, preskače poznate | `testovi/test_otkrivanje.py` |
+| Ulazi i postavke | neispravne postavke i očitanja (NaN, SunSpec „nije dostupno”, izvan raspona) se odbacuju uz upozorenje; API vraća 400, nikad 500 zbog ulaza; referenca ne zaostaje za kodom | `testovi/test_ulazi.py` |
 | Ponovljivost | isti KPI bez obzira na opterećenje računala i zonu računala | `testovi/test_prag_suma.py` |
 | Stvarni podaci | stres 2024.–2025. i neovisna ocjena 2023. u GitLab CI-ju | `.gitlab-ci.yml` |
 | Politika upravljanja | naučena na skupu za učenje, prihvaćena samo ako je bolja na odvojenim tjednima i bez ijednog sigurnosnog kršenja | `scenariji/ucenje_politike.py` |

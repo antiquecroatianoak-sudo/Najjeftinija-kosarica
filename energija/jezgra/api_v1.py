@@ -14,6 +14,7 @@ import time
 
 from . import izvjestaji
 from .povijest import SERIJE, je_poznata
+from .ulazi import broj
 
 VERZIJA_API = "1.0.0"
 
@@ -169,6 +170,9 @@ def dijagnostika(j) -> dict:
     nadzor = getattr(j, "nadzor", None)
     segmenti = j.dnevnik.segmenti()
     return {"vrijeme": j.sat(), "id": j.trezor.id_uredaja(), "nacin_rada": j.nacin, "sigurno_stanje": j.u_sigurnom,
+            "postavke": {"greska": j.cfg.get("_greska_postavki"), "upozorenja": j.cfg.get("_upozorenja_postavki", [])},
+            "odbacena_ocitanja": dict(getattr(j, "odbacena_ocitanja", {})),
+            "nazivni_podaci": dict(getattr(j, "nazivni_podaci", {})),
             "uredaji": [u.opis() | {"dostupan": u.id not in j.offline_uredaji, "greska": j.offline_uredaji.get(u.id)}
                         for u in j.uredaji],
             "zadaci": nadzor.stanje() if nadzor else None, "resursi": resursi.opterecenje(),
@@ -207,9 +211,16 @@ def _povijest(j, upit) -> dict:
     if raspon not in RASPONI:
         raise GreskaApi(400, f"raspon: jedan od {list(RASPONI)}")
     od = do - RASPONI[raspon]
-    korak = int(upit.get("korak", [KORAK_ZA_RASPON[raspon]])[0])
+    korak = _broj(upit.get("korak", [KORAK_ZA_RASPON[raspon]]), "korak", 60, 86400, cijeli=True)
     r = j.povijest.serija(imena, od, do, korak, j.sati)
     return r | {"jedinice": {s: SERIJE.get(s, ("kV" if s.startswith("pastir") else "%", "", False))[0] for s in imena}}
+
+
+def _broj(v, ime: str, mn: float, mx: float, cijeli: bool = False):
+    try:
+        return broj(v, ime, mn, mx, cijeli)
+    except ValueError as e:
+        raise GreskaApi(400, str(e)) from None
 
 
 def _naredba(j, uloga, t) -> dict:
@@ -225,9 +236,12 @@ def _naredba(j, uloga, t) -> dict:
         tr = t.get("trosilo")
         if tr not in ("bojler", "uticnice", "hladnjak"):
             raise GreskaApi(400, "trosilo: bojler | uticnice | hladnjak (pastir i pumpa nisu ručni)")
-        minuta = max(1, min(240, int(t.get("minuta", 30))))
-        j.rucno[tr] = (bool(t.get("ukljuci")), ts + minuta * 60)
-        j._dogadjaj("naredba", {"poruka": f"Ručno: {tr} {'uključeno' if t.get('ukljuci') else 'isključeno'} {minuta} min"})
+        minuta = _broj(t.get("minuta", 30), "minuta", 1, 240, cijeli=True)
+        ukljuci = t.get("ukljuci")
+        if not isinstance(ukljuci, bool):  # "false" kao tekst bi inače značilo uključi
+            raise GreskaApi(400, "ukljuci: true ili false")
+        j.rucno[tr] = (ukljuci, ts + minuta * 60)
+        j._dogadjaj("naredba", {"poruka": f"Ručno: {tr} {'uključeno' if ukljuci else 'isključeno'} {minuta} min"})
         return {"ok": True}
     if akcija == "otkazi_rucno":
         j.rucno.pop(t.get("trosilo", ""), None)
@@ -258,7 +272,7 @@ def _zahtjevi(j, metoda, upit, t):
 
 
 def _izvjestaj(j, upit):
-    dana = max(1.0, min(366.0, float(upit.get("dana", ["7"])[0])))
+    dana = _broj(upit.get("dana", ["7"]), "dana", 1, 366)
     do = j.sat()
     izv = j.izvjestaj(do - dana * 86400, do, izvezi=False)
     return {"izvjestaj": izv, "potpis": izvjestaji.potpisi(izv, j.trezor)}
@@ -278,7 +292,7 @@ RUTE = [
     ("GET", "/api/v1/povijest", "citanje", lambda j, u, m, q, t: _povijest(j, q),
      "Vremenske serije: ?serije=pv_w,potrosnja_w&raspon=24h[&korak=s]"),
     ("GET", "/api/v1/usteda", "citanje", lambda j, u, m, q, t: {
-        "razdoblja": j.usteda(j.sat()), "po_danima": j.usteda_po_danima(int(q.get("dana", ["30"])[0]))},
+        "razdoblja": j.usteda(j.sat()), "po_danima": j.usteda_po_danima(_broj(q.get("dana", ["30"]), "dana", 1, 366, cijeli=True))},
      "Ušteda (procjena prema osnovici) po razdobljima i po danima"),
     ("GET", "/api/v1/bojler", "citanje", lambda j, u, m, q, t: bojler(j), "Bojler: temperatura, grijanje, plan"),
     ("GET", "/api/v1/solar", "citanje", lambda j, u, m, q, t: solar(j), "Sunčani paneli: snaga, dnevna proizvodnja, učinak"),
@@ -294,7 +308,7 @@ RUTE = [
      "Kontrolni centar: uređaji, zadaci, resursi, AI, dnevnik, kopije"),
     ("GET", "/api/v1/dogadjaji", "dijagnostika", lambda j, u, m, q, t: {"dogadjaji": [
         {"ts": z["t"], "vrsta": z["v"], "poruka": z["d"].get("poruka", ""), "ozbiljnost": z["d"].get("ozbiljnost")}
-        for z in list(j.arhiva.citaj_od_vremena(j.sat() - float(q.get("sati", ["24"])[0]) * 3600))
+        for z in list(j.arhiva.citaj_od_vremena(j.sat() - _broj(q.get("sati", ["24"]), "sati", 0.1, 24 * 400) * 3600))
         if z["v"] != "sat"][-200:]}, "Zadnji događaji: ?sati=24"),
     ("POST", "/api/v1/otkrivanje", "upravljanje", lambda j, u, m, q, t: _otkrivanje(j),
      "Potraži uređaje odmah (lokalna mreža i poznati Modbus hostovi)"),
@@ -321,6 +335,8 @@ def obradi(j, uloga: str, metoda: str, put: str, upit: dict, tijelo) -> tuple[in
         return 405, {"greska": f"dopuštene metode: {[r[0] for r in kandidati]}"}
     if ruta[2] not in ULOGE.get(uloga, set()):
         return 403, {"greska": f"uloga '{uloga}' nema opseg '{ruta[2]}'"}
+    if metoda in ("POST", "DELETE") and tijelo is not None and not isinstance(tijelo, dict):
+        return 400, {"greska": "tijelo zahtjeva mora biti JSON objekt, npr. {\"akcija\": \"topla_voda_sada\"}"}
     try:
         return 200, ruta[3](j, uloga, metoda, upit, tijelo)
     except GreskaApi as e:

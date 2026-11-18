@@ -1,5 +1,26 @@
 # Dnevnik promjena
 
+## 0.3.0 – 18.11.2026.
+
+### Instalacija
+- `--postavi kljuc=vrijednost` upisuje provjerene postavke, a `--postavke` ih ispisuje. Ručno uređivanje JSON-a više nije potrebno.
+- Postavke se provjeravaju pri svakom učitavanju:
+  - nepoznati ključ dobiva prijedlog ispravka (`kapacitet_kw` → `kapacitet_kwh`);
+  - provjeravaju se tip i raspon (npr. legionela najmanje 60 °C);
+  - provjeravaju se odnosi (`soc_min < soc_max`) i sadržaj popisa (IP mreže, Modbus hostovi).
+  - Neispravno se odbacuje, vrijedi zadana vrijednost, a upozorenje se vidi u dijagnozi, dnevniku i kontrolnom centru.
+- `--dijagnoza` predlaže točnu naredbu za svaku stavku i upozorava na osnovne podatke koji su još zadani.
+- Najveća snaga punjenja i pražnjenja čita se iz izmjenjivača (SunSpec WChaMax) ako je instalater nije upisao.
+- `ULAZI_IZLAZI.md`: referenca svih ulaza i izlaza. Dio je generiran iz koda, a test pada ako zaostane.
+
+### Pouzdanost ulaza
+- SunSpec oznake „nije dostupno” više ne postaju nemogući brojevi (npr. 6553 % napunjenosti).
+- Očitanja koja nisu broj, NaN, beskonačno ili su izvan fizikalnog raspona odbacuju se. Odbačena se vide u dijagnostici.
+- API vraća 400 s porukom za svaki neispravan ulaz, nikad 500. Ispravljene opasne greške:
+  - `rucna_snaga_w = NaN` značio je punu snagu punjenja;
+  - `"ukljuci": "false"` značio je uključi;
+  - neispravno tijelo zahtjeva rušilo je uparivanje.
+
 ## 0.2.1 – 18.11.2026.
 - Dizalica topline gasi se u svim zaštitnim stanjima, kao i grijač: sigurno stanje, prevelika snaga u otočnom radu, pregrijavanje i podnapon baterije.
 - „Potraži uređaje” i prvo automatsko traženje odmah pretražuju lokalnu mrežu, i odmah nakon pokretanja uređaja.

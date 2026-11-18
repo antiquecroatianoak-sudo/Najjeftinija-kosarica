@@ -25,14 +25,23 @@ python3 -m unittest discover -s testovi -p "test_*.py"
 
 Na uređaju (Raspberry Pi ili sličan): `docker compose -f kontejneri/compose.yaml up -d`.
 
-### Instalacija na lokaciji u tri koraka
+### Instalacija na lokaciji u četiri koraka
 
-1. `python3 -m jezgra --dijagnoza`: provjerava Python, pakete, podatkovnu mapu, portove, vremensku zonu i lokalnu mrežu. Za svaku stavku koja ne prolazi ispisuje što treba učiniti.
+1. `python3 -m jezgra --dijagnoza`: provjerava Python, pakete, podatkovnu mapu, portove, vremensku zonu, lokalnu mrežu i postavke.
+   - Za svaku stavku koja ne prolazi ispisuje točnu naredbu za popravak.
+   - Upozorava i na osnovne podatke koji su još zadani: lokaciju, bateriju, panele i tarifu.
 2. `python3 -m jezgra --skeniraj`: sam pronalazi Modbus uređaje u lokalnoj mreži, bez upisivanja IP adresa:
    - SunSpec izmjenjivače i baterije te Eastron brojila;
    - paralelno, oko 3 s za kućnu mrežu;
    - samo u privatnim mrežama, najviše /22.
-3. `python3 -m jezgra`: pokreće sustav. U pregledniku upiši kod za uparivanje.
+3. `python3 -m jezgra --postavi lokacija=45.33,14.44 baterija.kapacitet_kwh=10 fotonapon.kwp=6.5`: upisuje postavke bez ručnog uređivanja JSON-a.
+   - Svaka vrijednost provjerava se prije upisa: tip, raspon i odnosi.
+   - Za tipfeler predlaže ispravan ključ.
+   - `--postavke` pokazuje što je promijenjeno i sve važne postavke s rasponima.
+   - Najveću snagu punjenja jezgra sama čita iz izmjenjivača, osim ako je upisana ručno.
+4. `python3 -m jezgra`: pokreće sustav. U pregledniku upiši kod za uparivanje.
+
+Svi ulazi i izlazi (postavke, API, kanali uređaja, naredbe) opisani su u `ULAZI_IZLAZI.md`.
 
 Jezgra i kasnije sama traži nove uređaje: dok ne nađe nijedan, svakih 15 min, a poslije svakih 6 h. U kontrolnom centru postoji i gumb „Potraži uređaje”. Automatsko traženje isključuje se postavkom `{"otkrivanje": {"lan_skeniranje": false}}`.
 

@@ -32,6 +32,11 @@ class Registar:
                 return
             self.j.uredaji.append(u)
         self.j._dogadjaj("uredaj", {"poruka": f"Prepoznat uređaj {u.id} ({u.tip}, {u.protokol})", **u.opis()})
+        if hasattr(u, "nazivno") and hasattr(self.j, "primijeni_nazivno"):
+            try:
+                self.j.primijeni_nazivno(u.id, u.nazivno())
+            except Exception as e:  # nazivni podaci su pomoć, ne uvjet rada
+                self.j._dogadjaj("uredaj", {"poruka": f"{u.id}: nazivni podaci nisu pročitani ({e})"})
 
     def _poruka(self, tema: str, poruka: bytes) -> None:
         integ = getattr(self, "integracija", None)

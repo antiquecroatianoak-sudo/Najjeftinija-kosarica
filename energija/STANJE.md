@@ -333,3 +333,27 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - Spojeno je uz zelenu ekvivalentnu provjeru na GitHubu. GitLab cjevovod nije zelen (ne radi); grana nije imala pravilo koje to zabranjuje.
 - GitLab Duo ponovno je automatski dodan kao recenzent (postavka projekta).
 - Verzija 0.2.1 i zapis u PROMJENE.md idu na razvoj ovim commitom; u main tek sljedećim spajanjem.
+
+## 18.11.2026. 18:53 (Europe/Zagreb) – analiza ulaza i izlaza, pojednostavljenje instalacije (0.3.0)
+
+- **Analiza:** 509 funkcija.
+  - Unutarnje funkcije većinom imaju tipove: 444/509 ulaza i 473/509 izlaza.
+  - Rizici su na granicama sustava: postavke, očitanja uređaja, API i naredbeni redak. Tamo su nađene greške.
+- **Stvarne greške ispravljene** (svaka ima test koji pada na starom kodu):
+  - SunSpec oznake „nije dostupno” (0xFFFF/0x8000) čitale su se kao brojevi (SoC 6553 %, PV −32768 W);
+  - MQTT `NaN` prolazio je do planera;
+  - `rucna_snaga_w = NaN` u ručnom načinu značio je punu snagu punjenja;
+  - `"ukljuci": "false"` značio je uključi;
+  - neispravni parametri (`dana`, `korak=0`, `sati`, `minuta`) davali su 500 umjesto 400; tijelo koje nije objekt rušilo je uparivanje;
+  - tipfeler ili krivi tip u postavke.json tiho se zanemarivao ili rušio jezgru kasnije; neispravna IP mreža rušila je nit otkrivanja.
+- **Instalater:**
+  - `--postavi kljuc=vrijednost` (provjereno, atomski upis) i `--postavke`;
+  - `--dijagnoza` s točnom naredbom za svaku stavku i preporukama za zadane osnovne podatke;
+  - nazivna snaga punjenja čita se iz izmjenjivača (SunSpec WChaMax) ako nije ručno upisana;
+  - upozorenja su vidljiva i u kontrolnom centru (blok „Postavke i očitanja”, provjereno u pregledniku).
+- **Referenca:** `ULAZI_IZLAZI.md` – tok podataka po koraku upravljanja, ulazi i izlazi modula, a generirano iz koda: naredbeni redak, postavke s rasponima, API, kanali. Test pada ako dokument zaostane.
+- **Testirano** (lokalno, Europe/Zagreb):
+  - 105/105 testova (14 novih u test_ulazi.py);
+  - provjera sustava 15/15;
+  - katalog 18/18, 0 kršenja; uštede identične prethodnom pokretanju (provjera ne mijenja ponašanje na ispravnim podacima).
+- **Nije provjereno:** stvarni izmjenjivači s oznakama „nije dostupno” (samo simulirano i jediničnim testom).

@@ -20,8 +20,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import api_v1, izvjestaji
+from .ulazi import broj
 
 SUCELJE = Path(__file__).resolve().parent.parent / "sucelje"
+NEISPRAVNO = ("neispravan JSON",)  # oznaka za tijelo koje nije ispravan JSON (nije dict -> 400)
 ZABRANJENO_RUCNO = {"pastir", "pumpa"}  # pastir: zaštita stoke; pumpa: samo kroz navodnjavanje (ventili)
 
 
@@ -102,12 +104,22 @@ class Pristup:
 
 
 def obradi(jezgra, metoda: str, put: str, upit: dict, tijelo: dict | None) -> tuple[int, str, bytes]:
-    """Zajednička obrada za HTTP i tunel. Vraća (status, content-type, tijelo)."""
+    """Zajednička obrada za HTTP i tunel. Vraća (status, content-type, tijelo).
+    Neispravan ulaz (tijelo koje nije objekt, broj izvan raspona) vraća 400 s porukom, nikad 500."""
+    if tijelo is not None and not isinstance(tijelo, dict):
+        return 400, "application/json", '{"greska":"tijelo zahtjeva mora biti JSON objekt"}'.encode()
+    try:
+        return _obradi_v0(jezgra, metoda, put, upit, tijelo)
+    except ValueError as e:
+        return 400, "application/json", json.dumps({"greska": str(e)}, ensure_ascii=False).encode()
+
+
+def _obradi_v0(jezgra, metoda: str, put: str, upit: dict, tijelo: dict | None) -> tuple[int, str, bytes]:
     j = jezgra
     if metoda == "GET" and put == "/api/stanje":
         return 200, "application/json", json.dumps(j.stanje(), default=str).encode()
     if metoda == "GET" and put == "/api/izvjestaj":
-        dana = float(upit.get("dana", ["7"])[0])
+        dana = broj(upit.get("dana", ["7"]), "dana", 1, 366)
         do = j.sat()
         izv = j.izvjestaj(do - dana * 86400, do, izvezi=False)
         potpis = izvjestaji.potpisi(izv, j.trezor)
@@ -121,8 +133,10 @@ def obradi(jezgra, metoda: str, put: str, upit: dict, tijelo: dict | None) -> tu
         t = (tijelo or {}).get("trosilo", "")
         if t in ZABRANJENO_RUCNO or t not in j.releji:
             return 400, "application/json", b'{"greska":"nepoznato ili zasticeno trosilo"}'
-        minuta = max(1, min(240, int((tijelo or {}).get("minuta", 30))))
-        j.rucno[t] = (bool(tijelo.get("ukljuci")), j.sat() + minuta * 60)
+        minuta = broj((tijelo or {}).get("minuta", 30), "minuta", 1, 240, cijeli=True)
+        if not isinstance(tijelo.get("ukljuci"), bool):  # "false" kao tekst bi inače značilo uključi
+            raise ValueError("ukljuci: true ili false")
+        j.rucno[t] = (tijelo["ukljuci"], j.sat() + minuta * 60)
         j._dogadjaj("naredba", {"poruka": f"Ručno: {t} {'uključeno' if tijelo.get('ukljuci') else 'isključeno'} "
                                           f"{minuta} min", "trosilo": t})
         return 200, "application/json", b'{"ok":true}'
@@ -197,14 +211,20 @@ def pokreni_api(jezgra, port: int, tls: bool = True, host: str = "0.0.0.0"):
                     return v
             return None
 
-        def _tijelo(self) -> dict:
-            n = min(int(self.headers.get("Content-Length", 0) or 0), 65536)
+        def _tijelo(self):
+            """Tijelo zahtjeva kao JSON; neispravan JSON ili predugo tijelo daju NEISPRAVNO (-> 400)."""
+            try:
+                n = int(self.headers.get("Content-Length", 0) or 0)
+            except ValueError:
+                return NEISPRAVNO
             if not n:
                 return {}
+            if n > 65536:
+                return NEISPRAVNO
             try:
                 return json.loads(self.rfile.read(n))
             except ValueError:
-                return {}
+                return NEISPRAVNO
 
         def _obradi(self, metoda: str):
             u = urllib.parse.urlparse(self.path)
@@ -217,13 +237,15 @@ def pokreni_api(jezgra, port: int, tls: bool = True, host: str = "0.0.0.0"):
                 return self._json(200, api_v1.openapi())
             if put in ("/api/upari", "/api/v1/upari") and metoda == "POST":
                 t = self._tijelo()
-                r = pristup.upari(t.get("kod", ""), t.get("ime", "uredaj"))
+                if not isinstance(t, dict):
+                    return self._json(400, {"greska": "tijelo mora biti JSON objekt: {\"kod\": \"123456\"}"})
+                r = pristup.upari(str(t.get("kod", "")), str(t.get("ime", "uredaj")))
                 if not r:
                     return self._json(403, {"greska": "kod nije ispravan ili je istekao"})
                 token, uloga = r
                 kolac = f"energija={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000" + \
                         ("; Secure" if tls else "")
-                jezgra._dogadjaj("pristup", {"poruka": f"Upareno: {t.get('ime', 'uredaj')[:40]} ({uloga})"})
+                jezgra._dogadjaj("pristup", {"poruka": f"Upareno: {str(t.get('ime', 'uredaj'))[:40]} ({uloga})"})
                 return self._json(200, {"token": token, "uloga": uloga}, {"Set-Cookie": kolac})
             if put.startswith("/api/v1/"):
                 uloga = pristup.uloga(self._token(upit if put == "/api/v1/uzivo" else None))
@@ -235,7 +257,10 @@ def pokreni_api(jezgra, port: int, tls: bool = True, host: str = "0.0.0.0"):
                     if uloga != "administrator":
                         return self._json(403, {"greska": "samo administrator"})
                     try:
-                        return self._json(200, pristup.pozivnica(self._tijelo().get("uloga", "stanar")))
+                        t = self._tijelo()
+                        if not isinstance(t, dict):
+                            raise ValueError("tijelo mora biti JSON objekt: {\"uloga\": \"stanar\"}")
+                        return self._json(200, pristup.pozivnica(t.get("uloga", "stanar")))
                     except ValueError as e:
                         return self._json(400, {"greska": str(e)})
                 try:
@@ -315,8 +340,11 @@ def obrada_tunela(jezgra):
     def f(z: dict) -> dict:
         put = z.get("put", "")
         if put.startswith("/api/v1/"):  # tunel: identitet je već provjeren ključem -> administrator
-            s, podaci = api_v1.obradi(jezgra, "administrator", z.get("metoda", "GET"), put, z.get("upit", {}),
-                                      z.get("tijelo"))
+            try:
+                s, podaci = api_v1.obradi(jezgra, "administrator", z.get("metoda", "GET"), put, z.get("upit", {}),
+                                          z.get("tijelo"))
+            except Exception as e:  # kao i HTTP: nikad trag, jezgra radi dalje
+                s, podaci = 500, {"greska": type(e).__name__}
             return {"status": s, "vrsta": "application/json", "tijelo": json.dumps(podaci, default=str)}
         s, v, b = obradi(jezgra, z.get("metoda", "GET"), put, z.get("upit", {}), z.get("tijelo"))
         return {"status": s, "vrsta": v, "tijelo": b.decode("utf-8", "replace")}

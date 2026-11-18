@@ -93,6 +93,183 @@ ZADANO: dict = {
 }
 
 
+# Opis važnih postavki: (jedinica, najmanje, najviše, opis). Vrijednost izvan raspona se odbacuje i ostaje zadana.
+# Isti popis koristi `--postavi`, `--dijagnoza` i referenca ULAZI_IZLAZI.md – jedan izvor istine.
+OPIS: dict[str, tuple[str, float | None, float | None, str]] = {
+    "lokacija.sirina": ("°", -90, 90, "geografska širina (prognoza sunca)"),
+    "lokacija.duzina": ("°", -180, 180, "geografska dužina"),
+    "baterija.kapacitet_kwh": ("kWh", 0.5, 500, "korisni kapacitet baterije"),
+    "baterija.celija_serija": ("", 1, 64, "broj ćelija u seriji (16 = 51,2 V LiFePO4)"),
+    "baterija.soc_min": ("0–1", 0.02, 0.9, "ispod ove razine samo kritična trošila"),
+    "baterija.soc_kriticno": ("0–1", 0.0, 0.5, "otočno: najniža razina za kritična trošila"),
+    "baterija.soc_max": ("0–1", 0.3, 1.0, "gornja razina punjenja"),
+    "baterija.max_punjenje_kw": ("kW", 0.1, 100, "najveća snaga punjenja"),
+    "baterija.max_praznjenje_kw": ("kW", 0.1, 100, "najveća snaga pražnjenja"),
+    "baterija.temp_punjenje_min_c": ("°C", -20, 15, "ispod ove temperature nema punjenja"),
+    "baterija.temp_max_c": ("°C", 30, 70, "iznad: preventivno smanjenje opterećenja"),
+    "baterija.trosak_ciklusa_eur_kwh": ("€/kWh", 0, 0.5, "procjena trošenja po kWh protoka"),
+    "fotonapon.kwp": ("kWp", 0, 200, "vršna snaga panela"),
+    "fotonapon.faktor_ucinka": ("0–1", 0.3, 1.0, "gubici sustava (kabeli, prljavština, izmjenjivač)"),
+    "mreza.dostupna": ("da/ne", None, None, "postoji li priključak na mrežu"),
+    "mreza.max_uvoz_kw": ("kW", 0.5, 200, "priključna snaga"),
+    "tarifa.vt_eur_kwh": ("€/kWh", 0, 2, "viša tarifa"),
+    "tarifa.nt_eur_kwh": ("€/kWh", 0, 2, "niža tarifa"),
+    "tarifa.izvoz_eur_kwh": ("€/kWh", -1, 2, "otkupna cijena"),
+    "tarifa.izvor_url": ("URL", None, None, "dinamička satna tarifa (prazno = VT/NT)"),
+    "pastir.min_kv": ("kV", 0.5, 15, "ispod: slaba ograda"),
+    "pastir.kvar_kv": ("kV", 0.1, 10, "ispod: kratki spoj ili prekid"),
+    "navodnjavanje.kisa_preskoci_mm": ("mm", 0, 50, "prognozirana kiša koja preskače zalijevanje"),
+    "navodnjavanje.max_minuta": ("min", 1, 240, "najdulje zalijevanje jedne zone"),
+    "navodnjavanje.pumpa_kw": ("kW", 0.05, 20, "snaga pumpe"),
+    "api.port": ("", 1, 65535, "port HTTPS sučelja"),
+    "mqtt.port": ("", 1, 65535, "port lokalnog MQTT brokera"),
+    "spremnik.volumen_l": ("l", 10, 2000, "volumen spremnika tople vode"),
+    "spremnik.t_min_c": ("°C", 35, 55, "najniža temperatura tople vode"),
+    "spremnik.dizalica_kw": ("kW", 0, 10, "električna snaga dizalice topline (0 = nema je)"),
+    "spremnik.dt_max_c": ("°C", 40, 65, "najviša temperatura koju postiže dizalica"),
+    "spremnik.grijac_kw": ("kW", 0.3, 12, "snaga električnog grijača"),
+    "spremnik.grijac_max_c": ("°C", 60, 80, "najviša temperatura grijača"),
+    "spremnik.legionela.period_dana": ("dana", 1, 14, "razmak ciklusa protiv legionele"),
+    "spremnik.legionela.cilj_c": ("°C", 60, 75, "temperatura ciklusa (najmanje 60 °C)"),
+    "otkrivanje.lan_skeniranje": ("da/ne", None, None, "sam traži Modbus uređaje u lokalnoj mreži"),
+    "politika.izvoz_iz_baterije": ("da/ne", None, None, "smije li baterija prodavati u mrežu"),
+}
+
+def _mreze(v) -> str | None:
+    import ipaddress
+    for m in v:
+        try:
+            ipaddress.ip_network(m, strict=False)
+        except (TypeError, ValueError):
+            return f"neispravna mreža {m!r} (primjer: \"192.168.1.0/24\")"
+    return None
+
+
+def _hostovi(v) -> str | None:
+    for h in v:
+        if not (isinstance(h, list) and len(h) == 2 and isinstance(h[0], str) and isinstance(h[1], int)
+                and 1 <= h[1] <= 65535):
+            return f"neispravan host {h!r} (primjer: [\"192.168.1.20\", 502])"
+    return None
+
+
+def _cijeli_portovi(v) -> str | None:
+    return None if all(isinstance(x, int) and not isinstance(x, bool) and 1 <= x <= 65535 for x in v) else \
+        "portovi moraju biti cijeli brojevi 1–65535"
+
+
+def _jedinice(v) -> str | None:
+    return None if v and all(isinstance(x, int) and not isinstance(x, bool) and 0 <= x <= 247 for x in v) else \
+        "Modbus jedinice: popis cijelih brojeva 0–247"
+
+
+def _tekstovi(v) -> str | None:
+    return None if all(isinstance(x, str) for x in v) else "očekivan popis tekstova"
+
+
+# provjera sadržaja popisa (tip popisa provjerava se općenito)
+SADRZAJ = {"otkrivanje.lan_mreze": _mreze, "otkrivanje.modbus_hostovi": _hostovi,
+           "otkrivanje.lan_portovi": _cijeli_portovi, "otkrivanje.modbus_jedinice": _jedinice,
+           "api.cors_izvori": _tekstovi, "kopije.odredista": _tekstovi}
+
+# odnosi među postavkama: (uvjet, poruka, ključevi koji se vraćaju na zadano ako uvjet ne vrijedi)
+ODNOSI = [
+    (lambda c: c["baterija"]["soc_kriticno"] < c["baterija"]["soc_min"] < c["baterija"]["soc_max"],
+     "mora vrijediti soc_kriticno < soc_min < soc_max",
+     ["baterija.soc_kriticno", "baterija.soc_min", "baterija.soc_max"]),
+    (lambda c: c["pastir"]["kvar_kv"] < c["pastir"]["min_kv"], "mora vrijediti pastir.kvar_kv < pastir.min_kv",
+     ["pastir.kvar_kv", "pastir.min_kv"]),
+    (lambda c: c["spremnik"]["t_min_c"] < c["spremnik"]["grijac_max_c"]
+     and c["spremnik"]["legionela"]["cilj_c"] <= c["spremnik"]["grijac_max_c"],
+     "mora vrijediti spremnik.t_min_c < grijac_max_c i legionela.cilj_c ≤ grijac_max_c",
+     ["spremnik.t_min_c", "spremnik.grijac_max_c", "spremnik.legionela.cilj_c"]),
+]
+
+
+def _dohvati(d: dict, put: str):
+    for k in put.split("."):
+        d = d[k]
+    return d
+
+
+def _upisi(d: dict, put: str, v) -> None:
+    *roditelji, zadnji = put.split(".")
+    for k in roditelji:
+        d = d[k]
+    d[zadnji] = v
+
+
+def _isti_tip(zadano, v) -> bool:
+    if zadano is None:
+        return v is None or (isinstance(v, (int, float)) and not isinstance(v, bool))
+    if isinstance(zadano, bool):
+        return isinstance(v, bool)
+    if isinstance(zadano, (int, float)):
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+    return isinstance(v, type(zadano))
+
+
+def provjeri(nove: dict, baza: dict | None = None, put: str = "") -> tuple[dict, list[str]]:
+    """Provjerava korisničke izmjene prema zadanim postavkama: nepoznati ključ (uz prijedlog), krivi tip i
+    vrijednost izvan raspona se odbacuju uz upozorenje. Vraća (prihvaćene izmjene, upozorenja)."""
+    import difflib
+    baza = ZADANO if baza is None else baza
+    ok: dict = {}
+    upoz: list[str] = []
+    if not isinstance(nove, dict):
+        return ok, [f"{put or 'postavke'}: očekivan JSON objekt, dobiveno {type(nove).__name__}"]
+    for k, v in nove.items():
+        p = f"{put}.{k}" if put else k
+        if k.startswith("_"):
+            continue
+        if k not in baza:
+            slicno = difflib.get_close_matches(k, list(baza), n=1, cutoff=0.6)
+            upoz.append(f"{p}: nepoznata postavka, zanemarena" + (f" (misli se na '{slicno[0]}'?)" if slicno else ""))
+            continue
+        z = baza[k]
+        if isinstance(z, dict) and z:
+            pod, u = provjeri(v, z, p)
+            upoz += u
+            if pod:  # prazan objekt (sve odbačeno) se ne prenosi
+                ok[k] = pod
+            continue
+        if not _isti_tip(z, v):
+            ocekivano = "broj" if isinstance(z, (int, float)) and not isinstance(z, bool) else \
+                {bool: "true/false", str: "tekst", list: "popis", dict: "objekt"}.get(type(z), type(z).__name__)
+            upoz.append(f"{p}: očekivano {ocekivano}, dobiveno {json.dumps(v, ensure_ascii=False)} – ostaje {z!r}")
+            continue
+        if p in SADRZAJ and (greska := SADRZAJ[p](v)):
+            upoz.append(f"{p}: {greska} – ostaje {z!r}")
+            continue
+        if p in OPIS and isinstance(v, (int, float)) and not isinstance(v, bool):
+            jed, mn, mx, _ = OPIS[p]
+            if (mn is not None and v < mn) or (mx is not None and v > mx):
+                upoz.append(f"{p}: {v} {jed} izvan raspona {mn}–{mx} – ostaje {z!r}")
+                continue
+        ok[k] = v
+    return ok, upoz
+
+
+def provjeri_odnose(cfg: dict) -> list[str]:
+    """Odnosi među postavkama (npr. soc_min < soc_max). Ako ne vrijede, ti ključevi se vraćaju na zadano."""
+    upoz = []
+    for uvjet, poruka, kljucevi in ODNOSI:
+        if not uvjet(cfg):
+            upoz.append(f"{poruka} – vraćeno na zadano: {', '.join(kljucevi)}")
+            for k in kljucevi:
+                _upisi(cfg, k, copy.deepcopy(_dohvati(ZADANO, k)))
+    return upoz
+
+
+def _putevi(d: dict, put: str = ""):
+    for k, v in d.items():
+        p = f"{put}.{k}" if put else k
+        if isinstance(v, dict) and v:
+            yield from _putevi(v, p)
+        else:
+            yield p
+
+
 def _spoji(baza: dict, nove: dict) -> dict:
     for k, v in nove.items():
         if isinstance(v, dict) and isinstance(baza.get(k), dict):
@@ -105,19 +282,91 @@ def _spoji(baza: dict, nove: dict) -> dict:
 def ucitaj(mapa: Path) -> dict:
     """Zadane postavke + (ako postoji) `postavke.json`. Neispravna datoteka ne ruši jezgru."""
     cfg = copy.deepcopy(ZADANO)
+    upozorenja: list[str] = []
     p = Path(mapa) / "postavke.json"
+    izvori = []
     if p.exists():
         try:
-            _spoji(cfg, json.loads(p.read_text("utf-8")))
+            izvori.append(("postavke.json", json.loads(p.read_text("utf-8"))))
         except (OSError, ValueError) as e:  # nastavi sa zadanim – greška se bilježi
             cfg["_greska_postavki"] = str(e)
     # ENERGIJA_POSTAVKE (JSON u varijabli okoline) – za kontejnere bez montiranja datoteka (npr. CI s Docker-in-Docker)
     if os.environ.get("ENERGIJA_POSTAVKE"):
         try:
-            _spoji(cfg, json.loads(os.environ["ENERGIJA_POSTAVKE"]))
+            izvori.append(("ENERGIJA_POSTAVKE", json.loads(os.environ["ENERGIJA_POSTAVKE"])))
         except ValueError as e:
             cfg["_greska_postavki"] = f"ENERGIJA_POSTAVKE: {e}"
+    zadani_kljucevi: list[str] = []
+    for ime, nove in izvori:
+        prihvaceno, u = provjeri(nove)
+        upozorenja += [f"{ime}: {x}" for x in u]
+        _spoji(cfg, prihvaceno)
+        zadani_kljucevi += list(_putevi(prihvaceno))
+    cfg["_korisnicki_kljucevi"] = sorted(set(zadani_kljucevi))
+    upozorenja += provjeri_odnose(cfg)
+    if upozorenja:
+        cfg["_upozorenja_postavki"] = upozorenja
     return cfg
+
+
+def korisnicke(mapa: Path) -> dict:
+    """Sadržaj postavke.json (samo izmjene u odnosu na zadano); prazno ako datoteke nema ili je neispravna."""
+    try:
+        v = json.loads((Path(mapa) / "postavke.json").read_text("utf-8"))
+        return v if isinstance(v, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def protumaci(tekst: str):
+    """Vrijednost s naredbenog retka: true/false, broj, null, JSON (popis/objekt) ili tekst."""
+    t = tekst.strip()
+    if t.lower() in ("da", "true", "uključeno", "ukljuceno"):
+        return True
+    if t.lower() in ("ne", "false", "isključeno", "iskljuceno"):
+        return False
+    try:
+        return json.loads(t.replace(",", ".") if t.count(",") == 1 and t.replace(",", "").replace("-", "").isdigit()
+                          else t)
+    except ValueError:
+        return t
+
+
+def postavi(mapa: Path, dodjele: list[str]) -> tuple[dict, list[str]]:
+    """`kljuc=vrijednost` (npr. baterija.kapacitet_kwh=10) -> provjereno upisano u postavke.json.
+    Prečac: `lokacija=45.33,14.44`. Vraća (nove korisničke postavke, upozorenja); ništa neispravno se ne upisuje."""
+    izmjene: dict = {}
+    greske: list[str] = []
+    for d in dodjele:
+        kljuc, jednako, vrijednost = d.partition("=")
+        kljuc = kljuc.strip()
+        if not jednako or not kljuc:
+            greske.append(f"'{d}': očekivano kljuc=vrijednost")
+            continue
+        if kljuc == "lokacija" and vrijednost.count(",") == 1:  # prečac: širina,dužina
+            sir, duz = (x.strip() for x in vrijednost.split(","))
+            dodjele_lok = {"sirina": protumaci(sir), "duzina": protumaci(duz)}
+            _spoji(izmjene, {"lokacija": dodjele_lok})
+            continue
+        cilj = izmjene
+        *roditelji, zadnji = kljuc.split(".")
+        for k in roditelji:
+            cilj = cilj.setdefault(k, {})
+        cilj[zadnji] = protumaci(vrijednost)
+    prihvaceno, upoz = provjeri(izmjene)
+    upoz = greske + upoz
+    nove = _spoji(korisnicke(mapa), prihvaceno)
+    probni = _spoji(copy.deepcopy(ZADANO), copy.deepcopy(nove))
+    odnosi = provjeri_odnose(probni)
+    if odnosi:  # nedosljedan skup se ne upisuje
+        return korisnicke(mapa), upoz + odnosi
+    if prihvaceno:
+        p = Path(mapa) / "postavke.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        privremena = p.with_suffix(".tmp")
+        privremena.write_text(json.dumps(nove, indent=2, ensure_ascii=False) + "\n", "utf-8")
+        privremena.replace(p)  # atomski: jezgra nikad ne vidi pola datoteke
+    return nove, upoz
 
 
 def podatkovna_mapa() -> Path:
