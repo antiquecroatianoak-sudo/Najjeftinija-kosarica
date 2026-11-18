@@ -241,3 +241,18 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
 - Prijenos je obavljen kroz GitLab spojnik ove sesije, bez tokena: 18 datoteka kao minimalne izmjene (diff) plus nove datoteke, u 5 commitova na razvoj; usputni s [skip ci].
 - Svih 18 datoteka podudara se po git blob SHA s lokalnim (izvor 072e655).
 - Cjevovod 3082667104 na razvoj (982544fc) pokrenut; ishod se bilježi kad završi. main nije diran.
+
+## 18.11.2026. 08:25 (Europe/Zagreb) – optimizacija brzine, skeniranja i jednostavnosti
+
+- Mjereno prije: korak 13,2 ms (84 % planiranje: spremnik ~90 ms, baterija ~45 ms po planu); izvještaj i ušteda čitali su cijelu arhivu.
+- Implementirano (fab80b5):
+  - planeri bez poziva funkcija u unutarnjim petljama: baterija 16,4 → 7,5 ms, spremnik 33,3 → 19,9 ms; planovi identični na 60 nasumičnih slučajeva;
+  - izvještaj čita samo segmente arhive od početka razdoblja; pokretanje čita arhivu jednom;
+  - automatsko traženje Modbus uređaja u LAN-u: samo privatne mreže, najviše /22, portovi 502/1502, 64 niti, ~3 s za /24; isključivo postavkom `otkrivanje.lan_skeniranje`;
+  - paralelno ispitivanje hostova; poznati uređaji se preskaču;
+  - `--skeniraj`, `--dijagnoza`, `POST /api/v1/otkrivanje`, gumb "Potraži uređaje".
+- Testirano (Europe/Zagreb):
+  - 89/89 testova (8 novih), 15/15 provjera sustava;
+  - usporedba katalog: nenadmašena 18/18, K1 p = 0,006, K2 ispunjen (iste presude kao prije);
+  - korak 7,8 ms (1,7× brže); usporedba na katalogu 566 → 294 s.
+- Ograničenje: traženje u stvarnoj kućnoj mreži ovdje nije provjereno (okruženje nema privatnu mrežu); provjereno na lokalnim portovima.
