@@ -234,3 +234,10 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - ocjene 2027./2028./2028.R prije mjerila legionele: sve USPJEŠNE (K1 p < 0,001, K2 ispunjen).
 - Ograničenje: fizika simulatora i referentne strategije su promijenjene, pa usporedba sa starim brojkama nije izravna. Ocjene 2027./2028. ranije su korištene (informativno, ne neovisna potvrda).
 - GitLab: ova verzija nije prenesena (tokeni opozvani). Čeka novi kratkotrajni token ili vlasnikov push.
+
+## 18.11.2026. 08:06 (Europe/Zagreb) – prijenos na GitLab bez tokena
+
+- Tokeni od 17. i 18.11. (fine-grained) nemaju dozvolu za pisanje (Commit: Create). Ne mogu se ni opozvati preko API-ja, pa ih vlasnik treba opozvati ručno.
+- Prijenos je obavljen kroz GitLab spojnik ove sesije, bez tokena: 18 datoteka kao minimalne izmjene (diff) plus nove datoteke, u 5 commitova na razvoj; usputni s [skip ci].
+- Svih 18 datoteka podudara se po git blob SHA s lokalnim (izvor 072e655).
+- Cjevovod 3082667104 na razvoj (982544fc) pokrenut; ishod se bilježi kad završi. main nije diran.
