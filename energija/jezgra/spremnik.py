@@ -65,14 +65,16 @@ class ModelSpremnika:
     def korak(self, t: float, sati: float, dizalica: bool, grijac: bool, potrosnja_kwh: float,
               t_zrak: float) -> tuple[float, float]:
         """Temperatura nakon `sati` i utrošena električna energija (kWh). Termostati ograničavaju grijanje."""
-        c = self.c_kwh_k
+        p = self.p
+        c = p["volumen_l"] * C_VODA_KWH_L_K
         el = 0.0
-        q = -potrosnja_kwh - self.gubitak_kw(t) * sati
+        q = -potrosnja_kwh - max(0.0, self.ua * (t - p["t_prostorije_c"]) / 1000.0) * sati
         if dizalica and t < self.p["dt_max_c"]:
-            q_dt = self.p["dizalica_kw"] * cop(t, t_zrak) * sati
+            k = cop(t, t_zrak)
+            q_dt = self.p["dizalica_kw"] * k * sati
             q_dt = min(q_dt, max(0.0, (self.p["dt_max_c"] - t) * c + max(0.0, -q)))
             q += q_dt
-            el += q_dt / cop(t, t_zrak)
+            el += q_dt / k
         if grijac and t < self.p["grijac_max_c"]:
             q_g = min(self.p["grijac_kw"] * sati, max(0.0, (self.p["grijac_max_c"] - t) * c - q))
             q += q_g
@@ -230,33 +232,40 @@ def planiraj(model: ModelSpremnika, t0: float, cijene: list[dict], pv_visak_w: l
     i0 = idx(t0)
     trosak[0][i0][0] = 0.0
     prosjek = sum(c["kupnja"] for c in cijene) / max(1, H)
+    cilj_leg = min(legionela_cilj_c, p["grijac_max_c"]) - 2
     for h in range(H):
+        sada, sljedece, prije = trosak[h], trosak[h + 1], put[h + 1]
+        kasni = rok is not None and h >= rok
         for i in range(n):
-            for leg in (0, 1):
-                c0 = trosak[h][i][leg]
-                if c0 == INF:
+            if sada[i][0] == INF and sada[i][1] == INF:
+                continue
+            t = temp(i)
+            # prijelazi ovise samo o temperaturi i akciji – računaju se jednom za oba stanja legionele
+            for a, (dz, gr) in enumerate(akcije):
+                if dz and t >= p["dt_max_c"] or gr and t >= p["grijac_max_c"]:
                     continue
-                t = temp(i)
-                for a, (dz, gr) in enumerate(akcije):
-                    if dz and t >= p["dt_max_c"] or gr and t >= p["grijac_max_c"]:
+                t1, el = model.korak(t, 1.0, dz, gr, potrosnja_kwh[h], t_zraka[h])
+                g = granicna(h, el or 0.01)
+                c = el * g
+                if gr:
+                    # prioritet dizalici topline: grijač je za legionelu, za temperature iznad granice dizalice
+                    # i za besplatnu/negativnu struju; inače nosi kaznu prednosti (€/kWh)
+                    gr_kwh = min(p["grijac_kw"], max(0.0, el - (p["dizalica_kw"] if dz else 0.0)))
+                    if g > 0:
+                        c += gr_kwh * KAZNA_GRIJACA
+                if prisutnost[h] and min(t, t1) < p["t_min_c"]:
+                    c += (p["t_min_c"] - min(t, t1)) * 0.25  # udobnost: €/K po satu
+                drzi = min(t, t1) >= PRAG_LEGIONELE_C and t1 >= cilj_leg
+                j = idx(t1)
+                for leg in (0, 1):
+                    c0 = sada[i][leg]
+                    if c0 == INF:
                         continue
-                    t1, el = model.korak(t, 1.0, dz, gr, potrosnja_kwh[h], t_zraka[h])
-                    c = el * granicna(h, el or 0.01)
-                    if gr:
-                        # prioritet dizalici topline: grijač je za legionelu, za temperature iznad granice dizalice
-                        # i za besplatnu/negativnu struju; inače nosi kaznu prednosti (€/kWh)
-                        gr_kwh = min(p["grijac_kw"], max(0.0, el - (p["dizalica_kw"] if dz else 0.0)))
-                        if granicna(h, el or 0.01) > 0:
-                            c += gr_kwh * KAZNA_GRIJACA
-                    if prisutnost[h] and min(t, t1) < p["t_min_c"]:
-                        c += (p["t_min_c"] - min(t, t1)) * 0.25  # udobnost: €/K po satu
-                    leg1 = leg or (min(t, t1) >= PRAG_LEGIONELE_C and t1 >= min(legionela_cilj_c, p["grijac_max_c"]) - 2)
-                    if rok is not None and not leg1 and h >= rok:
-                        c += 0.30  # zakašnjeli ciklus: svaki sat odgode košta
-                    j = idx(t1)
-                    if c0 + c < trosak[h + 1][j][int(leg1)]:
-                        trosak[h + 1][j][int(leg1)] = c0 + c
-                        put[h + 1][j][int(leg1)] = (i, leg, a, el)
+                    leg1 = leg or drzi
+                    ck = c + 0.30 if kasni and not leg1 else c  # zakašnjeli ciklus: svaki sat odgode košta
+                    if c0 + ck < sljedece[j][int(leg1)]:
+                        sljedece[j][int(leg1)] = c0 + ck
+                        prije[j][int(leg1)] = (i, leg, a, el)
     # završna vrijednost: toplina u spremniku na kraju vrijedi (oprezno) prosječnu cijenu topline
     najbolje, kraj = INF, None
     for i in range(n):

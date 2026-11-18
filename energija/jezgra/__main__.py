@@ -1,8 +1,10 @@
-"""Pokretanje: `python -m jezgra [--sim | --sim-dani N] [--podaci MAPA] [--port P]`.
+"""Pokretanje: `python -m jezgra [--sim | --sim-dani N | --skeniraj | --dijagnoza] [--podaci MAPA] [--port P]`.
 
 - bez opcija: stvarni uređaji (otkrivanje Modbus/MQTT/UDP), HTTPS sučelje i API,
 - `--sim`: simulirana farma preko stvarnih protokola (Modbus TCP + MQTT), ubrzano vrijeme,
-- `--sim-dani N`: brza simulacija N dana bez mreže, na kraju potpisani izvještaj.
+- `--sim-dani N`: brza simulacija N dana bez mreže, na kraju potpisani izvještaj,
+- `--skeniraj`: jednom potraži uređaje u lokalnoj mreži i ispiši ih (za instalatera),
+- `--dijagnoza`: provjeri spremnost uređaja, uz uputu za svaku stavku koja ne prolazi.
 """
 from __future__ import annotations
 
@@ -62,6 +64,74 @@ def brza_simulacija(mapa: Path, dani: float, korak_s: float = 30.0, pocetak: flo
     return j, izv
 
 
+def skeniraj_jednom(cfg: dict) -> int:
+    """Za instalatera: što jezgra vidi u lokalnoj mreži (bez pokretanja cijelog sustava)."""
+    from .otkrivanje import lokalne_adrese, lokalne_mreze, nadji_otvorene, skeniraj_modbus
+    o = cfg["otkrivanje"]
+    t0 = time.monotonic()
+    mreze = lokalne_mreze(o.get("lan_mreze") or None)
+    print(f"Adrese ovog uređaja: {', '.join(lokalne_adrese()) or '–'}")
+    print(f"Tražim Modbus uređaje u: {', '.join(mreze) or '– (nema privatne mreže; zadaj otkrivanje.lan_mreze)'}")
+    hostovi = sorted(set(nadji_otvorene(mreze, tuple(o.get("lan_portovi", (502, 1502))))) |
+                     {tuple(h) for h in o["modbus_hostovi"]})
+    for h, p in hostovi:
+        print(f"  otvoren Modbus port: {h}:{p}")
+    uredaji = skeniraj_modbus(hostovi, o["modbus_jedinice"])
+    for u in uredaji:
+        d = u.opis()
+        print(f"  ✓ {d.get('tip')}: {u.id} ({d.get('protokol')}{', ' + d['proizvodjac'] if d.get('proizvodjac') else ''})")
+    if not uredaji:
+        print("  Nijedan SunSpec izmjenjivač ni Eastron brojilo nije prepoznat. Provjeri da je Modbus TCP uključen na "
+              "uređaju, ili upiši adresu u postavke.json: {\"otkrivanje\": {\"modbus_hostovi\": [[\"IP\", 502]]}}")
+    print(f"Gotovo za {time.monotonic() - t0:.1f} s. MQTT senzori se prijavljuju sami kad jezgra radi.")
+    return 0 if uredaji else 1
+
+
+def dijagnoza(mapa: Path, port: int | None = None) -> int:
+    """Provjera spremnosti uređaja: svaka stavka ima jasnu uputu kad ne prolazi."""
+    import os
+    import socket
+    import sys as _sys
+    cfg = konfig.ucitaj(mapa)
+    stavke: list[tuple[bool, str, str]] = []
+    stavke.append((_sys.version_info >= (3, 11), f"Python {_sys.version.split()[0]}", "potreban je Python 3.11 ili noviji"))
+    try:
+        import cryptography  # noqa: F401
+        stavke.append((True, "paket cryptography", ""))
+    except ImportError:
+        stavke.append((False, "paket cryptography", "pip install -r requirements.txt"))
+    try:
+        test = Path(mapa) / ".provjera"
+        test.write_text("ok")
+        test.unlink()
+        stavke.append((True, f"podatkovna mapa {mapa}", ""))
+    except OSError as e:
+        stavke.append((False, f"podatkovna mapa {mapa}", f"nije zapisiva ({e}); zadaj --podaci ili ENERGIJA_PODACI"))
+    stavke.append(("_greska_postavki" not in cfg, "postavke.json",
+                   f"neispravna datoteka: {cfg.get('_greska_postavki')} (koriste se zadane postavke)"))
+    for ime, p in (("HTTPS sučelje", port or cfg["api"]["port"]), ("MQTT broker", cfg["mqtt"]["port"])):
+        s = socket.socket()
+        try:
+            s.bind(("0.0.0.0", p))
+            stavke.append((True, f"{ime}: port {p} slobodan", ""))
+        except OSError:
+            stavke.append((False, f"{ime}: port {p} zauzet", "zaustavi drugi program na tom portu ili zadaj --port"))
+        finally:
+            s.close()
+    tz = time.strftime("%Z")
+    stavke.append((bool(os.environ.get("TZ")) or tz not in ("UTC", "GMT"), f"vremenska zona {tz}",
+                   "postavi lokalnu zonu (npr. TZ=Europe/Zagreb), inače tarife i navike padaju u krive sate"))
+    from .otkrivanje import lokalne_mreze
+    mreze = lokalne_mreze(cfg["otkrivanje"].get("lan_mreze") or None)
+    stavke.append((bool(mreze) or bool(cfg["otkrivanje"]["modbus_hostovi"]), f"lokalna mreža: {', '.join(mreze) or '–'}",
+                   "nema privatne mreže za automatsko traženje; zadaj otkrivanje.lan_mreze ili modbus_hostovi"))
+    for ok, naziv, uputa in stavke:
+        print(f"{'✓' if ok else '✗'} {naziv}" + ("" if ok else f"\n    → {uputa}"))
+    lose = sum(1 for ok, _, _ in stavke if not ok)
+    print("Sve je spremno." if not lose else f"Za popravak: {lose} od {len(stavke)} stavki.")
+    return 1 if lose else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="jezgra", description="Lokalna jezgra upravljanja energijom")
     ap.add_argument("--podaci", type=Path, default=None)
@@ -73,8 +143,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--otocno", action="store_true", help="bez mreže (otočni rad)")
     ap.add_argument("--port", type=int, default=None)
     ap.add_argument("--bez-tls", action="store_true", help="HTTP umjesto HTTPS (samo za lokalni razvoj)")
+    ap.add_argument("--skeniraj", action="store_true", help="jednom potraži uređaje u lokalnoj mreži i ispiši ih")
+    ap.add_argument("--dijagnoza", action="store_true", help="provjeri je li uređaj spreman za rad (s uputama)")
     a = ap.parse_args(argv)
     mapa = a.podaci or konfig.podatkovna_mapa()
+    if a.skeniraj:
+        return skeniraj_jednom(konfig.ucitaj(mapa))
+    if a.dijagnoza:
+        return dijagnoza(mapa, a.port)
 
     if a.sim_dani:
         _, izv = brza_simulacija(mapa, a.sim_dani, sezona=a.sezona, dinamicka=a.dinamicka, otocno=a.otocno)
@@ -117,6 +193,7 @@ def main(argv: list[str] | None = None) -> int:
     from .uredjaji import Registar
 
     registar = Registar(j, broker, cfg)
+    j.registar = registar
     registar.pokreni()
     if a.sim:
         j.dohvati_prognozu = lambda ts: lok.prognoza_api(ts)

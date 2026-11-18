@@ -122,8 +122,8 @@ class Jezgra:
         self.preklapanja = {"baterija": 0, "bojler": 0, "dizalica": 0}
 
         # --- oporavak bez gubitka: ponovi telemetriju nakon snimke
-        self._zakljuceni = {z["d"]["ts"] for z in self.arhiva.citaj(0, {"sat"})}
-        self.sati: list[dict] = [z["d"] for z in self.arhiva.citaj(0, {"sat"})]
+        self.sati: list[dict] = [z["d"] for z in self.arhiva.citaj(0, {"sat"})]  # jedno čitanje arhive
+        self._zakljuceni = {s["ts"] for s in self.sati}
         self._ponavljanje = True
         ponovljeno = 0
         for z in self.dnevnik.citaj(slijed, {TELEMETRIJA}):
@@ -1051,7 +1051,8 @@ class Jezgra:
 
     def izvjestaj(self, od: float, do: float, ime: str | None = None, izvezi: bool = True) -> dict:
         sati = [s for s in self.sati if od <= s["ts"] < do]
-        dog = [z for z in self.arhiva.citaj(0, {"pastir", "zastita", "anomalija", "sigurno_stanje"})
+        # samo segmenti od početka razdoblja (ne cijela povijest): izvještaj ne usporava kako arhiva raste
+        dog = [z for z in self.arhiva.citaj_od_vremena(od, {"pastir", "zastita", "anomalija", "sigurno_stanje"})
                if od <= z["t"] < do]
         izv = izvjestaji.sazetak(sati, dog, self.cfg, od, do,
                                  {"uredaj": self.trezor.id_uredaja(), "odrzavanje": self.odrzavanje})

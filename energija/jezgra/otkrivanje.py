@@ -142,20 +142,96 @@ def probaj_sdm(k: ModbusKlijent, jedinica: int) -> SdmBrojilo | None:
     return SdmBrojilo(k, jedinica) if 180 <= v <= 260 and 45 <= hz <= 55 else None
 
 
-def skeniraj_modbus(hostovi: list[tuple[str, int]], jedinice: list[int]) -> list[Uredaj]:
+def _probaj_host(host: str, port: int, jedinice: list[int], poznati: set) -> list[Uredaj]:
+    """Sve jedinice jednog Modbus TCP hosta (redom – isti host, ista veza)."""
     nadjeno: list[Uredaj] = []
-    for host, port in hostovi:
-        k = ModbusKlijent(host, port, timeout=0.8, pokusaja=1)
-        try:
-            k._spoji()
-        except OSError:
-            continue
-        for j in jedinice:
-            u = probaj_sunspec(k, j) or probaj_sdm(k, j)
-            if u:
-                nadjeno.append(u)
-                k = ModbusKlijent(host, port, timeout=1.5)  # svaki uređaj ima svoju vezu
+    k = ModbusKlijent(host, port, timeout=0.8, pokusaja=1)
+    try:
+        k._spoji()
+    except OSError:
+        return nadjeno
+    for j in jedinice:
+        if (host, port, j) in poznati:
+            continue  # već radi: ne ometaj uređaj ponovnim ispitivanjem
+        u = probaj_sunspec(k, j) or probaj_sdm(k, j)
+        if u:
+            nadjeno.append(u)
+            k = ModbusKlijent(host, port, timeout=1.5)  # svaki uređaj ima svoju vezu
+    if not nadjeno:
+        k.zatvori()
     return nadjeno
+
+
+def skeniraj_modbus(hostovi: list[tuple[str, int]], jedinice: list[int], poznati: set | None = None,
+                    niti: int = 8) -> list[Uredaj]:
+    """Hostovi se ispituju istodobno (nedostupan host ne usporava ostale); poznati (host, port, jedinica) se preskaču."""
+    from concurrent.futures import ThreadPoolExecutor
+    poznati = poznati or set()
+    hostovi = [h for h in hostovi if any((h[0], h[1], j) not in poznati for j in jedinice)]
+    if not hostovi:
+        return []
+    with ThreadPoolExecutor(max_workers=max(1, min(niti, len(hostovi)))) as ex:
+        rez = list(ex.map(lambda h: _probaj_host(h[0], h[1], jedinice, poznati), hostovi))
+    return [u for r in rez for u in r]
+
+
+# ------------------------------------------------------------------ automatsko traženje u lokalnoj mreži
+PRIVATNE_MREZE = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+
+
+def lokalne_adrese() -> list[str]:
+    """IPv4 adrese ovog uređaja u lokalnim mrežama (bez slanja ičega na mrežu)."""
+    adrese: set[str] = set()
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("10.255.255.255", 1))  # samo odabire izlazno sučelje
+        adrese.add(s.getsockname()[0])
+        s.close()
+    except OSError:
+        pass
+    try:
+        for a in socket.gethostbyname_ex(socket.gethostname())[2]:
+            adrese.add(a)
+    except OSError:
+        pass
+    return sorted(a for a in adrese if not a.startswith("127."))
+
+
+def lokalne_mreze(zadane: list[str] | None = None) -> list[str]:
+    """Mreže za traženje: zadane u postavkama ili /24 oko vlastite adrese – samo privatni rasponi."""
+    import ipaddress
+    privatne = [ipaddress.ip_network(m) for m in PRIVATNE_MREZE]
+    out = []
+    for m in (zadane or [f"{a}/24" for a in lokalne_adrese()]):
+        mreza = ipaddress.ip_network(m, strict=False)
+        if mreza.num_addresses > 1024:  # zaštita: nikad šire od /22
+            mreza = ipaddress.ip_network(f"{mreza.network_address}/22", strict=False)
+        if any(mreza.subnet_of(p) for p in privatne) and str(mreza) not in out:
+            out.append(str(mreza))
+    return out
+
+
+def nadji_otvorene(mreze: list[str], portovi: tuple[int, ...] = (502, 1502), timeout: float = 0.3,
+                   niti: int = 64, preskoci: set | None = None) -> list[tuple[str, int]]:
+    """Paralelno TCP spajanje na Modbus portove u lokalnoj mreži (jedan pokušaj po adresi, bez slanja podataka).
+    /24 mreža s dva porta: ~512 pokušaja u ~3 s."""
+    import ipaddress
+    from concurrent.futures import ThreadPoolExecutor
+    vlastite = set(lokalne_adrese())
+    ciljevi = [(str(ip), p) for m in mreze for ip in ipaddress.ip_network(m, strict=False).hosts()
+               for p in portovi if str(ip) not in vlastite and (str(ip), p) not in (preskoci or set())]
+
+    def probaj(c: tuple[str, int]) -> tuple[str, int] | None:
+        try:
+            with socket.create_connection(c, timeout=timeout):
+                return c
+        except OSError:
+            return None
+
+    if not ciljevi:
+        return []
+    with ThreadPoolExecutor(max_workers=niti) as ex:
+        return [c for c in ex.map(probaj, ciljevi) if c]
 
 
 # ------------------------------------------------------------------ MQTT uređaji

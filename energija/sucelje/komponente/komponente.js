@@ -458,8 +458,22 @@ class EDijagnostika extends EBaza {
     };
     const r = d.resursi || {};
     const ai = d.ai || {}; const kv = ai.kvaliteta || {};
+    const uredaji = blok("Uređaji", d.uredaji.length ? d.uredaji.map((u) => [`${u.id}`, `${u.protokol}${u.greska ? " – " + u.greska : ""}`, u.dostupan ? "ok" : "kvar"])
+      : [["Još nema uređaja", "jezgra ih traži sama; može i odmah", "info"]]);
+    const zadnje = d.otkrivanje?.zadnje;
+    const opis = div(); opis.style.cssText = "color:var(--_tekst2);font-size:13px;margin-top:8px";
+    opis.textContent = zadnje ? `Zadnje traženje: ${broj(zadnje.trajanje_s, 1)} s, ${zadnje.hostova} Modbus hostova, novo: ${zadnje.novi_uredaji.length}` : "";
+    const trazi = Object.assign(document.createElement("button"), { className: "akcija", type: "button", textContent: "Potraži uređaje" });
+    trazi.style.marginTop = "8px";
+    trazi.addEventListener("click", async () => {
+      trazi.disabled = true; trazi.textContent = "Tražim…";
+      try { const r = await this.klijent.skeniraj(); opis.textContent = `Pronađeno novih: ${r.novi_uredaji.length} (${broj(r.trajanje_s, 1)} s)`; setTimeout(() => this.osvjezi(), 1500); }
+      catch (e) { opis.textContent = e.message || "Traženje nije uspjelo"; }
+      finally { trazi.disabled = false; trazi.textContent = "Potraži uređaje"; }
+    });
+    uredaji.append(trazi, opis);
     mreza.append(
-      blok("Uređaji", d.uredaji.map((u) => [`${u.id}`, `${u.protokol}${u.greska ? " – " + u.greska : ""}`, u.dostupan ? "ok" : "kvar"])),
+      uredaji,
       blok("Zadaci i oporavak", [
         ["Sigurno stanje", d.sigurno_stanje ? "aktivno" : "ne", d.sigurno_stanje ? "kvar" : "ok"],
         ...Object.entries(d.zadaci?.zadaci || {}).map(([k, z]) => [k, `${z.padova} padova${z.greska ? " · " + z.greska : ""}`, z.greska ? "upozorenje" : "ok"]),

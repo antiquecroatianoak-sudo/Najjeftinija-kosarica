@@ -34,6 +34,7 @@ kućna automatika i operatori mreže. Specifikacija se generira iz koda i ne mo�
 | `/api/v1/izvjestaj?dana=7` | potpisani izvještaj (Ed25519) |
 | `POST /api/v1/naredbe` | `{"akcija": "topla_voda_sada"}` (stanar) · `{"akcija": "trosilo", "trosilo": "bojler", "ukljuci": true, "minuta": 30}` (administrator) |
 | `/api/v1/dijagnostika`, `/api/v1/dogadjaji?sati=24` | kontrolni centar (administrator) |
+| `POST /api/v1/otkrivanje` | potraži uređaje odmah (lokalna mreža i poznati Modbus hostovi); vraća trajanje, nove uređaje i popis (administrator) |
 | `GET`/`POST /api/v1/postavke` | napredne postavke i ručno premošćivanje (administrator) |
 | `/api/v1/uzivo` | Server‑Sent Events, događaj `stanje` svake 2 s (token u kolačiću ili kao `?token=`) |
 

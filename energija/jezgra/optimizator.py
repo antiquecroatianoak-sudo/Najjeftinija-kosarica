@@ -106,15 +106,38 @@ def planiraj_bateriju(potrosnja_w: list[float], pv_w: list[float], cijene: list[
     trosak = [[INF] * RAZINE for _ in range(H + 1)]
     prethodni = [[-1] * RAZINE for _ in range(H + 1)]
     trosak[0][start] = 0.0
+    # Ista računica kao trosak_sata(), ali bez poziva funkcije i rječnika u unutarnjoj petlji (~3× brže na
+    # slabom uređaju). Redoslijed operacija je isti, pa je plan identičan (provjereno testom).
+    max_uvoz = cfg["mreza"]["max_uvoz_kw"]
+    prijelazi = [(i, range(max(0, i - int(max_p)), min(RAZINE, i + int(max_k) + 1))) for i in range(RAZINE)]
+    de_ij = [[(razine[j] - razine[i]) * kap for j in range(RAZINE)] for i in range(RAZINE)]
     for h in range(H):
-        for i in range(RAZINE):
-            if trosak[h][i] == INF:
+        neto = (potrosnja_w[h] - pv_w[h]) / 1000.0
+        kupnja, prodaja = cijene[h]["kupnja"], cijene[h]["prodaja"]
+        kazna_rez = [(rezerva_soc - razine[j]) * kap * KAZNA_REZERVA if sat_20[h] and razine[j] < rezerva_soc
+                     else 0.0 for j in range(RAZINE)]
+        sada, sljedece, prije = trosak[h], trosak[h + 1], prethodni[h + 1]
+        for i, raspon in prijelazi:
+            t0 = sada[i]
+            if t0 == INF:
                 continue
-            for j in range(max(0, i - int(max_p)), min(RAZINE, i + int(max_k) + 1)):
-                c, _ = trosak_sata(h, i, j)
-                if trosak[h][i] + c < trosak[h + 1][j]:
-                    trosak[h + 1][j] = trosak[h][i] + c
-                    prethodni[h + 1][j] = i
+            red = de_ij[i]
+            for j in raspon:
+                de = red[j]
+                m = neto + (de / eta if de > 0 else de * eta)
+                if mreza:
+                    c = m * kupnja if m > 0 else m * prodaja
+                    if m > max_uvoz:
+                        c += (m - max_uvoz) * KAZNA_NEISPORUCENO
+                else:
+                    c = m * KAZNA_NEISPORUCENO if m > 0 else 0.0
+                    if de > 0 and neto + de / eta > 1e-6 and m > 0:
+                        c += 10.0
+                c += abs(de) * trosenje
+                c += kazna_rez[j]
+                if t0 + c < sljedece[j]:
+                    sljedece[j] = t0 + c
+                    prije[j] = i
     j = min(range(RAZINE), key=lambda k: trosak[H][k] - razine[k] * kap * 0.05)  # mala vrijednost ostatka
     put = [j]
     for h in range(H, 0, -1):

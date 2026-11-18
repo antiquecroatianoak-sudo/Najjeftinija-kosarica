@@ -68,7 +68,10 @@ ZADANO: dict = {
                  "dizalica_kw": 0.5, "dt_max_c": 55.0, "grijac_kw": 2.0, "grijac_max_c": 65.0,
                  # ciklički režim protiv legionele: ≥ 60 °C barem drzanje_min, svakih period_dana dana
                  "legionela": {"period_dana": 7.0, "cilj_c": 62.0, "drzanje_min": 30.0, "nadoknada_max_c": 3.0}},
-    "otkrivanje": {"multicast": "239.255.70.70", "port": 47070, "modbus_hostovi": [], "modbus_jedinice": [1, 2, 3]},
+    # lan_skeniranje: sam traži Modbus uređaje u lokalnoj privatnoj mreži (/24 oko vlastite adrese; lan_mreze ih
+    # može zadati, npr. ["192.168.1.0/24"]); dok ništa ne nađe svakih 15 min, poslije svakih lan_period_s
+    "otkrivanje": {"multicast": "239.255.70.70", "port": 47070, "modbus_hostovi": [], "modbus_jedinice": [1, 2, 3],
+                   "lan_skeniranje": True, "lan_mreze": [], "lan_portovi": [502, 1502], "lan_period_s": 21600},
     "trosila": [
         # prioritet: 0 = nikad ne isključivati (pastir), veći broj = ranije isključiti
         {"id": "pastir", "naziv": "Električni pastir", "prioritet": 0, "snaga_w": 8},

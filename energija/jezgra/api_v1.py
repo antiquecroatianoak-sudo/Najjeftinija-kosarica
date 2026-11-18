@@ -183,7 +183,18 @@ def dijagnostika(j) -> dict:
             "prognoza": {"greska": j.prognoza.greska, "sati": len(j.prognoza.sati)},
             "tarife": {"greska": j.tarife.greska, "dinamicka": bool(j.tarife.cijene)},
             "brojilo": {"konstanta": j.brojilo.konstanta, "izvor": j.brojilo.konstanta_izvor},
-            "napredno": j.napredno, "plan": j.plan[:36]}
+            "napredno": j.napredno, "plan": j.plan[:36],
+            "otkrivanje": {"lan": j.cfg["otkrivanje"].get("lan_skeniranje", True),
+                           "zadnje": getattr(getattr(j, "registar", None), "zadnje_skeniranje", None)}}
+
+
+def _otkrivanje(j) -> dict:
+    """Potraži uređaje odmah (gumb u kontrolnom centru): lokalna mreža + poznati hostovi, istodobno."""
+    reg = getattr(j, "registar", None)
+    if reg is None:
+        raise GreskaApi(409, "otkrivanje uređaja ne radi u ovom načinu (simulacija bez protokola)")
+    reg._zadnje_trazenje = 0.0  # ručni zahtjev: odmah pretraži i lokalnu mrežu
+    return reg.skeniraj() | {"uredaji": [u.opis() for u in j.uredaji]}
 
 
 # ------------------------------------------------------------------ rute
@@ -285,6 +296,8 @@ RUTE = [
         {"ts": z["t"], "vrsta": z["v"], "poruka": z["d"].get("poruka", ""), "ozbiljnost": z["d"].get("ozbiljnost")}
         for z in list(j.arhiva.citaj_od_vremena(j.sat() - float(q.get("sati", ["24"])[0]) * 3600))
         if z["v"] != "sat"][-200:]}, "Zadnji događaji: ?sati=24"),
+    ("POST", "/api/v1/otkrivanje", "upravljanje", lambda j, u, m, q, t: _otkrivanje(j),
+     "Potraži uređaje odmah (lokalna mreža i poznati Modbus hostovi)"),
     ("GET", "/api/v1/postavke", "upravljanje", lambda j, u, m, q, t: _postavke(j, m, t), "Napredne postavke"),
     ("POST", "/api/v1/postavke", "upravljanje", lambda j, u, m, q, t: _postavke(j, m, t),
      "Ručno premošćivanje (sigurnosne granice ostaju)"),

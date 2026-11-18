@@ -25,6 +25,17 @@ python3 -m unittest discover -s testovi -p "test_*.py"
 
 Na uređaju (Raspberry Pi ili sličan): `docker compose -f kontejneri/compose.yaml up -d`.
 
+### Instalacija na lokaciji u tri koraka
+
+1. `python3 -m jezgra --dijagnoza`: provjerava Python, pakete, podatkovnu mapu, portove, vremensku zonu i lokalnu mrežu. Za svaku stavku koja ne prolazi ispisuje što treba učiniti.
+2. `python3 -m jezgra --skeniraj`: sam pronalazi Modbus uređaje u lokalnoj mreži, bez upisivanja IP adresa:
+   - SunSpec izmjenjivače i baterije te Eastron brojila;
+   - paralelno, oko 3 s za kućnu mrežu;
+   - samo u privatnim mrežama, najviše /22.
+3. `python3 -m jezgra`: pokreće sustav. U pregledniku upiši kod za uparivanje.
+
+Jezgra i kasnije sama traži nove uređaje: dok ne nađe nijedan, svakih 15 min, a poslije svakih 6 h. U kontrolnom centru postoji i gumb „Potraži uređaje”. Automatsko traženje isključuje se postavkom `{"otkrivanje": {"lan_skeniranje": false}}`.
+
 ## Izolirana provjera cijelog sustava
 
 Provjera bez stvarnog hardvera i bez interneta obuhvaća:

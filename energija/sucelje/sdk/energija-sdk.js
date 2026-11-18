@@ -75,6 +75,7 @@ export class EnergijaKlijent {
   dogadjaji(sati = 24) { return this.get(`/api/v1/dogadjaji?sati=${sati}`); }
   postavke(promjene) { return promjene ? this.post("/api/v1/postavke", promjene) : this.get("/api/v1/postavke"); }
   naredba(tijelo) { this._predmemorija.clear(); return this.post("/api/v1/naredbe", tijelo); }
+  skeniraj() { this._predmemorija.clear(); return this.post("/api/v1/otkrivanje", {}); }
   pozivnica(uloga) { return this.post("/api/v1/pristup/pozivnice", { uloga }); }
   fleksibilnost() { return this.get("/api/v1/fleksibilnost"); }
   zahtjeviMreze() { return this.get("/api/v1/mreza/zahtjevi"); }
