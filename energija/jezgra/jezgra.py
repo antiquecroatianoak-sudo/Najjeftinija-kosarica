@@ -120,6 +120,10 @@ class Jezgra:
         # prag šuma: zadnji način baterije iz plana i od kada vrijedi; broj preklapanja
         self._bat_nacin: tuple[str, float | None, float] | None = None  # (kategorija, snaga, od_ts)
         self.preklapanja = {"baterija": 0, "bojler": 0, "dizalica": 0}
+        # odstupanje stvarnog sunca od prognoze (omjer, EWMA ~10 min) i od kada traje veliko odstupanje
+        self._pv_omjer = 1.0
+        self._odstupanje_od: float | None = None
+        self.preplaniranja = 0
 
         # --- oporavak bez gubitka: ponovi telemetriju nakon snimke
         self.sati: list[dict] = [z["d"] for z in self.arhiva.citaj(0, {"sat"})]  # jedno čitanje arhive
@@ -206,6 +210,9 @@ class Jezgra:
         a["n"] += 1
         if d.get("soc") is not None:
             a["soc_kraj"] = d["soc"]
+        tb = d.get("o", {}).get("baterija_temp_c")
+        if tb is not None:  # najniža temperatura baterije u satu (punjenje LiFePO4 ispod 0 °C je zabranjeno)
+            a["bat_temp_min"] = min(a.get("bat_temp_min", tb), tb)
         t = d.get("o", {}).get("okolina_temp_c")
         if t is not None:
             a["temp_zbroj"] = a.get("temp_zbroj", 0.0) + t
@@ -317,6 +324,12 @@ class Jezgra:
         cijene = self.tarife.niz(ts, H)
         prog = self.prognoza.niz(ts, H)
         pv = [p["pv_w"] for p in prog]
+        pol = self.cfg["politika"]
+        if pol.get("korekcija_prognoze") and abs(self._pv_omjer - 1.0) > 0.1:
+            # kratkoročno: prognoza promašuje sada -> idućih sati vjerojatno slično, ali sve manje
+            import math
+            r = max(0.2, min(1.5, self._pv_omjer))
+            pv = [x * (1 + (r - 1) * math.exp(-i / pol.get("korekcija_tau_h", 2.0))) for i, x in enumerate(pv)]
         profil = self.navike.prognoza(ts, H)
         potr, self.prognoza_info = self._ai_prognoza(ts, profil, [g.get("temp") for g in prog])
         self._odluka("prognoza", self.prognoza_info["izvor"], self.prognoza_info["razlog"],
@@ -343,8 +356,8 @@ class Jezgra:
         self.plan = planiraj_bateriju(ukupno, pv, cijene, soc, cfg_plan,
                                       self.parametri.get("rezerva_soc", self.cfg["baterija"]["soc_min"]), ts,
                                       mreza=self.mreza_dostupna)
-        for p, c, g in zip(self.plan, cijene, prog):
-            p.update({"cijena": c["kupnja"], "izvor_cijene": c["izvor"], "pv_w": round(g["pv_w"]),
+        for p, c, g, pk in zip(self.plan, cijene, prog, pv):
+            p.update({"cijena": c["kupnja"], "izvor_cijene": c["izvor"], "pv_w": round(pk), "pv_sirovo": round(g["pv_w"]),
                       "izvor_prognoze": g["izvor"]})
         for p, u in zip(self.plan, ukupno):
             p["potr_w"] = round(u)
@@ -499,7 +512,24 @@ class Jezgra:
                 and len(self.ai.uzorci) >= 72):
             self.ai.treniraj(proracun_ms=30.0 if self.nacin == "NORMALNO" else 60.0)  # nikad ne blokira ciklus
             self._ai_zadnje_ucenje = ts
-        if soc is not None and (not self.plan or ts - self.plan_ts >= interval["plan"] or self._sat_plana(ts) >= len(self.plan)):
+        preplaniraj = False
+        hp = self._sat_plana(ts)
+        if self.plan and 0 <= hp < len(self.plan):
+            ocekivano = self.plan[hp].get("pv_sirovo", self.plan[hp].get("pv_w", 0))
+            if ocekivano > 300 or pv > 300:
+                omjer = (pv + 50) / (ocekivano + 50)
+                self._pv_omjer += min(1.0, dt / 600) * (omjer - self._pv_omjer)
+            if self.cfg["politika"].get("brzo_preplaniranje", True) and abs(self._pv_omjer - 1.0) > 0.35:
+                self._odstupanje_od = self._odstupanje_od or ts
+                if ts - self._odstupanje_od >= 600 and ts - self.plan_ts >= 300:
+                    preplaniraj = True
+            else:
+                self._odstupanje_od = None
+        if soc is not None and (preplaniraj or not self.plan or ts - self.plan_ts >= interval["plan"]
+                                or self._sat_plana(ts) >= len(self.plan)):
+            if preplaniraj:
+                self.preplaniranja += 1
+                self._odstupanje_od = None
             self._planiraj(ts, soc)
         h_plan = self._sat_plana(ts)
         korak_plana = self.plan[h_plan] if 0 <= h_plan < len(self.plan) else None
@@ -1009,7 +1039,7 @@ class Jezgra:
         dd["pv_wh"] = dd.get("pv_wh", 0.0) + pv * dt / 3600
         plan = self.plan[self._sat_plana(ts)] if self.plan and 0 <= self._sat_plana(ts) < len(self.plan) else None
         if plan:
-            dd["pv_ocekivano_wh"] = dd.get("pv_ocekivano_wh", 0.0) + plan["pv_w"] * dt / 3600
+            dd["pv_ocekivano_wh"] = dd.get("pv_ocekivano_wh", 0.0) + plan.get("pv_sirovo", plan["pv_w"]) * dt / 3600
             if pv > 100:
                 self.prognoza.uci_naoblaku(pv, ts)
         naponi = [x for k, x in enumerate(self.pastir_izlaz.get("naponi", [])[1:], 1)

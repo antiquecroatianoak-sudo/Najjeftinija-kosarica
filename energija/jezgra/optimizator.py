@@ -70,7 +70,9 @@ def smjesti_fleksibilna(potrosnja_w: list[float], pv_w: list[float], cijene: lis
 
 
 def planiraj_bateriju(potrosnja_w: list[float], pv_w: list[float], cijene: list[dict], soc0: float,
-                      cfg: dict, rezerva_soc: float, od_ts: float, mreza: bool | None = None) -> list[dict]:
+                      cfg: dict, rezerva_soc: float, od_ts: float, mreza: bool | None = None,
+                      bez_punjenja: list[bool] | None = None) -> list[dict]:
+    """bez_punjenja[h]: u tom satu punjenje fizički nije moguće (npr. baterija na mrazu)."""
     b = cfg["baterija"]
     kap = b["kapacitet_kwh"]
     mreza = cfg["mreza"]["dostupna"] if mreza is None else mreza
@@ -117,12 +119,13 @@ def planiraj_bateriju(potrosnja_w: list[float], pv_w: list[float], cijene: list[
         kazna_rez = [(rezerva_soc - razine[j]) * kap * KAZNA_REZERVA if sat_20[h] and razine[j] < rezerva_soc
                      else 0.0 for j in range(RAZINE)]
         sada, sljedece, prije = trosak[h], trosak[h + 1], prethodni[h + 1]
+        zabrana = bez_punjenja is not None and bez_punjenja[h]
         for i, raspon in prijelazi:
             t0 = sada[i]
             if t0 == INF:
                 continue
             red = de_ij[i]
-            for j in raspon:
+            for j in (range(raspon.start, min(raspon.stop, i + 1)) if zabrana else raspon):
                 de = red[j]
                 m = neto + (de / eta if de > 0 else de * eta)
                 if mreza:

@@ -61,7 +61,10 @@ ZADANO: dict = {
                  # prag šuma (stabilnost): način rada baterije drži se najmanje min_trajanje_baterija_s (zaštita,
                  # ručne naredbe i zahtjevi mreže djeluju odmah). Mrtva zona cijene je podesiva, ali zadano
                  # isključena: u simulaciji je podizala trošak (vidi STANJE.md, 17.11.2026.). Spremnik vodi MPC.
-                 "prag_cijene_eur_kwh": 0.0, "min_trajanje_baterija_s": 900},
+                 "prag_cijene_eur_kwh": 0.0, "min_trajanje_baterija_s": 900,
+                 # kad stvarno sunce trajno odstupa od prognoze: odmah novi plan; korekcija_prognoze: idućih sati
+                 # prognoza se množi izmjerenim omjerom (opada prema 1 s vremenskom konstantom korekcija_tau_h)
+                 "brzo_preplaniranje": True, "korekcija_prognoze": False, "korekcija_tau_h": 2.0},
     "prognoza": {"url": "https://api.open-meteo.com/v1/forecast"},
     # spremnik PTV-a: model za prediktivno upravljanje (UA se uči iz mjerenja), dizalica topline + grijač, legionela
     "spremnik": {"volumen_l": 150.0, "ua_w_k": 1.5, "t_prostorije_c": 18.0, "t_min_c": 45.0,

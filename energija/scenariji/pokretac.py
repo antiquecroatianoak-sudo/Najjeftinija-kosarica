@@ -263,13 +263,17 @@ def usporedivi_trosak(sati: list[dict], cfg: dict, soc0: float) -> dict:
         t += n * (s["cijena_kupnja"] if n > 0 else s["cijena_prodaja"]) + abs(s.get("bat_neto_kwh", 0.0)) * trosenje
     soc_kraj = next((s["soc_kraj"] for s in reversed(sati) if s.get("soc_kraj") is not None), soc0)
     t -= (soc_kraj - soc0) * kap * max(0.0, prodaja)
-    # procjena granice: ista satna potrošnja i sunce, optimalna baterija uz savršeno znanje budućnosti
+    # procjena granice: ista satna potrošnja i sunce, optimalna baterija uz savršeno znanje budućnosti.
+    # Od 18.11.2026. granica poštuje fizičku zabranu punjenja na mrazu (prije je bila nedostižna u hladnim
+    # tjednima pa je podcjenjivala "ostvareno od mogućeg"); izmjena metodologije zapisana u STANJE.md.
     granica = None
     if cfg["mreza"]["dostupna"]:
         from jezgra.optimizator import planiraj_bateriju
+        prag = cfg["baterija"]["temp_punjenje_min_c"] + 0.5
         plan = planiraj_bateriju([s["potrosnja_kwh"] * 1000 for s in sati], [s["pv_kwh"] * 1000 for s in sati],
                                  [{"kupnja": s["cijena_kupnja"], "prodaja": s["cijena_prodaja"]} for s in sati],
-                                 soc0, cfg, cfg["baterija"]["soc_min"], sati[0]["ts"])
+                                 soc0, cfg, cfg["baterija"]["soc_min"], sati[0]["ts"],
+                                 bez_punjenja=[s.get("bat_temp_min", 99.0) < prag for s in sati])
         g = sum(p["trosak_eur"] for p in plan) - (plan[-1]["soc_cilj"] - soc0) * kap * max(0.0, prodaja)
         granica = round(g, 3)
     return {"trosak_eur": round(t, 3), "granica_eur": granica}
