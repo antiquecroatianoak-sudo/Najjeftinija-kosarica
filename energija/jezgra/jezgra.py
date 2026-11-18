@@ -328,7 +328,8 @@ class Jezgra:
         prog = self.prognoza.niz(ts, H)
         pv = [p["pv_w"] for p in prog]
         pol = self.cfg["politika"]
-        if pol.get("ucenje_pristranosti") and self._pv_zbroj_prognoza > 3.0:  # barem ~3 kWh prognoze u zadnja 24 h
+        # samo uz mrežu: otočno je plan već oprezan, a niža prognoza bi samo odgodila toplu vodu
+        if pol.get("ucenje_pristranosti") and self.mreza_dostupna and self._pv_zbroj_prognoza > 3.0:
             f = max(0.3, min(1.2, self._pv_zbroj_stvarno / self._pv_zbroj_prognoza))
             if abs(f - 1.0) > pol.get("pristranost_prag", 0.0):  # samo jasna, trajna pristranost (ne šum)
                 f = 1.0 + (f - 1.0) * pol.get("pristranost_udio", 1.0)
