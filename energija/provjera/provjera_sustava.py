@@ -106,7 +106,9 @@ def main() -> int:
               f"{len(zahtjevi)} zahtjeva, zadnji: {zahtjevi[-1]['upit'] if zahtjevi else '-'}")
 
     # 5) odluke su objašnjene, plan postoji, pastir nadziran
-    sv = stanje()
+    # plan nastaje tek u sljedećem koraku nakon prognoze: čeka se, ne čita se jednom (utrka)
+    sv = cekaj(lambda: (lambda s: s if all(k in s["odluke"] for k in ("baterija", "prognoza"))
+                        and len(s["plan"]) >= 24 else None)(stanje()), rok=60) or stanje()
     zabiljezi(all(k in sv["odluke"] for k in ("baterija", "prognoza")) and len(sv["plan"]) >= 24,
               "odluke s razlozima i plan za 36 h", ", ".join(f"{k}: {v['odluka']}" for k, v in sv["odluke"].items()))
     p = cekaj(lambda: stanje()["pastir"]["dionice"] if "?" not in stanje()["pastir"]["dionice"] else None, rok=60)
