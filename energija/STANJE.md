@@ -268,3 +268,21 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
 - Primjer: najnestabilniji tjedan (09/2024) −21,55 € prema −10,38 € (vlastita).
 - "Ostvareno od mogućeg" 106 % u najhladnijem tjednu: granica je satni model bez zabrane punjenja na mrazu, pa nije stroga gornja granica.
 - **main nije diran.** Spajanje razvoj → main čeka izričitu potvrdu vlasnika.
+
+## 18.11.2026. 13:40 (Europe/Zagreb) – poboljšanje upravljanja (mjereno, razvojni katalog)
+
+- **Metodologija:** granica sada poštuje zabranu punjenja na mrazu (prije nedostižna: hladni val 28 % → 84 % ostvarenog). Ostvareno od mogućeg = (vlastita − pametna) / (vlastita − granica).
+- **Mjerenje varijanti** (isti katalog, ponovljivo; ukupni trošak pametne / medijan ostvarenog):
+  - A dosadašnje: 27,58 € / 74,4 %;
+  - B + brzo ponovno planiranje (sunce odstupa > 35 % 10 min): 27,47 € / 77,8 % → **uključeno**;
+  - C + kratkoročna korekcija prognoze: 28,32 € / 76,3 % (sve_odjednom 47 → 30 %) → odbačeno;
+  - D + učenje pristranosti bez praga: 27,08 € / 73,2 % (hladni val, jesen, volatilne lošije) → odbačeno;
+  - E prag 25 %, pola ispravka: 27,21 € → odbačeno;
+  - F prag 25 %, puni ispravak, samo uz mrežu: **25,64 €** / 77,8 %, nijedan scenarij lošiji → **uključeno**;
+  - H + zajedničko planiranje baterije i spremnika (granične cijene): 26,67 €, lošije u 12/18 → odbačeno (opcija ostaje isključena).
+- **Ukupno:** 27,58 → 25,64 € (−7 %). K1 +55,1 p.b., 10/0, p = 0,001 (prije +48,5, p = 0,006); K2 ispunjen.
+- **Testirano** (commit 9c839b0, Europe/Zagreb):
+  - 89/89 testova; katalog 18/18; provjera sustava 15/15;
+  - sintetički stres: 0 kršenja, K1 9/0, p = 0,002.
+- **EMHASS:** instalacija i dalje odbijena od automatske zaštite (i uz vlasnikovo odobrenje); nije zaobiđeno. Treba dopuštenje u postavkama Claude Codea.
+- **Sljedeće:** 3. ocjena na stvarnim podacima 2023. (kriterij zapisan prije pokretanja) kroz GitLab posao ocjena_2023.
