@@ -256,3 +256,15 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - usporedba katalog: nenadmašena 18/18, K1 p = 0,006, K2 ispunjen (iste presude kao prije);
   - korak 7,8 ms (1,7× brže); usporedba na katalogu 566 → 294 s.
 - Ograničenje: traženje u stvarnoj kućnoj mreži ovdje nije provjereno (okruženje nema privatnu mrežu); provjereno na lokalnim portovima.
+
+## 18.11.2026. 08:52 (Europe/Zagreb) – GitLab cjevovodi zeleni
+
+- Cjevovod 3082667104 (razvoj, 982544fc; spremnik PTV-a, legionela, ponovljivost): svih 7 poslova uspjeh.
+- Cjevovod 3082735971 (razvoj, 71698d02; optimizacija + otkrivanje): svih 7 poslova uspjeh.
+- Stres testovi na stvarnim podacima 2024.–2025., novi spremnik:
+  - 0 sigurnosnih kršenja; dominira u 9/9 tjedana;
+  - 0 minuta bez tople vode (referentne strategije također 0);
+  - K1: medijan +67,3 p.b., 8/0, p = 0,004 → ispunjen; K2 ispunjen.
+- Primjer: najnestabilniji tjedan (09/2024) −21,55 € prema −10,38 € (vlastita).
+- "Ostvareno od mogućeg" 106 % u najhladnijem tjednu: granica je satni model bez zabrane punjenja na mrazu, pa nije stroga gornja granica.
+- **main nije diran.** Spajanje razvoj → main čeka izričitu potvrdu vlasnika.
