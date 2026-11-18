@@ -124,6 +124,9 @@ class Jezgra:
         self._pv_omjer = 1.0
         self._odstupanje_od: float | None = None
         self.preplaniranja = 0
+        # pristranost prognoze sunca: eksponencijalno ponderirani zbroj stvarnog i prognoziranog (τ = 24 h)
+        self._pv_zbroj_stvarno = 0.0
+        self._pv_zbroj_prognoza = 0.0
 
         # --- oporavak bez gubitka: ponovi telemetriju nakon snimke
         self.sati: list[dict] = [z["d"] for z in self.arhiva.citaj(0, {"sat"})]  # jedno čitanje arhive
@@ -325,6 +328,9 @@ class Jezgra:
         prog = self.prognoza.niz(ts, H)
         pv = [p["pv_w"] for p in prog]
         pol = self.cfg["politika"]
+        if pol.get("ucenje_pristranosti") and self._pv_zbroj_prognoza > 3.0:  # barem ~3 kWh prognoze u zadnja 24 h
+            f = max(0.3, min(1.2, self._pv_zbroj_stvarno / self._pv_zbroj_prognoza))
+            pv = [x * f for x in pv]
         if pol.get("korekcija_prognoze") and abs(self._pv_omjer - 1.0) > 0.1:
             # kratkoročno: prognoza promašuje sada -> idućih sati vjerojatno slično, ali sve manje
             import math
@@ -516,6 +522,11 @@ class Jezgra:
         hp = self._sat_plana(ts)
         if self.plan and 0 <= hp < len(self.plan):
             ocekivano = self.plan[hp].get("pv_sirovo", self.plan[hp].get("pv_w", 0))
+            if ocekivano > 100:
+                import math
+                k = math.exp(-dt / 86400)
+                self._pv_zbroj_stvarno = self._pv_zbroj_stvarno * k + pv * dt / 3.6e6
+                self._pv_zbroj_prognoza = self._pv_zbroj_prognoza * k + ocekivano * dt / 3.6e6
             if ocekivano > 300 or pv > 300:
                 omjer = (pv + 50) / (ocekivano + 50)
                 self._pv_omjer += min(1.0, dt / 600) * (omjer - self._pv_omjer)

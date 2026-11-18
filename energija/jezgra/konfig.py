@@ -64,7 +64,9 @@ ZADANO: dict = {
                  "prag_cijene_eur_kwh": 0.0, "min_trajanje_baterija_s": 900,
                  # kad stvarno sunce trajno odstupa od prognoze: odmah novi plan; korekcija_prognoze: idućih sati
                  # prognoza se množi izmjerenim omjerom (opada prema 1 s vremenskom konstantom korekcija_tau_h)
-                 "brzo_preplaniranje": True, "korekcija_prognoze": False, "korekcija_tau_h": 2.0},
+                 "brzo_preplaniranje": True, "korekcija_prognoze": False, "korekcija_tau_h": 2.0,
+                 # sustavna pristranost prognoze sunca (zadnja ~24 h, samo kad je prognoza bila znatna)
+                 "ucenje_pristranosti": False},
     "prognoza": {"url": "https://api.open-meteo.com/v1/forecast"},
     # spremnik PTV-a: model za prediktivno upravljanje (UA se uči iz mjerenja), dizalica topline + grijač, legionela
     "spremnik": {"volumen_l": 150.0, "ua_w_k": 1.5, "t_prostorije_c": 18.0, "t_min_c": 45.0,
