@@ -287,7 +287,7 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
 - **EMHASS:** instalacija i dalje odbijena od automatske zaštite (i uz vlasnikovo odobrenje); nije zaobiđeno. Treba dopuštenje u postavkama Claude Codea.
 - **Sljedeće:** 3. ocjena na stvarnim podacima 2023. (kriterij zapisan prije pokretanja) kroz GitLab posao ocjena_2023.
 
-## 18.11.2026. 14:10 (Europe/Zagreb) – 3. ocjena (stvarni podaci 2023.): USPJEH
+## 18.11.2026. 14:30 (Europe/Zagreb) – 3. ocjena (stvarni podaci 2023.): USPJEH
 
 - Cjevovod 3084029923 (razvoj, 3daa789e): svih 8 poslova uspjeh; posao ocjena_2023 (18143817138), artefakt `rezultati_ci/ocjena_2023` (365 dana).
 - Ocijenjeno strogo po kriteriju zapisanom prije pokretanja (KRITERIJ_ZNACAJNOSTI.md, 3. ocjena), bez podešavanja:
