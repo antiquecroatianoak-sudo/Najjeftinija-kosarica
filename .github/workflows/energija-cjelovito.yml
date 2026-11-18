@@ -1,0 +1,101 @@
+# Energija (zaseban projekt u mapi energija/, nije dio košarice): cjelovita provjera, jednaka GitLab CI-ju
+# (energija/.gitlab-ci.yml). Služi i kao zamjena kad GitLab cjevovodi ne rade. Ništa ne objavljuje.
+name: Energija – cjelovita provjera
+
+on:
+  push:
+    paths: ["energija/**", ".github/workflows/energija-cjelovito.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: energija-cjelovito-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TZ: Europe/Zagreb
+  PYTHONUNBUFFERED: "1"
+
+defaults:
+  run:
+    working-directory: energija
+
+jobs:
+  scenariji_svi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13", cache: pip, cache-dependency-path: energija/requirements-provjera.txt}
+      - run: pip install -q -r requirements-provjera.txt
+      - run: python3 -m scenariji.pokretac --sve --izlaz rezultati_ci/scenariji
+      - if: always()
+        run: test -f rezultati_ci/scenariji/rezultati.md && cat rezultati_ci/scenariji/rezultati.md >> "$GITHUB_STEP_SUMMARY" || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: scenariji, path: energija/rezultati_ci/scenariji, retention-days: 30}
+
+  scenariji_ekstremni_usporedba:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13", cache: pip, cache-dependency-path: energija/requirements-provjera.txt}
+      - run: pip install -q -r requirements-provjera.txt
+      - run: python3 -m scenariji.usporedba --oznaka ekstremno --izlaz rezultati_ci/ekstremno
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: ekstremno, path: energija/rezultati_ci/ekstremno, retention-days: 30}
+
+  stres_povijesni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13", cache: pip, cache-dependency-path: energija/requirements-provjera.txt}
+      - run: pip install -q -r requirements-provjera.txt
+      - uses: actions/cache@v4            # povijesni podaci se ne mijenjaju: preuzimaju se jednom
+        with: {path: energija/podaci, key: povijest-2024-2025-v1}
+      - run: |
+          if [ ! -s podaci/povijest.json ]; then
+            python3 -m stres.povijest preuzmi --od 2024-01-01 --do 2025-12-31 --izlaz podaci/povijest.json
+          fi
+      # pada samo na sigurnosnim kršenjima; trošak i značajnost (K1/K2) su u izvještaju
+      - run: python3 -m stres.povijest pokreni --podaci podaci/povijest.json --izlaz rezultati_ci/stres | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: stres, path: energija/rezultati_ci/stres, retention-days: 90}
+
+  ocjena_2023:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13", cache: pip, cache-dependency-path: energija/requirements-provjera.txt}
+      - run: pip install -q -r requirements-provjera.txt
+      - uses: actions/cache@v4
+        with: {path: energija/podaci2023, key: povijest-2023-v1}
+      - run: |
+          if [ ! -s podaci2023/povijest.json ]; then
+            python3 -m stres.povijest preuzmi --od 2023-01-01 --do 2023-12-31 --izlaz podaci2023/povijest.json
+          fi
+      - run: python3 -m stres.povijest pokreni --podaci podaci2023/povijest.json --izlaz rezultati_ci/ocjena_2023 | tee -a "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: ocjena_2023, path: energija/rezultati_ci/ocjena_2023, retention-days: 90}
+
+  slika_provjera:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [scenariji_svi, stres_povijesni]
+    steps:
+      - uses: actions/checkout@v4
+      # produkcijska slika se gradi i pokreće: dan simulacije + potpisani izvještaj
+      - run: docker build -f kontejneri/Dockerfile -t energija:${GITHUB_SHA::8} .
+      - run: docker run --rm energija:${GITHUB_SHA::8} --sim-dani 1 --podaci /tmp/e
