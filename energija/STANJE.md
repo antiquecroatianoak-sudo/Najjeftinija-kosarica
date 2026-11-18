@@ -319,3 +319,17 @@ Rezultati zatvorenih komercijalnih aplikacija pod jednakim uvjetima nisu dostupn
   - provjera sustava 15/15; katalog scenarija 18/18, 0 kršenja.
 - **Ispravci su na razvoju, nisu u mainu.**
 - **CI na GitLabu trenutačno ne radi:** razvoj 14119833 (cjevovod 3084986814) također je pao za 1 s, s praznim zapisnikom. Kvar nije vezan uz main, nego uz projekt ili grupu. Razlog treba pogledati na stranici cjevovoda; za te ispravke CI na GitLabu zato nije potvrđen.
+
+## 18.11.2026. 18:25 (Europe/Zagreb) – zaobilazak kvara GitLab CI-ja, ispravci u mainu
+
+- **GitLab CI i dalje ne radi:** ponovno pokretanje cjevovoda 3084986814 opet je palo odmah.
+  - Razlog nije dostupan: spojnik ne vraća failure_reason, a token mrežnog posrednika pripada drugom GitLab projektu (nije korišten).
+  - Kvar nije popravljiv bez troška ili vlastitog runnera, pa je zaobiđen.
+- **Zamjena:** GitHub Actions `.github/workflows/energija-cjelovito.yml`, jednako GitLab CI-ju: svi scenariji, ekstremna usporedba, stres 2024.–2025., ocjena 2023., produkcijska slika.
+- **Run 44345886098** (cc963c8, isti kôd kao GitLab razvoj 3410bf80): svih 5 poslova uspjeh. Izolirana Compose provjera za d0364e3 (run 44340361029) također uspjeh.
+  - stres 2024.–2025.: 0 kršenja, K1 +68,8 p.b. (8/0, p = 0,0039), K2 ispunjen, dominira 9/9;
+  - ocjena 2023.: 0 kršenja, K1 +45,4 p.b. (8/1, p = 0,0195), K2 ispunjen; identično GitLab rezultatu prije ispravaka.
+- **Spojeno:** GitLab MR !3 razvoj → main uz SHA zaštitu, 18.11.2026. 18:24; main = a64a0e10.
+  - Spojeno je uz zelenu ekvivalentnu provjeru na GitHubu. GitLab cjevovod nije zelen (ne radi); grana nije imala pravilo koje to zabranjuje.
+- GitLab Duo ponovno je automatski dodan kao recenzent (postavka projekta).
+- Verzija 0.2.1 i zapis u PROMJENE.md idu na razvoj ovim commitom; u main tek sljedećim spajanjem.

@@ -1,5 +1,11 @@
 # Dnevnik promjena
 
+## 0.2.1 – 18.11.2026.
+- Dizalica topline gasi se u svim zaštitnim stanjima, kao i grijač: sigurno stanje, prevelika snaga u otočnom radu, pregrijavanje i podnapon baterije.
+- „Potraži uređaje” i prvo automatsko traženje odmah pretražuju lokalnu mrežu, i odmah nakon pokretanja uređaja.
+- Izolirana provjera sustava više ne pada povremeno (čeka plan nakon prognoze).
+- Cjelovita provjera radi i na GitHub Actions (`.github/workflows/energija-cjelovito.yml`).
+
 ## 0.2.0 – 18.11.2026.
 
 ### Upravljanje
